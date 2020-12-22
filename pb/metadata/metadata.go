@@ -1,6 +1,6 @@
 // @Title  metadata.go
 // @Description  解析 tcaplus proxy 返回的 protobuf 文件元数据
-// @Author  jiahuazhang  2020-12-07 10:20:00
+// @Author  tcaplusdb  2020-12-07 10:20:00
 package metadata
 
 import (
