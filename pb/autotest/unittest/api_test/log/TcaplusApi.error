@@ -1,0 +1,4 @@
+2020-12-19T22:47:39.183782Z	ERROR	dir/dir.go:160	dir tcp://9.135.8.93:9999 signUp failed, -279
+2020-12-19T22:47:39.184752Z	ERROR	tcaplus-go-api/net_server.go:135	dir signUp failed -279
+2020-12-19T22:47:39.184752Z	ERROR	tcaplus-go-api/client.go:112	init failed. errCode: -279, errMsg: tcapdir_sign_fail
+2020-12-19T22:47:39.184752Z	ERROR	tcaplus-go-api/net_server.go:76	client init failed, net routine exit

@@ -1,0 +1,28 @@
+// TcaplusService option Ver.1
+// Author: Tcaplus
+// 2016-8-1
+// Modified: 2018-02-12 Add Crypto options
+
+syntax = "proto2";
+
+package tcaplusservice;
+
+import "google/protobuf/descriptor.proto";
+
+extend google.protobuf.MessageOptions
+{
+    optional string tcaplus_primary_key             = 60000; //Tcaplus Primary Key
+    repeated string tcaplus_index                   = 60001; //Tcaplus Index
+    optional string tcaplus_field_cipher_suite      = 60002; //Tcaplus field crypto suite name
+    optional string tcaplus_record_cipher_suite     = 60003; //Tcaplus record crypto suite name
+    optional string tcaplus_cipher_md5              = 60004; //Tcaplus crypto key md5
+    optional string tcaplus_sharding_key            = 60005; //Tcaplus sharding key
+    optional string tcaplus_customattr              = 60006; //Tcaplus custom define attribute
+}
+
+extend google.protobuf.FieldOptions
+{
+    optional uint32 tcaplus_size                    = 60000; // Tcaplus field size
+    optional string tcaplus_desc                    = 60001; // Tcaplus description
+    optional bool tcaplus_crypto                    = 60002; // Tcaplus crypto
+}
