@@ -10,7 +10,7 @@ import (
 	"encoding/binary"
 	"errors"
 
-	"git.code.com/tsf4g/tdrcom"
+	"github.com/tencentyun/tsf4g/tdrcom"
 )
 
 // Server ID的最大长度

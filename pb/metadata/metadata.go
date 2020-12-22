@@ -5,9 +5,9 @@ package metadata
 
 import (
 	"fmt"
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/logger"
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/protocol/tcaplusservice"
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/terror"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/logger"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/tcaplusservice"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/terror"
 	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protodesc"

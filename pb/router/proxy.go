@@ -1,10 +1,10 @@
 package router
 
 import (
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/logger"
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/protocol/tcapdir_protocol_cs"
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/terror"
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/tnet"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/logger"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/tcapdir_protocol_cs"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/terror"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/tnet"
 	"sync"
 )
 

@@ -11,7 +11,7 @@ import (
 	"errors"
 	"io"
 
-	"git.code.com/tsf4g/tdrcom"
+	"github.com/tencentyun/tsf4g/tdrcom"
 )
 
 const TCAPLUS_MAX_USERBUFF_LEN int64 = 1024

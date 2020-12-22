@@ -3,11 +3,11 @@ package router
 import (
 	"bytes"
 	"encoding/binary"
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/common"
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/logger"
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/protocol/cmd"
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/protocol/tcaplus_protocol_cs"
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/tnet"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/common"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/logger"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/cmd"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/tcaplus_protocol_cs"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/tnet"
 	"time"
 )
 

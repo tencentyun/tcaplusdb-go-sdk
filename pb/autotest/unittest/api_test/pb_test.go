@@ -2,9 +2,9 @@ package api
 
 import (
 	"fmt"
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/autotest/unittest/table/tcaplusservice"
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/autotest/unittest/tools"
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/logger"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/autotest/unittest/table/tcaplusservice"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/autotest/unittest/tools"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/logger"
 	"google.golang.org/protobuf/proto"
 	"testing"
 )

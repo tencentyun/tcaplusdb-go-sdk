@@ -1,10 +1,10 @@
 package response
 
 import (
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/logger"
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/protocol/tcaplus_protocol_cs"
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/record"
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/terror"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/logger"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/tcaplus_protocol_cs"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/record"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/terror"
 )
 
 type increaseResponse struct {

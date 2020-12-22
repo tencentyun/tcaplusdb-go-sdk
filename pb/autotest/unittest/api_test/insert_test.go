@@ -2,10 +2,10 @@ package api
 
 import (
 	"fmt"
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/autotest/unittest/table/tcaplusservice"
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/autotest/unittest/tools"
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/protocol/cmd"
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/terror"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/autotest/unittest/table/tcaplusservice"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/autotest/unittest/tools"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/cmd"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/terror"
 	"testing"
 )
 

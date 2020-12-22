@@ -2,17 +2,17 @@ package router
 
 import (
 	"container/list"
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/traverser"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/traverser"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/logger"
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/protocol/tcapdir_protocol_cs"
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/protocol/tcaplus_protocol_cs"
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/request"
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/response"
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/terror"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/logger"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/tcapdir_protocol_cs"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/tcaplus_protocol_cs"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/request"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/response"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/terror"
 )
 
 type SyncRequest struct {

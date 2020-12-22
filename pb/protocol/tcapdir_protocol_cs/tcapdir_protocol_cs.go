@@ -11,7 +11,7 @@ import (
 	"errors"
 	"io"
 
-	"git.code.com/tsf4g/tdrcom"
+	"github.com/tencentyun/tsf4g/tdrcom"
 )
 
 const TCAPDIR_MEMO_LEN int64 = 256

@@ -2,11 +2,11 @@ package tcaplus
 
 import (
 	"fmt"
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/logger"
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/metadata"
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/protocol/cmd"
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/protocol/policy"
-	"git.code.com/gcloud_storage_group/tcaplus-go-api/terror"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/logger"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/metadata"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/cmd"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/policy"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/terror"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/dynamicpb"
 	"strings"
