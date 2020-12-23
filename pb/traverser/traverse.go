@@ -205,7 +205,7 @@ func (t *Traverser) checkIfSwitchMS(resCurSrvID string) int {
 	if t.offset == 0 {
 		t.shardCurSvrId = resCurSrvID
 	} else {
-		if t.shardCurSvrId == resCurSrvID {
+		if t.shardCurSvrId != resCurSrvID {
 			log.ERR("last rsp svrId (%s) not equal current rsp svrId (%s), maybe has Switch Master and Slave",
 				t.shardCurSvrId, resCurSrvID)
 			return terror.GEN_ERR_ERR
