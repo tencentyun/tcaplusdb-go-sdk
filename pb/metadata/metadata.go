@@ -1,11 +1,12 @@
 // @Title  metadata.go
 // @Description  解析 tcaplus proxy 返回的 protobuf 文件元数据
-// @Author  tcaplusdb  2020-12-07 10:20:00
+// @Author  jiahuazhang  2020-12-07 10:20:00
 package metadata
 
 import (
 	"fmt"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/logger"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/tcapdbproto"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/tcaplusservice"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/terror"
 	"google.golang.org/protobuf/encoding/protowire"
@@ -257,7 +258,7 @@ func (m *metaManager) ExtractMsgPartKey(message proto.Message, keys []string) ([
 
 	// 序列化
 	for _, f := range fields {
-		keybuf, err = proto.MarshalOptions{}.MarshalField(keybuf, f, message.ProtoReflect().Get(f))
+		keybuf, err = tcapdbproto.MarshalOptions{}.MarshalField(keybuf, f, message.ProtoReflect().Get(f))
 		if err != nil {
 			errMsg := fmt.Sprintf("MarshalField field %s error:%s", f.JSONName(), err)
 			logger.ERR(errMsg)

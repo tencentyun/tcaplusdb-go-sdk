@@ -9,6 +9,7 @@ import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/cmd"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/idl"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/tcaplus_protocol_cs"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/tcapdbproto"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/terror"
 	"github.com/tencentyun/tsf4g/tdrcom"
 	"google.golang.org/protobuf/encoding/protowire"
@@ -1079,7 +1080,7 @@ func (r *Record) setPBValues(message proto.Message, fieldMap map[string][]protow
 				numPath += "." + fmt.Sprint(num)
 			}
 			if i == len(nums) - 1 {
-				keybuf, _ = proto.MarshalOptions{}.MarshalField(keybuf, f, tmp.Get(f))
+				keybuf, _ = tcapdbproto.MarshalOptions{}.MarshalField(keybuf, f, tmp.Get(f))
 			} else {
 				tmp = tmp.Get(f).Message()
 			}
