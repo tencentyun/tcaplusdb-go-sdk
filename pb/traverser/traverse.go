@@ -1,10 +1,10 @@
 package traverser
 
 import (
-	log "github.com/tencentyun/tcaplusdb-go-sdk/pb/logger"
-	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/cmd"
-	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/tcaplus_protocol_cs"
-	"github.com/tencentyun/tcaplusdb-go-sdk/pb/terror"
+	log "git.code.oa.com/gcloud_storage_group/tcaplus-go-api/logger"
+	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/protocol/cmd"
+	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/protocol/tcaplus_protocol_cs"
+	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/terror"
 	"sync/atomic"
 )
 
@@ -249,11 +249,13 @@ func (t *Traverser) onRecvResponse(msg *tcaplus_protocol_cs.TCaplusPkg, drop *bo
 		result := int(msg.Body.TableTraverseRes.Result)
 		if 0 != result {
 			log.ERR("TcaplusApiTableTraverse error %d, %s", result, terror.GetErrMsg(result))
+			t.state = TraverseStateRecoverable
 			return &terror.ErrorCode{Code: result}
 		}
 
 		if 0 != t.checkIfSwitchMS(msg.Body.TableTraverseRes.CurSrvID) {
 			log.ERR("M and S has switch, set state ST_UNRECOVERABLE")
+			t.state = TraverseStateUnRecoverable
 			return &terror.ErrorCode{Code: terror.GEN_ERR_ERR}
 		}
 
