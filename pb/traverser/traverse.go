@@ -1,10 +1,10 @@
 package traverser
 
 import (
-	log "git.code.oa.com/gcloud_storage_group/tcaplus-go-api/logger"
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/protocol/cmd"
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/protocol/tcaplus_protocol_cs"
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/terror"
+	log "github.com/tencentyun/tcaplusdb-go-sdk/pb/logger"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/cmd"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/tcaplus_protocol_cs"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/terror"
 	"sync/atomic"
 )
 
