@@ -41,14 +41,14 @@ func NewTraverserManager(client ClientInf) *TraverserManager {
 func (m *TraverserManager) GetTraverser(zoneId uint32, table string) *Traverser {
 	m.lock.Lock()
 	defer m.lock.Unlock()
-	if len(m.traverseMap) >= 8 {
-		logger.ERR("Traverser map is full")
-		return nil
-	}
 	zoneTable := fmt.Sprintf("%d|%s", zoneId, table)
 	t, exist := m.traverseMap[zoneTable]
 	if exist {
 		return t
+	}
+	if len(m.traverseMap) >= 8 {
+		logger.ERR("Traverser map is full")
+		return nil
 	}
 	t = newTraverser(zoneId, table)
 	t.client = m.client
@@ -99,17 +99,16 @@ func (m *TraverserManager) ContinueTraverse() {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	for k, v := range m.traverseMap {
-		if TraverseStateIdle == v.state {
-			logger.DEBUG("zoneTable %s is finished traverse", k)
+		if TraverseStateStop == v.state {
+			logger.DEBUG("zoneTable %s traverse stop", k)
 			delete(m.traverseMap, k)
 			continue
 		}
-		if v.busy {
+		if v.busy && TraverseStateNormal == v.state {
 			err := v.continueTraverse()
 			if err != nil {
 				logger.ERR("continueTraverse %s error %s", k, err)
 			}
-			break
 		}
 	}
 }

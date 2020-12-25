@@ -92,7 +92,11 @@ func (c *PBClient) initTableMeta(zoneTables map[uint32][]string) error {
 	return nil
 }
 
-// 设置默认zoneId
+/**
+    @brief 设置默认zoneId
+	@param [IN] zoneId zoneID
+    @retval error 错误码，如果未dial调用此接口将会返错 ClientNotDial
+**/
 func (c *PBClient) SetDefaultZoneId(zoneId uint32) error {
 	// 等于 -1 说明未进行dial初始化
 	if c.defZone == -1 {
@@ -103,7 +107,11 @@ func (c *PBClient) SetDefaultZoneId(zoneId uint32) error {
 	return nil
 }
 
-// 设置默认超时时间
+/**
+    @brief 设置默认超时时间
+	@param [IN] t time.Duration
+    @retval error 错误码，如果未dial调用此接口将会返错 ClientNotDial
+**/
 func (c *PBClient) SetDefaultTimeOut(t time.Duration) error {
 	if c.defZone == -1 {
 		logger.ERR("client not dial init")
@@ -138,7 +146,7 @@ func (c *PBClient) simpleOperate(msg proto.Message, apicmd int, zoneId uint32) e
 		return err
 	}
 
-	req.SetResultFlag(2)
+	req.SetResultFlag(3)
 
 	res, err := c.Do(req, c.defTimeout)
 	if err != nil {
@@ -492,99 +500,225 @@ func (c *PBClient) indexQuery(query string, apicmd int, zoneId uint32) ([]proto.
 	return msgs, nil, globalErr
 }
 
-// 插入记录
+/**
+    @brief 插入记录
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+    @retval error 错误码
+**/
 func (c *PBClient) Insert(msg proto.Message) error {
 	return c.simpleOperate(msg, cmd.TcaplusApiInsertReq, uint32(c.defZone))
 }
 
+/**
+    @brief 插入记录
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] zoneId 指定表所在zone
+    @retval error 错误码
+**/
 func (c *PBClient) InsertWithZone(msg proto.Message, zoneId uint32) error {
 	return c.simpleOperate(msg, cmd.TcaplusApiInsertReq, zoneId)
 }
 
-// 修改记录，不存在时插入
+/**
+    @brief 替换记录，记录不存在时插入
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+    @retval error 错误码
+**/
 func (c *PBClient) Replace(msg proto.Message) error {
 	return c.simpleOperate(msg, cmd.TcaplusApiReplaceReq, uint32(c.defZone))
 }
 
+/**
+    @brief 替换记录，记录不存在时插入。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] zoneId 指定表所在zone
+    @retval error 错误码
+**/
 func (c *PBClient) ReplaceWithZone(msg proto.Message, zoneId uint32) error {
 	return c.simpleOperate(msg, cmd.TcaplusApiReplaceReq, zoneId)
 }
 
-// 获取记录
+/**
+    @brief 获取记录
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+    @retval error 错误码
+**/
 func (c *PBClient) Get(msg proto.Message) error {
 	return c.simpleOperate(msg, cmd.TcaplusApiGetReq, uint32(c.defZone))
 }
 
+/**
+    @brief 获取记录。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] zoneId 指定表所在zone
+    @retval error 错误码
+**/
 func (c *PBClient) GetWithZone(msg proto.Message, zoneId uint32) error {
 	return c.simpleOperate(msg, cmd.TcaplusApiGetReq, zoneId)
 }
 
-// 删除记录
+/**
+    @brief 删除记录
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+    @retval error 错误码
+**/
 func (c *PBClient) Delete(msg proto.Message) error {
 	return c.simpleOperate(msg, cmd.TcaplusApiDeleteReq, uint32(c.defZone))
 }
 
+/**
+    @brief 删除记录。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] zoneId 指定表所在zone
+    @retval error 错误码
+**/
 func (c *PBClient) DeleteWithZone(msg proto.Message, zoneId uint32) error {
 	return c.simpleOperate(msg, cmd.TcaplusApiDeleteReq, zoneId)
 }
 
-// 修改记录，不存在时返错
+/**
+    @brief 修改记录，记录不存在时返错
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+    @retval error 错误码
+**/
 func (c *PBClient) Update(msg proto.Message) error {
 	return c.simpleOperate(msg, cmd.TcaplusApiUpdateReq, uint32(c.defZone))
 }
 
+/**
+    @brief 修改记录，记录不存在时返错。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] zoneId 指定表所在zone
+    @retval error 错误码
+**/
 func (c *PBClient) UpdateWithZone(msg proto.Message, zoneId uint32) error {
 	return c.simpleOperate(msg, cmd.TcaplusApiUpdateReq, zoneId)
 }
 
-// 批量获取记录
+/**
+    @brief 批量获取记录
+	@param [IN] msgs []proto.Message 需获取的记录列表
+    @retval error 错误码
+**/
 func (c *PBClient) BatchGet(msgs []proto.Message) error {
 	return c.batchOperate(msgs, cmd.TcaplusApiBatchGetReq, uint32(c.defZone))
 }
 
+/**
+    @brief 批量获取记录。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
+	@param [IN] msgs []proto.Message 需获取的记录列表
+	@param [IN] zoneId 指定表所在zone
+    @retval error 错误码
+**/
 func (c *PBClient) BatchGetWithZone(msgs []proto.Message, zoneId uint32) error {
 	return c.batchOperate(msgs, cmd.TcaplusApiBatchGetReq, zoneId)
 }
 
-// partkey获取记录
+/**
+    @brief 部分key获取记录
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] keys []string 部分key，根据 proto 文件中的 index 选择填写
+	@retval []proto.Message 返回记录，可能匹配到多条记录
+    @retval error 错误码
+**/
 func (c *PBClient) GetByPartKey(msg proto.Message, keys []string) ([]proto.Message, error) {
 	return c.partkeyOperate(msg, keys, cmd.TcaplusApiGetByPartkeyReq, uint32(c.defZone))
 }
 
+/**
+    @brief 部分key获取记录。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] keys []string 部分key，根据 proto 文件中的 index 选择填写
+	@param [IN] zoneId 指定表所在zone
+	@retval []proto.Message 返回记录，可能匹配到多条记录
+    @retval error 错误码
+**/
 func (c *PBClient) GetByPartKeyWithZone(msg proto.Message, keys []string, zoneId uint32) ([]proto.Message, error) {
 	return c.partkeyOperate(msg, keys, cmd.TcaplusApiGetByPartkeyReq, zoneId)
 }
 
-// partkey获取记录
+/**
+    @brief 获取记录部分字段value
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] values []string 部分字段名，根据需要选择填写
+    @retval error 错误码
+**/
 func (c *PBClient) FieldGet(msg proto.Message, values []string) error {
 	return c.fieldOperate(msg, values, cmd.TcaplusApiPBFieldGetReq, uint32(c.defZone))
 }
 
+/**
+    @brief 获取记录部分字段value。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] values []string 部分字段名，根据需要选择填写
+	@param [IN] zoneId 指定表所在zone
+    @retval error 错误码
+**/
 func (c *PBClient) FieldGetWithZone(msg proto.Message, values []string, zoneId uint32) error {
 	return c.fieldOperate(msg, values, cmd.TcaplusApiPBFieldGetReq, zoneId)
 }
 
+/**
+    @brief 更新记录部分字段value
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] values []string 部分字段名，根据需要选择填写
+    @retval error 错误码
+**/
 func (c *PBClient) FieldUpdate(msg proto.Message, values []string) error {
 	return c.fieldOperate(msg, values, cmd.TcaplusApiPBFieldUpdateReq, uint32(c.defZone))
 }
 
+/**
+    @brief 更新记录部分字段value。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] values []string 部分字段名，根据需要选择填写
+	@param [IN] zoneId 指定表所在zone
+    @retval error 错误码
+**/
 func (c *PBClient) FieldUpdateWithZone(msg proto.Message, values []string, zoneId uint32) error {
 	return c.fieldOperate(msg, values, cmd.TcaplusApiPBFieldUpdateReq, zoneId)
 }
 
+/**
+    @brief 自增记录部分字段value
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] values []string 部分字段名，根据需要选择填写
+    @retval error 错误码
+**/
 func (c *PBClient) FieldIncrease(msg proto.Message, values []string) error {
 	return c.fieldOperate(msg, values, cmd.TcaplusApiPBFieldIncreaseReq, uint32(c.defZone))
 }
 
+/**
+    @brief 自增记录部分字段value。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] values []string 部分字段名，根据需要选择填写
+	@param [IN] zoneId 指定表所在zone
+    @retval error 错误码
+**/
 func (c *PBClient) FieldIncreaseWithZone(msg proto.Message, values []string, zoneId uint32) error {
 	return c.fieldOperate(msg, values, cmd.TcaplusApiPBFieldIncreaseReq, zoneId)
 }
 
-// 分布式索引查询，非聚合查询结果 []proto.Message 聚合查询结果 []string
+/**
+    @brief 分布式索引查询
+	@param [IN] query sql 查询语句 详情见 https://iwiki.woa.com/pages/viewpage.action?pageId=419645505
+	@retval []proto.Message 非聚合查询结果
+	@retval []string 聚合查询结果
+    @retval error 错误码
+**/
 func (c *PBClient) IndexQuery(query string) ([]proto.Message, []string, error) {
 	return c.indexQuery(query, cmd.TcaplusApiSqlReq, uint32(c.defZone))
 }
 
+/**
+    @brief 自增记录部分字段value
+	@param [IN] query sql 查询语句 详情见 https://iwiki.woa.com/pages/viewpage.action?pageId=419645505
+	@param [IN] zoneId 指定表所在zone
+	@retval []proto.Message 非聚合查询结果
+	@retval []string 聚合查询结果
+    @retval error 错误码
+**/
 func (c *PBClient) IndexQueryWithZone(query string, zoneId uint32) ([]proto.Message, []string, error) {
 	return c.indexQuery(query, cmd.TcaplusApiSqlReq, zoneId)
 }

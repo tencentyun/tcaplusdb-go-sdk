@@ -107,7 +107,7 @@ func Init() {
 		LogConf = &logCfg{
 			LogPath:       "",
 			LogName:       "TcaplusApi",
-			LogLevel:      "DEBUG",
+			LogLevel:      "ERROR",
 			LogType:       "console",
 			LogMaxSize:    100,
 			LogMaxBackups: 100,

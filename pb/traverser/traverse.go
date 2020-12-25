@@ -74,9 +74,17 @@ func (t *Traverser) Start() error {
 }
 
 func (t *Traverser) Stop() error {
-	t.state = TraverseStateIdle
+	t.state = TraverseStateStop
 	t.zoneId = 0
 	t.tableName = ""
+	return nil
+}
+
+func (t *Traverser) Resume() error {
+	if t.state != TraverseStateRecoverable {
+		return &terror.ErrorCode{Code: terror.API_ERR_INVALID_OBJ_STATUE}
+	}
+	t.state = TraverseStateNormal
 	return nil
 }
 
@@ -165,6 +173,8 @@ func (t *Traverser) sendTraverseRequest() error {
 
 	if 0 == t.asyncId {
 		req.GetTcaplusPackagePtr().Head.AsynID = uint64(t.traverseId) << 32 | uint64(t.requestId)
+	} else {
+		req.GetTcaplusPackagePtr().Head.AsynID = t.asyncId
 	}
 
 	if len(t.userBuff) != 0 {

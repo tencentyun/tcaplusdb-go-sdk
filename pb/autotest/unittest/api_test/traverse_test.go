@@ -7,11 +7,13 @@ import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/terror"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/traverser"
 	"testing"
+	"time"
 )
 
 func TestPBTraverse(t *testing.T) {
 	client := tools.InitPBSyncClient()
 	tra := client.GetTraverser(tools.ZoneId, "game_players")
+	defer tra.Stop()
 	err := tra.Start()
 	if err != nil {
 		t.Errorf("start error:%s", err)
@@ -33,18 +35,22 @@ func TestPBTraverse(t *testing.T) {
 	count := 0
 
 	for {
-		//recv resp
-		resp, err := tools.RecvResponse(client)
+		resp, err := client.RecvResponse()
 		if err != nil {
-			if tra.State() == traverser.TraverseStateIdle {
-				break
-			}
-			t.Errorf("recvResponse fail, %s", err.Error())
+			t.Errorf("RecvResponse fail, %s", err.Error())
 			return
+		} else if resp == nil {
+			if tra.State() != traverser.TraverseStateNormal {
+				fmt.Println(tra.State())
+				break
+			} else {
+				time.Sleep(time.Microsecond * 10)
+				continue
+			}
 		}
 
-		if err := resp.GetResult(); err != 0 {
-			t.Errorf("resp.GetResult err %d, %s", err, terror.GetErrMsg(err))
+		if err := resp.GetResult(); err != terror.GEN_ERR_SUC {
+			t.Errorf("GetResult fail, %d %s", err, terror.GetErrMsg(err))
 			return
 		}
 
@@ -53,18 +59,18 @@ func TestPBTraverse(t *testing.T) {
 		for i := 0; i < resp.GetRecordCount(); i++ {
 			record, err := resp.FetchRecord()
 			if err != nil {
-				t.Errorf("FetchRecord failed %s", err.Error())
+				t.Errorf("FetchRecord fail, %s", err.Error())
 				return
 			}
 
-			newMsg := &tcaplusservice.GamePlayers{}
-			err = record.GetPBData(newMsg)
+			msg := &tcaplusservice.GamePlayers{}
+			err = record.GetPBData(msg)
 			if err != nil {
-				t.Errorf("GetPBData failed %s", err.Error())
+				t.Errorf("GetPBData fail, %s", err.Error())
 				return
 			}
 
-			newJson := tools.StToJson(newMsg)
+			newJson := tools.StToJson(msg)
 			fmt.Println(newJson)
 		}
 	}

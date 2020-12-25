@@ -856,17 +856,34 @@ func (r *Record) AddValueOperation(FieldName string, FieldBuff []byte, FieldLen 
 
 }
 
-// 设置 protobuf 值
+/**
+  @brief  基于 PB Message 设置record数据
+  @param [IN] data  PB Message
+  @retval []byte 记录的keybuf，用来唯一确定一条记录，多用于请求与响应记录相对应
+  @retval error     错误码
+*/
 func (r *Record) SetPBData(message proto.Message) ([]byte, error) {
 	return r.setPBDataCommon(message, nil, nil)
 }
 
-// 设置部分values字段
+/**
+    @brief 设置部分value字段，专用于field操作，TcaplusApiPBFieldGetReq TcaplusApiPBFieldUpdateReq TcaplusApiPBFieldIncreaseReq
+    @param [IN] msg proto.Message 由proto文件生成的记录结构体
+    @param [IN] values []string 指定本次设置的 value 字段
+    @retval []byte 由记录key字段编码生成，由于多条记录的响应记录是无序的，可以用这个值来匹配记录
+    @retval error 错误码
+**/
 func (r *Record) SetPBFieldValues(message proto.Message, values []string) ([]byte, error) {
 	return r.setPBDataCommon(message, nil, values)
 }
 
-// 设置部分keys字段
+/**
+    @brief 设置部分key字段，专用于partkey操作，TcaplusApiGetByPartkeyReq
+    @param [IN] msg proto.Message 由proto文件生成的记录结构体
+    @param [IN] keys []string 指定本次设置的 key 字段
+    @retval []byte 由记录key字段编码生成，由于多条记录的响应记录是无序的，可以用这个值来匹配记录
+    @retval error 错误码
+**/
 func (r *Record) SetPBPartKeys(message proto.Message, keys []string) ([]byte, error) {
 	return r.setPBDataCommon(message, keys, nil)
 }
@@ -966,12 +983,22 @@ func (r *Record) GetTableShardingKey(message proto.Message) []byte {
 	return shardingKey
 }
 
-// 获取所有字段
+/**
+    @brief  基于 PB Message 读取record数据
+    @param [IN] data   PB Message
+    @retval []byte 记录的keybuf，用来唯一确定一条记录，多用于请求与响应记录相对应
+    @retval error      错误码
+**/
 func (r *Record) GetPBData(message proto.Message) error {
 	return r.GetPBDataWithValues(message, nil)
 }
 
 // 专用于 field 方法
+/**
+    @brief 专用于 field 方法，获取响应
+    @param [IN] msg proto.Message 由proto文件生成的记录结构体
+    @retval error 错误码
+**/
 func (r *Record) GetPBFieldValues(message proto.Message) error {
 	if r.PBValueSet == nil {
 		errMsg := fmt.Sprintf("PBValueSet is nil")
@@ -1112,7 +1139,11 @@ func (r *Record) cleanField(pro protoreflect.Message, fmap map[string][]protowir
 	}
 }
 
-// 获取 message 的 key 值
+/**
+    @brief 获取记录key编码值
+    @retval []byte 由记录key字段编码生成，由于多条记录的响应记录是无序的，可以用这个值来匹配记录
+    @retval error 错误码
+**/
 func (r *Record) GetPBKey() ([]byte, error) {
 	data := &idl.Tbl_Idl{}
 	err := r.GetData(data)

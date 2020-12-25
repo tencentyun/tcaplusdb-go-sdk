@@ -225,8 +225,6 @@ func (c *client) Do(req request.TcaplusRequest, timeout time.Duration) (response
 	}
 }
 
-
-
 /**
     @brief 发送tcaplus同步请求并接受响应
 	@param [IN] req tcaplus请求
@@ -281,6 +279,12 @@ func (c *client) DoMore(req request.TcaplusRequest, timeout time.Duration) ([]re
 	}
 }
 
+/**
+    @brief 获取遍历器（存在则直接获取，不存在则新建一个）
+	@param [IN] zoneId tcaplus请求
+	@param [IN] table 超时时间
+    @retval *traverser.Traverser 遍历器，一个client最多分配8个遍历器，超过将会返回 nil
+**/
 func (c *client) GetTraverser(zoneId uint32, table string) *traverser.Traverser {
 	return c.tm.GetTraverser(zoneId, table)
 }
