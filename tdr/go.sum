@@ -16,8 +16,6 @@ github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UV
 github.com/stretchr/testify v1.4.0/go.mod h1:j7eGeouHqKxXV5pUuKE4zz7dFj8WfuZ+81PSLYec5m4=
 github.com/tencentyun/tsf4g v0.0.1 h1:GSpjSWMZ9hskqWvGjU6uKLz74bJFsCax4W/rnnOwQXw=
 github.com/tencentyun/tsf4g v0.0.1/go.mod h1:cJ1HM661kszsKRGkDHentqj/5mY3Vt4v3ATBitRb3f4=
-github.com/tencentyun/tsf4g/tdrcom v0.0.0-20200426021242-6f024d6c8199 h1:XaADj7owiwb5u9xMjkIypGnzrAXIGCspQsW8q5BmqYM=
-github.com/tencentyun/tsf4g/tdrcom v0.0.0-20200426021242-6f024d6c8199/go.mod h1:dNkaW/gNcHLQxySpM9q65UOoFXWoHNRv3BC5EIDzkpo=
 github.com/yuin/goldmark v1.1.25/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 go.uber.org/atomic v1.6.0 h1:Ezj3JGmsOnG1MoRWQkPBsKLe9DwWD9QeXzTRzzldNVk=
 go.uber.org/atomic v1.6.0/go.mod h1:sABNBOSYdrvTF6hTgEIbc7YasKWGhgEQZyfxyTvoXHQ=
