@@ -2,8 +2,8 @@ package tnet
 
 import (
 	"bytes"
-	log "git.code.oa.com/gcloud_storage_group/tcaplus-go-api/logger"
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/terror"
+	log "github.com/tencentyun/tcaplusdb-go-sdk/tdr/logger"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/terror"
 	"net"
 	"strings"
 	"sync/atomic"

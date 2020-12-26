@@ -3,10 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api"
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/autotest/tdragent/src/cfg"
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/autotest/tdragent/src/logger"
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/autotest/tdragent/src/runTest"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/autotest/tdragent/src/cfg"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/autotest/tdragent/src/logger"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/autotest/tdragent/src/runTest"
 )
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////

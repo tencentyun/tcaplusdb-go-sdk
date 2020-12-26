@@ -2,14 +2,14 @@ package api_test
 
 import (
 	"fmt"
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/protocol/cmd"
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/protocol/tcaplus_protocol_cs"
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/terror"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/cmd"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/tcaplus_protocol_cs"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/terror"
 	"testing"
 
-	//"git.code.oa.com/gcloud_storage_group/tcaplus-go-api"
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/autotest/unittest/table/tcaplus_tb"
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/autotest/unittest/tools"
+	//"github.com/tencentyun/tcaplusdb-go-sdk/tdr"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/autotest/unittest/table/tcaplus_tb"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/autotest/unittest/tools"
 )
 
 func TestListDeleteAllSuccess(t *testing.T) {

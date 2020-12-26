@@ -24,15 +24,15 @@ git submodule update
 
 
 cp ./vendor ./pack/${PKG}/src/ -rf
-mkdir -p ./pack/${PKG}/src/vendor/git.code.oa.com/gcloud_storage_group/tcaplus-go-api
-rsync -av --exclude vendor ./ ./pack/${PKG}/src/vendor/git.code.oa.com/gcloud_storage_group/tcaplus-go-api
-rm -rf ./pack/${PKG}/src/vendor/git.code.oa.com/gcloud_storage_group/tcaplus-go-api/.*
+mkdir -p ./pack/${PKG}/src/vendor/github.com/tencentyun/tcaplusdb-go-sdk/tdr
+rsync -av --exclude vendor ./ ./pack/${PKG}/src/vendor/github.com/tencentyun/tcaplusdb-go-sdk/tdr
+rm -rf ./pack/${PKG}/src/vendor/github.com/tencentyun/tcaplusdb-go-sdk/tdr/.*
 cd -
 
 cp ../example ${PKG}/src/ -rf
 cp ../README.md ${PKG}/src/ -rf
 cp ../autotest ${PKG}/src/ -rf
-VERSION_FILE=${PKG}/src/vendor/git.code.oa.com/gcloud_storage_group/tcaplus-go-api/protocol/version/version.go
+VERSION_FILE=${PKG}/src/vendor/github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/version/version.go
 GIT_COMMIT_ID_GO=`echo -e "\t"GitCommitId = \"${GIT_COMMIT_ID}\"`
 VERSION_GO=`echo -e "\t"Version = \"${VERSION_SVN}\"`
 sed -i "/GitCommitId/c\ ${GIT_COMMIT_ID_GO}" ${VERSION_FILE}

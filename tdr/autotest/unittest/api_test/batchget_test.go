@@ -2,8 +2,8 @@ package api_test
 
 import (
 	"fmt"
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/protocol/cmd"
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/terror"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/cmd"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/terror"
 	"strings"
 	"testing"
 	"time"

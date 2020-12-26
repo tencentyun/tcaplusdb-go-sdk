@@ -2,8 +2,8 @@ package runTest
 
 import (
 	"errors"
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/autotest/tdragent/src/logger"
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/protocol/cmd"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/autotest/tdragent/src/logger"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/cmd"
 	"time"
 )
 

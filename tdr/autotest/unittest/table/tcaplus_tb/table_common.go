@@ -10,7 +10,7 @@ import (
 	"encoding/binary"
 	"errors"
 
-	"git.code.oa.com/tsf4g/tdrcom"
+	"github.com/tencentyun/tsf4g/tdrcom"
 )
 
 const VALUE_1KB_SIZE int64 = 1024

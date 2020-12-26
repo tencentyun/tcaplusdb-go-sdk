@@ -6,14 +6,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/dir"
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/logger"
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/protocol/tcapdir_protocol_cs"
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/protocol/tcaplus_protocol_cs"
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/request"
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/response"
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/router"
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/terror"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/dir"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/logger"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/tcapdir_protocol_cs"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/tcaplus_protocol_cs"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/request"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/response"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/router"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/terror"
 )
 
 type netServer struct {

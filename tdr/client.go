@@ -2,13 +2,13 @@ package tcaplus
 
 import (
 	"errors"
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/logger"
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/protocol/tcaplus_protocol_cs"
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/protocol/version"
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/request"
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/response"
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/router"
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/terror"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/logger"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/tcaplus_protocol_cs"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/version"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/request"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/response"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/router"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/terror"
 	"sync/atomic"
 	"time"
 )

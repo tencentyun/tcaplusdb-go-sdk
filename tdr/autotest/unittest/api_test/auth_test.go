@@ -1,9 +1,9 @@
 package api_test
 
 import (
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api"
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/autotest/unittest/cfg"
-	"git.code.oa.com/gcloud_storage_group/tcaplus-go-api/protocol/cmd"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/autotest/unittest/cfg"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/cmd"
 	"strings"
 	"testing"
 )

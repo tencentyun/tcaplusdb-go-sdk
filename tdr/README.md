@@ -25,9 +25,9 @@ pack/pack.sh展示了对源码及依赖库的打包，方便用户移植到无�
 Tcaplus API的依赖库及其源码都在打包后的src/vendor目录下，用户只需将vendor放入自己的工程目录即可使用Tcaplus Go API的接口
 
 vendor依赖介绍：
-* git.code.oa.com/gcloud_storage_group/tcaplus-go-api是Tcaplus Go API源码
-* git.code.oa.com/tsf4g/TdrCodeGen是tdr工具，可将tdr的xml转换为go源码
-* git.code.oa.com/tsf4g/tdrcom是tdr go源码打解包的依赖库
+* github.com/tencentyun/tcaplusdb-go-sdk/tdr是Tcaplus Go API源码
+* github.com/tencentyun/tsf4g/TdrCodeGen是tdr工具，可将tdr的xml转换为go源码
+* github.com/tencentyun/tsf4g/tdrcom是tdr go源码打解包的依赖库
 * go.uber.org/zap是日志库
 * github.com/natefinch/lumberjack是日志文件切割库
 
@@ -36,7 +36,7 @@ mod 模式需要在能连内网及公网环境下使用
 * 在工程中建立go.mod
 * 开启module模式
 * 执行命令go clean --modcache 
-* 执行命令 go mod edit -require="git.code.oa.com/gcloud_storage_group/tcaplus-go-api@v0.1.0"
+* 执行命令 go mod edit -require="github.com/tencentyun/tcaplusdb-go-sdk/tdr@v0.1.0"
 * 出现tlinux无法download的错误可以参考:[Golang git.code.oa.com 的 go get、go mod 踩坑之旅](http://km.oa.com/group/29073/articles/show/376902?kmref=search&from_page=1&no=1#-%20%E9%94%99%E8%AF%AF-x509-%20certificate%20signed%20by%20unknown%20authority)
 
 ## 3 接口使用步骤
@@ -157,7 +157,7 @@ for i := 0; i < resp.GetRecordCount(); i++ {
 
 1 将要操作的tdr的表xml转换成GO源码
 ```
-cd vendor/git.code.oa.com/tsf4g/TdrCodeGen/
+cd vendor/github.com/tencentyun/tsf4g/TdrCodeGen/
 python tdr.py table.xml
 得到相应表的go源码目录table/table.go
 将table放到自己的go的工程目录即可使用
