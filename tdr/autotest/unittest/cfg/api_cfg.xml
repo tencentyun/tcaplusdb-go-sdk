@@ -1,0 +1,9 @@
+<ApiTstCfg>
+		<dir_addr>tcp://10.123.16.70:9999</dir_addr>
+		<signature>D1E7267515C37B5F</signature>
+		<app_id>2</app_id>
+		<zone_id>3</zone_id>
+</ApiTstCfg>
+
+
+
