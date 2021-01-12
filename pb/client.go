@@ -280,6 +280,65 @@ func (c *client) DoMore(req request.TcaplusRequest, timeout time.Duration) ([]re
 }
 
 /**
+    @brief 发送tcaplus同步请求并接受响应
+	@param [IN] tra 遍历器
+	@param [IN] timeout 超时时间
+    @retval []response.TcaplusResponse tcaplus响应
+    @retval error 错误码
+            error nil，response nil 成功但当前无响应消息
+            error nil, response 非nil，成功获取响应消息
+            error 非nil，response 非nil 接收部分回包正确，但是收到了错误包或者超时退出
+**/
+func (c *client) DoTraverse(tra *traverser.Traverser, timeout time.Duration) ([]response.TcaplusResponse, error) {
+	requestSeq := int32(atomic.AddUint32(&reqSeq, 1))
+	if requestSeq == 0 {
+		requestSeq = int32(atomic.AddUint32(&reqSeq, 1))
+	}
+	err := tra.SetSeq(requestSeq)
+	if err != nil {
+		return nil, err
+	}
+	timeOutChan := time.After(timeout)
+
+	var synrequestPkg router.SyncRequest
+	synrequestPkg.InitTraverseChan(1024)
+	defer synrequestPkg.SyncChanClose()
+
+	c.netServer.router.RequestChanMapAdd(requestSeq, synrequestPkg)
+	defer c.netServer.router.RequestChanMapClean(requestSeq)
+
+	err = tra.Start()
+	if err != nil {
+		return nil, err
+	}
+
+	var resp_list []response.TcaplusResponse
+	var idx int = 0
+	for {
+		select {
+		case <-timeOutChan:
+			logger.ERR("requestSeq %d :%s, timeout, current pkg num %d", requestSeq, timeout.String(), idx)
+			return resp_list, errors.New(timeout.String() + ", timeout")
+		case routerPkg := <-synrequestPkg.GetSyncChan():
+			resp, err := response.NewResponse(routerPkg)
+			idx += 1
+			if err == nil{
+				resp_list = append(resp_list, resp)
+				if traverser.TraverseStateNormal == tra.State() {
+					continue
+				}else{
+					logger.INFO("traverse state is %d", tra.State())
+					return resp_list, nil
+				}
+			}else{
+				logger.ERR("requestSeq %d, current pkg num: %d,  %s", requestSeq, idx, err.Error())
+				return resp_list, err
+			}
+		}
+	}
+}
+
+/**
     @brief 获取遍历器（存在则直接获取，不存在则新建一个）
 	@param [IN] zoneId tcaplus请求
 	@param [IN] table 超时时间
@@ -287,4 +346,14 @@ func (c *client) DoMore(req request.TcaplusRequest, timeout time.Duration) ([]re
 **/
 func (c *client) GetTraverser(zoneId uint32, table string) *traverser.Traverser {
 	return c.tm.GetTraverser(zoneId, table)
+}
+
+func (c *client) GetAppId() uint64 {
+	return c.appId
+}
+
+func (c *client) Close() {
+	c.netServer.stopNetWork <- true
+	c.netServer.dirServer.DisConnect()
+	c.netServer.router.Close()
 }

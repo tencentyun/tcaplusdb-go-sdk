@@ -77,3 +77,29 @@ func TestPBTraverse(t *testing.T) {
 
 	fmt.Println(count)
 }
+
+func TestPBSyncTraverse(t *testing.T) {
+	client := tools.InitPBSyncClient()
+
+	msg := &tcaplusservice.GamePlayers{}
+	msg.PlayerId = 233
+	msg.PlayerName = "TestPBTraverse"
+	msg.PlayerEmail = "dsf"
+	for i:=0;i<500;i++{
+		msg.PlayerId = 233 * int64(i)
+		client.Insert(msg)
+		defer func(id int64) {
+			msg.PlayerId = 233 * id
+			client.Delete(msg)
+		}(int64(i))
+	}
+
+	table := &tcaplusservice.GamePlayers{}
+	msgs, err := client.Traverse(table)
+	if err != nil {
+		t.Errorf("start error:%s", err)
+	}
+
+	fmt.Println(len(msgs))
+	fmt.Printf("%+v", msgs)
+}

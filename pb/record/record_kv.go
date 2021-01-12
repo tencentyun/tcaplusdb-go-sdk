@@ -54,8 +54,8 @@ func (r *Record) setKey(name string, data interface{}) error {
 		return &terror.ErrorCode{Code: terror.RecordKeyTypeInvalid}
 	}
 
-	if len(value) > int(tcaplus_protocol_cs.TCAPLUS_MAX_KEY_FIELD_LEN) {
-		logger.ERR("key len over %d", tcaplus_protocol_cs.TCAPLUS_MAX_KEY_FIELD_LEN)
+	if len(value) > int(tcaplus_protocol_cs.TCAPLUS_BIG_RECORD_MAX_VALUE_BUF_LEN) {
+		logger.ERR("key len over %d", tcaplus_protocol_cs.TCAPLUS_BIG_RECORD_MAX_VALUE_BUF_LEN)
 		return &terror.ErrorCode{Code: terror.KeyLenOverMax}
 	}
 
@@ -186,8 +186,8 @@ func (r *Record) setValue(name string, data interface{}) error {
 		return &terror.ErrorCode{Code: terror.RecordKeyTypeInvalid}
 	}
 
-	if len(value) > int(tcaplus_protocol_cs.TCAPLUS_MAX_VALUE_FIELD_LEN) {
-		logger.ERR("value len over %d", tcaplus_protocol_cs.TCAPLUS_MAX_VALUE_FIELD_LEN)
+	if len(value) > int(tcaplus_protocol_cs.TCAPLUS_BIG_RECORD_MAX_VALUE_BUF_LEN) {
+		logger.ERR("value len over %d", tcaplus_protocol_cs.TCAPLUS_BIG_RECORD_MAX_VALUE_BUF_LEN)
 		return &terror.ErrorCode{Code: terror.ValueLenOverMax}
 	}
 

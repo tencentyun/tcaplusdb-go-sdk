@@ -117,3 +117,11 @@ func InitPBClientAndReqWithTableName(cmd int, tableName string)(*tcaplus.PBClien
 	}
 	return pbclient, req
 }
+
+func Bytes256K() string {
+	buf := make([]byte, 255000)
+	for i, _ := range buf {
+		buf[i] = 100
+	}
+	return string(buf)
+}

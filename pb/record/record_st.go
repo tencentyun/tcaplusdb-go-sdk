@@ -950,7 +950,7 @@ func (r *Record) setPBDataCommon(message proto.Message, keys, values []string) (
 		if err != nil {
 			errMsg := fmt.Sprintf("Marshal message %s error:%s", table, err)
 			logger.ERR(errMsg)
-			return nil, terror.ErrorCode{Code: terror.API_ERR_PACK_MESSAGE, Message: errMsg}
+			return nil, &terror.ErrorCode{Code: terror.API_ERR_PACK_MESSAGE, Message: errMsg}
 		}
 	} else {
 		if r.PBFieldMap == nil {
@@ -1021,7 +1021,7 @@ func (r *Record) GetPBFieldValues(message proto.Message) error {
 	err = proto.Unmarshal(buf[2:], message)
 	if err != nil {
 		logger.ERR(err.Error())
-		return err
+		return &terror.ErrorCode{Code: terror.API_ERR_UNPACK_MESSAGE}
 	}
 	for numPath, v := range r.ValueMap {
 		tmp := message
@@ -1032,7 +1032,7 @@ func (r *Record) GetPBFieldValues(message proto.Message) error {
 				err := proto.UnmarshalOptions{Merge: true}.Unmarshal(v, tmp)
 				if err != nil {
 					logger.ERR(err.Error())
-					return err
+					return &terror.ErrorCode{Code: terror.API_ERR_UNPACK_MESSAGE}
 				}
 			} else {
 				tmp = tmp.ProtoReflect().Mutable(f).Message().Interface()
@@ -1052,6 +1052,7 @@ func (r *Record) GetPBDataWithValues(message proto.Message, values []string) err
 	}
 	err = proto.Unmarshal(data.Value, message)
 	if err != nil {
+		logger.ERR(err.Error())
 		return &terror.ErrorCode{Code: terror.API_ERR_UNPACK_MESSAGE}
 	}
 
@@ -1144,11 +1145,18 @@ func (r *Record) cleanField(pro protoreflect.Message, fmap map[string][]protowir
     @retval []byte 由记录key字段编码生成，由于多条记录的响应记录是无序的，可以用这个值来匹配记录
     @retval error 错误码
 **/
-func (r *Record) GetPBKey() ([]byte, error) {
-	data := &idl.Tbl_Idl{}
-	err := r.GetData(data)
+func (r *Record) GetPBKey(msg proto.Message) ([]byte, error) {
+	buf, err := r.getKeyBlob("key")
 	if err != nil {
+		logger.ERR(err.Error())
 		return nil, err
 	}
-	return data.Key, nil
+	if msg != nil {
+		err = proto.Unmarshal(buf[2:], msg)
+		if err != nil {
+			logger.ERR(err.Error())
+			return nil, &terror.ErrorCode{Code: terror.API_ERR_UNPACK_MESSAGE}
+		}
+	}
+	return buf[2:], nil
 }

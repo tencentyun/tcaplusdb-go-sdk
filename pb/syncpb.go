@@ -240,7 +240,7 @@ func (c *PBClient) batchOperate(msgs []proto.Message, apicmd int, zoneId uint32)
 				continue
 			}
 
-			key, err := record.GetPBKey()
+			key, err := record.GetPBKey(nil)
 			if err != nil {
 				globalErr = err
 				logger.ERR("GetPBKey error:%s", err)
@@ -459,7 +459,7 @@ func (c *PBClient) indexQuery(query string, apicmd int, zoneId uint32) ([]proto.
 		return nil, res, nil
 	}
 
-	zoneTable := fmt.Sprintf("%d|%d|%s", c.appId, c.defZone, table)
+	zoneTable := fmt.Sprintf("%d|%d|%s", c.appId, zoneId, table)
 	grp := metadata.GetMetaManager().GetTableDesGrp(zoneTable)
 	if grp == nil {
 		logger.ERR("not find zoneTable %s", zoneTable)
@@ -498,6 +498,62 @@ func (c *PBClient) indexQuery(query string, apicmd int, zoneId uint32) ([]proto.
 	}
 
 	return msgs, nil, globalErr
+}
+
+func (c *PBClient) traverseOperate(msg proto.Message, zoneId uint32) ([]proto.Message, error) {
+	if c.defZone == -1 {
+		logger.ERR("client not dial init")
+		return nil, &terror.ErrorCode{Code: terror.ClientNotDial}
+	}
+
+	table := string(msg.ProtoReflect().Descriptor().Name())
+
+	// 获取遍历器，遍历器最多同时8个工作，如果超过会返回nil
+	tra := c.tm.GetTraverser(zoneId, table)
+	if tra == nil {
+		logger.ERR("GetTraverser fail")
+		return nil, &terror.ErrorCode{Code: terror.GetTraverserError}
+	}
+	// 调用stop才能释放资源，防止获取遍历器失败
+	defer tra.Stop()
+
+	resps, err := c.DoTraverse(tra, c.defTimeout)
+	if err != nil {
+		logger.ERR("DoMore request error:%s", err)
+		return nil, err
+	}
+
+	var msgs []proto.Message
+	var globalErr error
+
+	for _, res := range resps {
+		ret := res.GetResult()
+		if ret != 0 {
+			globalErr = &terror.ErrorCode{Code: ret}
+			logger.ERR("result is %d, error:%s", ret, terror.GetErrMsg(ret))
+			continue
+		}
+
+		for i := 0; i < res.GetRecordCount(); i++ {
+			record, err := res.FetchRecord()
+			if err != nil {
+				globalErr = err
+				logger.ERR("FetchRecord error:%s", err)
+				continue
+			}
+
+			err = record.GetPBData(msg)
+			if err != nil {
+				globalErr = err
+				logger.ERR("GetPBData error:%s", err)
+				continue
+			}
+
+			msgs = append(msgs, proto.Clone(msg))
+		}
+	}
+
+	return msgs, globalErr
 }
 
 /**
@@ -712,7 +768,7 @@ func (c *PBClient) IndexQuery(query string) ([]proto.Message, []string, error) {
 }
 
 /**
-    @brief 自增记录部分字段value
+    @brief 分布式索引查询。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
 	@param [IN] query sql 查询语句 详情见 https://iwiki.woa.com/pages/viewpage.action?pageId=419645505
 	@param [IN] zoneId 指定表所在zone
 	@retval []proto.Message 非聚合查询结果
@@ -721,4 +777,25 @@ func (c *PBClient) IndexQuery(query string) ([]proto.Message, []string, error) {
 **/
 func (c *PBClient) IndexQueryWithZone(query string, zoneId uint32) ([]proto.Message, []string, error) {
 	return c.indexQuery(query, cmd.TcaplusApiSqlReq, zoneId)
+}
+
+/**
+    @brief 遍历表
+	@param [IN] table string 表名
+	@retval []proto.Message 查询结果
+    @retval error 错误码
+**/
+func (c *PBClient) Traverse(msg proto.Message) ([]proto.Message, error) {
+	return c.traverseOperate(msg, uint32(c.defZone))
+}
+
+/**
+	@brief 遍历表。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
+	@param [IN] table string 表名
+	@param [IN] zoneId 指定表所在zone
+	@retval []proto.Message 查询结果
+    @retval error 错误码
+**/
+func (c *PBClient) TraverseWithZone(msg proto.Message, zoneId uint32) ([]proto.Message, error) {
+	return c.traverseOperate(msg, zoneId)
 }

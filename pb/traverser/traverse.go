@@ -47,6 +47,7 @@ type Traverser struct {
 	traversedCnt int64
 	limit        int64
 
+	seqForSync   int32
 
 	client ClientInf
 }
@@ -98,6 +99,15 @@ func (t *Traverser) SetAsyncId(id uint64) error {
 		return &terror.ErrorCode{Code: terror.API_ERR_INVALID_OBJ_STATUE}
 	}
 	t.asyncId = id
+	return nil
+}
+
+func (t *Traverser) SetSeq(seq int32) error {
+	if TraverseStateReady != t.state {
+		log.ERR("Traverser state %d not ready", t.state)
+		return &terror.ErrorCode{Code: terror.API_ERR_INVALID_OBJ_STATUE}
+	}
+	t.seqForSync = seq
 	return nil
 }
 
@@ -176,6 +186,8 @@ func (t *Traverser) sendTraverseRequest() error {
 	} else {
 		req.GetTcaplusPackagePtr().Head.AsynID = t.asyncId
 	}
+
+	req.GetTcaplusPackagePtr().Head.Seq = t.seqForSync
 
 	if len(t.userBuff) != 0 {
 		req.GetTcaplusPackagePtr().Head.UserBuff = t.userBuff
@@ -327,6 +339,7 @@ func (t *Traverser) onRecvResponse(msg *tcaplus_protocol_cs.TCaplusPkg, drop *bo
 	if finish {
 		log.DEBUG("zone %d, table %s traverse all completed", t.zoneId, t.tableName)
 		t.state = TraverseStateIdle
+		*drop = false
 		return nil
 	}
 

@@ -423,7 +423,7 @@ func setUserBuffer(pkg *tcaplus_protocol_cs.TCaplusPkg, userBuffer []byte) error
 
 	if bufLen > int(tcaplus_protocol_cs.TCAPLUS_MAX_USERBUFF_LEN) {
 		logger.ERR("userBuffer len %d > %d", bufLen, tcaplus_protocol_cs.TCAPLUS_MAX_USERBUFF_LEN)
-		return terror.ErrorCode{Code: terror.API_ERR_INVALID_DATA_SIZE}
+		return &terror.ErrorCode{Code: terror.API_ERR_INVALID_DATA_SIZE}
 	}
 
 	pkg.Head.UserBuff = userBuffer

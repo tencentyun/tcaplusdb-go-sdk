@@ -6,8 +6,8 @@ package metadata
 import (
 	"fmt"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/logger"
-	"github.com/tencentyun/tcaplusdb-go-sdk/pb/tcapdbproto"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/tcaplusservice"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/tcapdbproto"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/terror"
 	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
@@ -142,7 +142,9 @@ func (m *metaManager) AddTableDesGrp(appId uint64, zoneId uint32, tableName stri
 	// 获取ShardingKey
 	group.ShardingKey = proto.GetExtension(opts, tcaplusservice.E_TcaplusShardingKey).(string)
 	if len(unknowMap) != 0 {
-		group.ShardingKey = unknowMap[60005].(string)
+		if shardingKey, exist := unknowMap[60005]; exist {
+			group.ShardingKey = shardingKey.(string)
+		}
 	}
 
 	// 获取required字段
@@ -246,7 +248,7 @@ func (m *metaManager) ExtractMsgPartKey(message proto.Message, keys []string) ([
 		if field == nil {
 			errMsg := fmt.Sprintf("message not find primary key field %s", name)
 			logger.ERR(errMsg)
-			return keybuf, terror.ErrorCode{Code: terror.API_ERR_PACK_MESSAGE, Message: errMsg}
+			return keybuf, &terror.ErrorCode{Code: terror.API_ERR_PACK_MESSAGE, Message: errMsg}
 		}
 		fields = append(fields, field)
 	}
@@ -262,7 +264,7 @@ func (m *metaManager) ExtractMsgPartKey(message proto.Message, keys []string) ([
 		if err != nil {
 			errMsg := fmt.Sprintf("MarshalField field %s error:%s", f.JSONName(), err)
 			logger.ERR(errMsg)
-			return keybuf, terror.ErrorCode{Code: terror.API_ERR_PACK_MESSAGE, Message: errMsg}
+			return keybuf, &terror.ErrorCode{Code: terror.API_ERR_PACK_MESSAGE, Message: errMsg}
 		}
 	}
 	return keybuf, nil

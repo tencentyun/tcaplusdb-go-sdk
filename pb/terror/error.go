@@ -4,37 +4,38 @@ import "strconv"
 
 var (
 	//go api 定义错误码
-	ParameterInvalid       = -0x0000001e
-	DirSignUpFailed        = -0x0000011e
-	ClientInitTimeOut      = -0x0000021e
-	ProxySignUpFailed      = -0x0000031e
-	ZoneIdNotExist         = -0x0000041e
-	TableNotExist          = -0x0000051e
-	InvalidCmd             = -0x0000061e
-	InvalidPolicy          = -0x0000071e
-	RecordToMax            = -0x0000081e
-	KeyNameLenOverMax      = -0x0000091e
-	KeyLenOverMax          = -0x00000a1e
-	KeyNumOverMax          = -0x00000b1e
-	ValueNameLenOverMax    = -0x00000c1e
-	ValueLenOverMax        = -0x00000d1e
-	ValueNumOverMax        = -0x00000e1e
-	ValuePackOverMax       = -0x00000f1e
-	RecordNumOverMax       = -0x0000101e
-	ProxyNotAvailable      = -0x0000111e
-	RequestHasNoRecord     = -0x0000121e
-	RequestHasNoKeyField   = -0x0000131e
-	RecordKeyTypeInvalid   = -0x0000141e
-	RecordValueTypeInvalid = -0x0000151e
-	OperationNotSupport    = -0x0000161e
-	ClientNotInit          = -0x0000171e
-	RecordUnpackFailed     = -0x0000181e
-	RecordKeyNotExist      = -0x0000191e
-	RecordValueNotExist    = -0x00001a1e
-	ClientNotDial		   = -0x00001b1e
-	RespNotMatchReq		   = -0x00001c1e
-	MetadataNotProtobuf	   = -0x00001d1e
-	SqlQueryFormatError	   = -0x00001e1e
+	ParameterInvalid       = -0x0000001e /*-30*/
+	DirSignUpFailed        = -0x0000011e /*-286*/
+	ClientInitTimeOut      = -0x0000021e /*-542*/
+	ProxySignUpFailed      = -0x0000031e /*-798*/
+	ZoneIdNotExist         = -0x0000041e /*-1054*/
+	TableNotExist          = -0x0000051e /*-1310*/
+	InvalidCmd             = -0x0000061e /*-1566*/
+	InvalidPolicy          = -0x0000071e /*-1822*/
+	RecordToMax            = -0x0000081e /*-2078*/
+	KeyNameLenOverMax      = -0x0000091e /*-2334*/
+	KeyLenOverMax          = -0x00000a1e /*-2590*/
+	KeyNumOverMax          = -0x00000b1e /*-2846*/
+	ValueNameLenOverMax    = -0x00000c1e /*-3102*/
+	ValueLenOverMax        = -0x00000d1e /*-3358*/
+	ValueNumOverMax        = -0x00000e1e /*-3614*/
+	ValuePackOverMax       = -0x00000f1e /*-3870*/
+	RecordNumOverMax       = -0x0000101e /*-4126*/
+	ProxyNotAvailable      = -0x0000111e /*-4382*/
+	RequestHasNoRecord     = -0x0000121e /*-4638*/
+	RequestHasNoKeyField   = -0x0000131e /*-4894*/
+	RecordKeyTypeInvalid   = -0x0000141e /*-5150*/
+	RecordValueTypeInvalid = -0x0000151e /*-5406*/
+	OperationNotSupport    = -0x0000161e /*-5662*/
+	ClientNotInit          = -0x0000171e /*-5918*/
+	RecordUnpackFailed     = -0x0000181e /*-6174*/
+	RecordKeyNotExist      = -0x0000191e /*-6430*/
+	RecordValueNotExist    = -0x00001a1e /*-6686*/
+	ClientNotDial		   = -0x00001b1e /*-6942*/
+	RespNotMatchReq		   = -0x00001c1e /*-7198*/
+	MetadataNotProtobuf	   = -0x00001d1e /*-7454*/
+	SqlQueryFormatError	   = -0x00001e1e /*-7710*/
+	GetTraverserError	   = -0x00001f1e /*-7966*/
 
 	/*****************************************************************************************
 	 **********************************C版本错误码*********************************************
@@ -622,6 +623,7 @@ var (
 )
 
 var ErrorCodes = map[int]string{
+	ParameterInvalid:		"无效的参数",
 	DirSignUpFailed:        "dir 认证失败",
 	ClientInitTimeOut:      "client 初始化超时",
 	ProxySignUpFailed:      "proxy 认证失败",
@@ -652,10 +654,83 @@ var ErrorCodes = map[int]string{
 	RespNotMatchReq:		"响应未与请求对应",
 	MetadataNotProtobuf:	"元数据类型不是protobuf",
 	SqlQueryFormatError:	"sql语句格式错误",
+	GetTraverserError:		"获取遍历器失败",
 
 	/*****************************************************************************************
 	*****************************************C版本错误码*********************************************
 	*******************************************************************************************/
+
+	GEN_ERR_ECMGR_INVALID_MODULE_ID         :"GEN_ERR_ECMGR_INVALID_MODULE_ID",
+	GEN_ERR_ECMGR_INVALID_ERROR_CODE        :"GEN_ERR_ECMGR_INVALID_ERROR_CODE",
+	GEN_ERR_ECMGR_NULL_ERROR_STRING         :"GEN_ERR_ECMGR_NULL_ERROR_STRING",
+	GEN_ERR_ECMGR_DUPLICATED_ERROR_CODE     :"GEN_ERR_ECMGR_DUPLICATED_ERROR_CODE",
+	GEN_ERR_TXLOG_NULL_POINTER_FROM_TSD     :"GEN_ERR_TXLOG_NULL_POINTER_FROM_TSD",
+	GEN_ERR_TABLE_READONLY                  :"GEN_ERR_TABLE_READONLY",
+	GEN_ERR_TABLE_READ_DELETE               :"GEN_ERR_TABLE_READ_DELETE",
+	GEN_ERR_ACCESS_DENIED                   :"GEN_ERR_ACCESS_DENIED",
+	GEN_ERR_INVALID_ARGUMENTS               :"GEN_ERR_INVALID_ARGUMENTS",
+	GEN_ERR_UNSUPPORT_OPERATION             :"GEN_ERR_UNSUPPORT_OPERATION",
+	GEN_ERR_NOT_ENOUGH_MEMORY               :"GEN_ERR_NOT_ENOUGH_MEMORY",
+	GEN_ERR_NOT_SATISFY_INSERT_FOR_SORTLIST :"GEN_ERR_NOT_SATISFY_INSERT_FOR_SORTLIST",
+	GEN_ERR_BASE64_ENCODE_FAILED            :"GEN_ERR_BASE64_ENCODE_FAILED",
+	GEN_ERR_BASE64_DECODE_FAILED            :"GEN_ERR_BASE64_DECODE_FAILED",
+
+	//LINELOC BUSINESS (module id 0x02) Error Code defined below
+	LOC_ERR__0x00000102 :"LOC_ERR__0x00000102",
+	LOC_ERR__0x00000202 :"LOC_ERR__0x00000202",
+	LOC_ERR__0x00000302 :"LOC_ERR__0x00000302",
+	LOC_ERR__0x00000402 :"LOC_ERR__0x00000402",
+	LOC_ERR__0x00000502 :"LOC_ERR__0x00000502",
+	LOC_ERR__0x00000602 :"LOC_ERR__0x00000602",
+	LOC_ERR__0x00000702 :"LOC_ERR__0x00000702",
+	LOC_ERR__0x00000802 :"LOC_ERR__0x00000802",
+	LOC_ERR__0x00000902 :"LOC_ERR__0x00000902",
+	LOC_ERR__0x00000A02 :"LOC_ERR__0x00000A02",
+	LOC_ERR__0x00000B02 :"LOC_ERR__0x00000B02",
+	LOC_ERR__0x00000C02 :"LOC_ERR__0x00000C02",
+	LOC_ERR__0x00000D02 :"LOC_ERR__0x00000D02",
+	LOC_ERR__0x00000E02 :"LOC_ERR__0x00000E02",
+	LOC_ERR__0x00000F02 :"LOC_ERR__0x00000F02",
+	LOC_ERR__0x00001002 :"LOC_ERR__0x00001002",
+	LOC_ERR__0x00001102 :"LOC_ERR__0x00001102",
+	LOC_ERR__0x00001202 :"LOC_ERR__0x00001202",
+	LOC_ERR__0x00001302 :"LOC_ERR__0x00001302",
+	LOC_ERR__0x00001402 :"LOC_ERR__0x00001402",
+	LOC_ERR__0x00001502 :"LOC_ERR__0x00001502",
+	LOC_ERR__0x00001602 :"LOC_ERR__0x00001602",
+	LOC_ERR__0x00001702 :"LOC_ERR__0x00001702",
+	LOC_ERR__0x00001802 :"LOC_ERR__0x00001802",
+	LOC_ERR__0x00001902 :"LOC_ERR__0x00001902",
+	LOC_ERR__0x00001A02 :"LOC_ERR__0x00001A02",
+	LOC_ERR__0x00001B02 :"LOC_ERR__0x00001B02",
+	LOC_ERR__0x00001C02 :"LOC_ERR__0x00001C02",
+	LOC_ERR__0x00001D02 :"LOC_ERR__0x00001D02",
+	LOC_ERR__0x00001E02 :"LOC_ERR__0x00001E02",
+	LOC_ERR__0x00001F02 :"LOC_ERR__0x00001F02",
+	LOC_ERR__0x00002002 :"LOC_ERR__0x00002002",
+	LOC_ERR__0x00002802 :"LOC_ERR__0x00002802",
+	LOC_ERR__0x00003002 :"LOC_ERR__0x00003002",
+	LOC_ERR__0x00003802 :"LOC_ERR__0x00003802",
+	LOC_ERR__0x00004002 :"LOC_ERR__0x00004002",
+	LOC_ERR__0x00004802 :"LOC_ERR__0x00004802",
+	LOC_ERR__0x00005002 :"LOC_ERR__0x00005002",
+	LOC_ERR__0x00005802 :"LOC_ERR__0x00005802",
+	LOC_ERR__0x00006002 :"LOC_ERR__0x00006002",
+	LOC_ERR__0x00006802 :"LOC_ERR__0x00006802",
+	LOC_ERR__0x00007002 :"LOC_ERR__0x00007002",
+	LOC_ERR__0x00007802 :"LOC_ERR__0x00007802",
+	LOC_ERR__0x00008002 :"LOC_ERR__0x00008002",
+	LOC_ERR__0x00008802 :"LOC_ERR__0x00008802",
+	LOC_ERR__0x00009002 :"LOC_ERR__0x00009002",
+	LOC_ERR__0x00009802 :"LOC_ERR__0x00009802",
+	LOC_ERR__0x0000A002 :"LOC_ERR__0x0000A002",
+	LOC_ERR__0x0000A802 :"LOC_ERR__0x0000A802",
+	LOC_ERR__0x0000B002 :"LOC_ERR__0x0000B002",
+	LOC_ERR__0x0000B802 :"LOC_ERR__0x0000B802",
+	LOC_ERR__0x0000C002 :"LOC_ERR__0x0000C002",
+	LOC_ERR__0x0000C802 :"LOC_ERR__0x0000C802",
+	LOC_ERR__0x0000FF02 :"LOC_ERR__0x0000FF02",
+
 	//TXHDB (module id 0x05) Error String defined below
 	TXHDB_ERR_RECORD_NOT_EXIST:                                                     "txhdb_record_not_exist",
 	TXHDB_ERR_ITERATION_NO_MORE_RECORDS:                                            "txhdb_iteration_no_more_record",

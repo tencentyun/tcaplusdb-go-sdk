@@ -123,4 +123,88 @@ func TestPBGetSuccess(t *testing.T) {
 		}
 	}
 }
+//case3 某个key字段不存在，报错.
+func TestPBGetFail_Key_NonExist(t *testing.T) {
+	client, req := tools.InitPBClientAndReqWithTableName(cmd.TcaplusApiGetReq, "game_players")
 
+	oldMsg := &tcaplusservice.GamePlayers{}
+	oldMsg.PlayerId = 555
+	oldMsg.PlayerName = "jiahua"
+	oldMsg.PlayerEmail = "dsf"
+	client.Insert(oldMsg)
+	defer client.Delete(oldMsg)
+	oldJson := tools.StToJson(oldMsg)
+	fmt.Println(oldJson)
+	//add record
+	rec, err := req.AddRecord(0)
+	if err != nil {
+		t.Errorf("AddRecord fail, %s", err.Error())
+		return
+	}
+	//设置不存在的key
+	oldMsg.PlayerId = 55
+	if _, err := rec.SetPBData(oldMsg); err != nil {
+		t.Errorf("SetData fail, %s", err.Error())
+		return
+	}
+
+	if err := client.SendRequest(req); err != nil {
+		t.Errorf("SendRequest fail, %s", err.Error())
+		return
+	}
+
+	//recv resp
+	resp, err := tools.RecvResponse(client)
+	if err != nil {
+		t.Errorf("recvResponse fail, %s", err.Error())
+		return
+	}
+
+	if err := resp.GetResult(); err != terror.TXHDB_ERR_RECORD_NOT_EXIST {
+		t.Errorf("resp.GetResult err %d, %s", err, terror.GetErrMsg(err))
+		return
+	}
+}
+//case4 某个Value字段不存在，get能够成功.
+func TestPBGetSuccess_Value_NonExist(t *testing.T) {
+	client, req := tools.InitPBClientAndReqWithTableName(cmd.TcaplusApiGetReq, "game_players")
+
+	oldMsg := &tcaplusservice.GamePlayers{}
+	oldMsg.PlayerId = 555
+	oldMsg.PlayerName = "jiahua"
+	oldMsg.PlayerEmail = "dsf"
+	client.Insert(oldMsg)
+	defer client.Delete(oldMsg)
+	oldJson := tools.StToJson(oldMsg)
+	fmt.Println(oldJson)
+	//add record
+	rec, err := req.AddRecord(0)
+	if err != nil {
+		t.Errorf("AddRecord fail, %s", err.Error())
+		return
+	}
+	//设置不存在的value
+	oldMsg.GameServerId = 34
+	if _, err := rec.SetPBData(oldMsg); err != nil {
+		t.Errorf("SetData fail, %s", err.Error())
+		return
+	}
+
+	if err := client.SendRequest(req); err != nil {
+		t.Errorf("SendRequest fail, %s", err.Error())
+		return
+	}
+
+	//recv resp
+	resp, err := tools.RecvResponse(client)
+	if err != nil {
+		t.Errorf("recvResponse fail, %s", err.Error())
+		return
+	}
+
+	if err := resp.GetResult(); err != 0 {
+		t.Errorf("resp.GetResult err %d, %s", err, terror.GetErrMsg(err))
+		return
+	}
+
+}

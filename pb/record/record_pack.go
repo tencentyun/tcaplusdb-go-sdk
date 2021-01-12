@@ -16,6 +16,7 @@ func (r *Record) PackKey() error {
 	}
 
 	r.KeySet.Fields = make([]*tcaplus_protocol_cs.TCaplusKeyField, len(r.KeyMap))
+	r.KeySet.FieldNum = 0
 	for name, v := range r.KeyMap {
 		r.KeySet.Fields[r.KeySet.FieldNum] = tcaplus_protocol_cs.NewTCaplusKeyField()
 		//key-name
@@ -68,6 +69,7 @@ func (r *Record) packCompactValueSet(compactValueSet *tcaplus_protocol_cs.Compac
 
 	//set name + data + index
 	compactValueSet.FieldIndexs = make([]*tcaplus_protocol_cs.FieldIndex, len(r.ValueMap))
+	compactValueSet.FieldIndexNum = 0
 	for name, v := range r.ValueMap {
 		//部分value字段查询和更新
 		if valueNameMap != nil && len(valueNameMap) > 0 {

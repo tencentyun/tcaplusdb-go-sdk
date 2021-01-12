@@ -1,6 +1,6 @@
 <ApiTstCfg>
 		<dir_addr>tcp://9.135.8.93:9999</dir_addr>
-		<signature>D91CB0EFAD599936</signature>
+		<signature>7541DE22B4A3ECE4</signature>
 		<app_id>3</app_id>
 		<zone_id>1</zone_id>
 		<pb_table>game_players</pb_table>

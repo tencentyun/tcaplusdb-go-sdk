@@ -137,7 +137,7 @@ TcaplusApiSqlReq = 0x0081
 
 ```
 ### 3.1 Client接口
-业务在调用SDK接口时，需要先初始化连接客户端，步骤如下。
+业务在调用SDK接口时，需要先初始化连接客户端，步骤如下。
 #### 3.1.1 创建tcaplus pbclient
 ```
 /**
@@ -1020,3 +1020,4 @@ select sum(a) as sum_a from table where a > 1000;
 * 不支持其他未提到的查询。
 
 ## 6. 其它
+

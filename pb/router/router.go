@@ -23,6 +23,10 @@ type SyncRequest struct {
 	requestPkg request.TcaplusRequest
 }
 
+func (S *SyncRequest) InitTraverseChan(num int32) {
+	S.syncMsgPipe = make(chan *tcaplus_protocol_cs.TCaplusPkg, num)
+}
+
 func (S *SyncRequest) InitMoreChan(reqpkg request.TcaplusRequest, num int32) {
 	S.syncMsgPipe = make(chan *tcaplus_protocol_cs.TCaplusPkg, num)
 	S.requestPkg = reqpkg
@@ -234,4 +238,12 @@ func (r *Router) ProcessTablesAndAccessMsg(msg *tcapdir_protocol_cs.ResGetTables
 
 func (r *Router) Send(hashCode uint32, zoneId uint32, data []byte) error {
 	return r.proxyMap[zoneId].send(hashCode, data)
+}
+
+func (r *Router) Close() {
+	for _, v := range r.proxyMap {
+		for _, svr := range v.hashList {
+			svr.disConnect()
+		}
+	}
 }
