@@ -70,6 +70,8 @@ func (n *netServer) netPkgProcess() {
 	//100ms 一次update
 	updateTimer := time.NewTimer(100 * time.Millisecond)
 
+	updateTraverse := time.NewTimer(time.Millisecond)
+
 	for {
 		select {
 		case <-n.stopNetWork:
@@ -117,6 +119,9 @@ func (n *netServer) netPkgProcess() {
 			} else {
 				updateTimer.Reset(1 * time.Second)
 			}
+		case <-updateTraverse.C:
+			n.router.TM.ContinueTraverse()
+			updateTraverse.Reset(time.Millisecond)
 		}
 	}
 }

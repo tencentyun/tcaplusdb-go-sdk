@@ -256,6 +256,7 @@ func (c *client) DoMore(req request.TcaplusRequest, timeout time.Duration) ([]re
 	}
 	var resp_list []response.TcaplusResponse
 	var idx int = 0
+	var count int
 	for {
 		select {
 		case <-timeOutChan:
@@ -266,7 +267,8 @@ func (c *client) DoMore(req request.TcaplusRequest, timeout time.Duration) ([]re
 			idx += 1
 			if err == nil{
 				resp_list = append(resp_list, resp)
-				if 1 == resp.HaveMoreResPkgs() {
+				count += resp.GetRecordCount()
+				if count < resp.GetRecordMatchCount() {
 					continue
 				}else{
 					return resp_list, nil

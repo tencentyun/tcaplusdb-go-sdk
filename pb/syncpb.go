@@ -781,8 +781,8 @@ func (c *PBClient) IndexQueryWithZone(query string, zoneId uint32) ([]proto.Mess
 
 /**
     @brief 遍历表
-	@param [IN] table string 表名
-	@retval []proto.Message 查询结果
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@retval []proto.Message 查询结果列表
     @retval error 错误码
 **/
 func (c *PBClient) Traverse(msg proto.Message) ([]proto.Message, error) {
@@ -791,9 +791,9 @@ func (c *PBClient) Traverse(msg proto.Message) ([]proto.Message, error) {
 
 /**
 	@brief 遍历表。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
-	@param [IN] table string 表名
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
 	@param [IN] zoneId 指定表所在zone
-	@retval []proto.Message 查询结果
+	@retval []proto.Message 查询结果列表
     @retval error 错误码
 **/
 func (c *PBClient) TraverseWithZone(msg proto.Message, zoneId uint32) ([]proto.Message, error) {

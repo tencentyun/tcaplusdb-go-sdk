@@ -207,8 +207,6 @@ func (r *Router) Update() {
 		}
 		r.lastHeartbeatTime = time.Now()
 	}
-
-	r.TM.ContinueTraverse()
 }
 
 func (r *Router) ProcessTablesAndAccessMsg(msg *tcapdir_protocol_cs.ResGetTablesAndAccess) {

@@ -130,5 +130,8 @@ func (res *batchGetResponse) FetchErrorRecord() (*record.Record, error) {
 }
 
 func (res *batchGetResponse) GetRecordMatchCount() int{
-	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
+	if 0 == res.pkg.Body.BatchGetRes.Result{
+		return int(res.pkg.Body.BatchGetRes.TotalNum)
+	}
+	return terror.GEN_ERR_ERR;
 }

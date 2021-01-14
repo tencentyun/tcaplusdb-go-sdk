@@ -418,7 +418,7 @@ func TestBatchGetMultiRespSuccess_256KB_Multi_0(t *testing.T) {
 	}
 
 	// 即使设置了分包返回，记录超过了256KB,就进行分包返回。
-	if len(resps) != 1 {
+	if len(resps) != 3 {
 		t.Errorf("recvResponse fail, len(resps) %d != 1", len(resps))
 		return
 	}

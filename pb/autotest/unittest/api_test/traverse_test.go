@@ -85,6 +85,7 @@ func TestPBSyncTraverse(t *testing.T) {
 	msg.PlayerId = 233
 	msg.PlayerName = "TestPBTraverse"
 	msg.PlayerEmail = "dsf"
+	// 插入500条数据
 	for i:=0;i<500;i++{
 		msg.PlayerId = 233 * int64(i)
 		client.Insert(msg)
@@ -94,12 +95,50 @@ func TestPBSyncTraverse(t *testing.T) {
 		}(int64(i))
 	}
 
+
+	// 遍历，参数为定义的 proto message， 返回  message 列表与错误
 	table := &tcaplusservice.GamePlayers{}
+	client.SetDefaultTimeOut(30*time.Second)
 	msgs, err := client.Traverse(table)
 	if err != nil {
 		t.Errorf("start error:%s", err)
 	}
 
 	fmt.Println(len(msgs))
-	fmt.Printf("%+v", msgs)
+}
+
+func TestPBSyncTraverse2(t *testing.T) {
+	client := tools.InitPBSyncClient()
+
+	msg := &tcaplusservice.GamePlayers{}
+	msg.PlayerId = 233
+	msg.PlayerName = "TestPBTraverse"
+	msg.PlayerEmail = "dsf"
+	// 插入500条数据
+	for i:=0;i<5;i++{
+		msg.PlayerId = 233 * int64(i)
+		client.Insert(msg)
+		defer func(id int64) {
+			msg.PlayerId = 233 * id
+			client.Delete(msg)
+		}(int64(i))
+	}
+
+
+	// 遍历，参数为定义的 proto message， 返回  message 列表与错误
+	table := &tcaplusservice.GamePlayers{}
+	client.SetDefaultTimeOut(30*time.Second)
+
+	for i:=0;i<10;i++ {
+		start := time.Now()
+		msgs, err := client.Traverse(table)
+		if err != nil {
+			t.Errorf("start error:%s", err)
+		}
+
+		fmt.Println(len(msgs))
+		fmt.Println(time.Since(start))
+		time.Sleep(10*time.Millisecond)
+	}
+
 }
