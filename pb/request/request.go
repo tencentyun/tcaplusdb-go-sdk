@@ -408,6 +408,8 @@ func NewRequest(appId uint64, zoneId uint32, tableName string, cmd int) (Tcaplus
 		req.commonInterface, err = newGetShardListRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
 	case tcaplusCmd.TcaplusApiTableTraverseReq:
 		req.commonInterface, err = newTraverseRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
+	case tcaplusCmd.TcaplusApiGetTableRecordCountReq:
+		req.commonInterface, err = newCountRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
 	default:
 		logger.ERR("invalid cmd %d", cmd)
 		return nil, &terror.ErrorCode{Code: terror.InvalidCmd}

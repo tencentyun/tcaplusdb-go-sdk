@@ -95,7 +95,9 @@ func (req *batchGetRequest) Pack() ([]byte, error) {
 	req.pkg.Body.BatchGetReq.ValueInfo.FieldNum = 3
 	req.pkg.Body.BatchGetReq.ValueInfo.FieldName = []string{"klen", "vlen", "value"}
 
-	logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+	if logger.LogConf.LogLevel == "DEBUG" {
+		logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+	}
 	data, err := req.pkg.Pack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion)
 	if err != nil {
 		logger.ERR("batchGetRequest pack failed, %s", err.Error())

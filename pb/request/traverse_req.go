@@ -6,6 +6,7 @@ import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/tcaplus_protocol_cs"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/record"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/terror"
+	"time"
 )
 
 type traverseRequest struct {
@@ -81,7 +82,9 @@ func (req *traverseRequest) Pack() ([]byte, error) {
 	req.pkg.Body.TableTraverseReq.ValueInfo.FieldNum = 3
 	req.pkg.Body.TableTraverseReq.ValueInfo.FieldName = []string{"klen", "vlen", "value"}
 
-	logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+	if logger.LogConf.LogLevel == "DEBUG" {
+		logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+	}
 	data, err := req.pkg.Pack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion)
 	if err != nil {
 		logger.ERR("traverseRequest pack failed, %s", err.Error())
@@ -96,7 +99,7 @@ func (req *traverseRequest) GetZoneId() uint32 {
 }
 
 func (req *traverseRequest) GetKeyHash() (uint32, error) {
-	return 5, nil
+	return uint32(time.Now().UnixNano()), nil
 }
 
 func (req *traverseRequest) SetFieldNames(valueNameList []string) error {

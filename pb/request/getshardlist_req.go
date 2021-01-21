@@ -6,6 +6,7 @@ import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/tcaplus_protocol_cs"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/record"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/terror"
+	"time"
 )
 
 type getShardListRequest struct {
@@ -95,7 +96,9 @@ func (req *getShardListRequest) Pack() ([]byte, error) {
 	//	return nil, err
 	//}
 
-	logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+	if logger.LogConf.LogLevel == "DEBUG" {
+		logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+	}
 	data, err := req.pkg.Pack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion)
 	if err != nil {
 		logger.ERR("getShardListRequest pack failed, %s", err.Error())
@@ -110,11 +113,7 @@ func (req *getShardListRequest) GetZoneId() uint32 {
 }
 
 func (req *getShardListRequest) GetKeyHash() (uint32, error) {
-	//if req.record == nil {
-	//	return 0, &terror.ErrorCode{Code: terror.RequestHasNoRecord}
-	//}
-	//return keyHashCode(req.pkg.Head.KeyInfo)
-	return 5, nil
+	return uint32(time.Now().UnixNano()), nil
 }
 
 func (req *getShardListRequest) SetFieldNames(valueNameList []string) error {

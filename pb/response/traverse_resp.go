@@ -14,7 +14,7 @@ type traverseResponse struct {
 	idx    int32
 }
 
-func newtraverseResponse(pkg *tcaplus_protocol_cs.TCaplusPkg) (*traverseResponse, error) {
+func newTraverseResponse(pkg *tcaplus_protocol_cs.TCaplusPkg) (*traverseResponse, error) {
 	if pkg == nil || pkg.Body == nil || pkg.Body.TableTraverseRes == nil {
 		return nil, &terror.ErrorCode{Code: terror.API_ERR_PARAMETER_INVALID, Message: "pkg init fail"}
 	}

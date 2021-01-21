@@ -2,10 +2,13 @@ package tnet
 
 import (
 	"bytes"
+	"fmt"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/common"
 	log "github.com/tencentyun/tcaplusdb-go-sdk/pb/logger"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/terror"
 	"net"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -35,6 +38,8 @@ type Conn struct {
 	cbPara     interface{}      //回调参数
 	timeout    time.Duration    //connect 超时时间
 	createTime time.Time
+
+	sendChan   chan *sendBuf
 }
 
 //url 格式为tcp://127.0.0.1:80
@@ -76,6 +81,7 @@ func NewConn(url string, timeout time.Duration,
 		cbPara:     cbPara,
 		createTime: time.Now(),
 		timeout:    timeout,
+		sendChan:   make(chan *sendBuf, common.ConfigProcReqDepth-1),
 	}
 	go cn.connect()
 	return cn, nil
@@ -93,15 +99,77 @@ func (c *Conn) connect() {
 	c.netConn = Conn
 	atomic.StoreInt32(&c.stat, Connected)
 	go c.process()
+	go c.mergeSend()
 }
 
-func (c *Conn) Send(buf []byte) (size int, err error) {
-	n, err := c.netConn.Write(buf)
+type sendBuf struct {
+	err error
+	buf []byte
+	sync.WaitGroup
+}
+
+func (c *Conn) send(buf []byte, ret []*sendBuf) {
+	_, err := c.netConn.Write(buf)
 	if err != nil {
 		atomic.StoreInt32(&c.stat, WriteErr)
 		log.ERR("Send data failed %v, conn url %v", err.Error(), c.url)
 	}
-	return n, err
+	for _, v := range ret {
+		v.err = err
+		v.Done()
+	}
+}
+
+func (c *Conn) Send(buf []byte) (int, error) {
+	b := &sendBuf{buf: buf}
+	b.Add(1)
+	select {
+	case <-c.closeFlag:
+		log.INFO("close flag, %s", c.url)
+		return 0, fmt.Errorf("close flag, %s", c.url)
+	case c.sendChan <- b:
+	}
+	b.Wait()
+	return 0, b.err
+}
+
+func (c *Conn) mergeSend() {
+	var index int
+	var length int
+	sendBuffer := bytes.NewBuffer(make([]byte, 0, 20<<20))
+	depth := common.ConfigProcReqDepth
+
+	proc := func(buf *sendBuf) {
+		bufs := make([]*sendBuf, 0, depth)
+		bufs = append(bufs, buf)
+		sendBuffer.Write(buf.buf)
+		length = len(c.sendChan)
+		index = 0
+		for ; index < length; index++ {
+			buf = <-c.sendChan
+			bufs = append(bufs, buf)
+			sendBuffer.Write(buf.buf)
+			// 当数据大小大于10M时直接发送
+			if sendBuffer.Len() > 10<<20 {
+				break
+			}
+		}
+		c.send(sendBuffer.Bytes(), bufs)
+		sendBuffer.Reset()
+	}
+
+	for {
+		select {
+		case <-c.closeFlag:
+			for len(c.sendChan) > 0 {
+				proc(<-c.sendChan)
+			}
+			log.INFO("close flag, %s", c.url)
+			return
+		case buf := <-c.sendChan:
+			proc(buf)
+		}
+	}
 }
 
 func (c *Conn) GetStat() int32 {
@@ -118,8 +186,8 @@ func (c *Conn) Close() {
 }
 
 func (c *Conn) process() {
-	buf := make([]byte, 1024)
-	recvBuffer := bytes.NewBuffer(make([]byte, 0, 1024*1024))
+	buf := make([]byte, 10*1024*1024)
+	recvBuffer := bytes.NewBuffer(make([]byte, 0, 20*1024*1024))
 
 	for {
 		select {

@@ -1,7 +1,6 @@
 package tcaplus
 
 import (
-	"errors"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/logger"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/tcaplus_protocol_cs"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/version"
@@ -204,21 +203,22 @@ func (c *client) Do(req request.TcaplusRequest, timeout time.Duration) (response
 
 	var synrequestPkg router.SyncRequest
 	synrequestPkg.Init(req)
-	defer synrequestPkg.SyncChanClose()
 
-	c.netServer.router.RequestChanMapAdd(requestSeq, synrequestPkg)
-	defer c.netServer.router.RequestChanMapClean(requestSeq)
+	if c.netServer.router.RequestChanMapAdd(&synrequestPkg) == -1 {
+		return nil, &terror.ErrorCode{Code: terror.RouterIsClosed}
+	}
+	defer c.netServer.router.RequestChanMapClean(&synrequestPkg)
 
 	if err := c.SendRequest(req); err != nil {
 		logger.ERR("requestSeq %d :SendRequest failed %v\n", requestSeq, err.Error())
-		return nil, err
+		return nil, &terror.ErrorCode{Code: terror.SendRequestFail, Message: err.Error()}
 	}
 
 	for {
 		select {
 		case <-timeOutChan:
 			logger.ERR("requestSeq %d :%s, timeout", requestSeq, timeout.String())
-			return nil, errors.New(timeout.String() + ", timeout")
+			return nil, &terror.ErrorCode{Code: terror.TimeOut, Message: timeout.String() + ", timeout"}
 		case routerPkg := <-synrequestPkg.GetSyncChan():
 			return response.NewResponse(routerPkg)
 		}
@@ -245,30 +245,30 @@ func (c *client) DoMore(req request.TcaplusRequest, timeout time.Duration) ([]re
 
 	var synrequestPkg router.SyncRequest
 	synrequestPkg.InitMoreChan(req, 1024)
-	defer synrequestPkg.SyncChanClose()
 
-	c.netServer.router.RequestChanMapAdd(requestSeq, synrequestPkg)
-	defer c.netServer.router.RequestChanMapClean(requestSeq)
+	if c.netServer.router.RequestChanMapAdd(&synrequestPkg) == -1 {
+		return nil, &terror.ErrorCode{Code: terror.RouterIsClosed}
+	}
+	defer c.netServer.router.RequestChanMapClean(&synrequestPkg)
 
 	if err := c.SendRequest(req); err != nil {
 		logger.ERR("requestSeq %d :SendRequest failed %v\n", requestSeq, err.Error())
-		return nil, err
+		return nil, &terror.ErrorCode{Code: terror.SendRequestFail, Message: err.Error()}
 	}
+
 	var resp_list []response.TcaplusResponse
 	var idx int = 0
-	var count int
 	for {
 		select {
 		case <-timeOutChan:
 			logger.ERR("requestSeq %d :%s, timeout, current pkg num %d", requestSeq, timeout.String(), idx)
-			return resp_list, errors.New(timeout.String() + ", timeout")
+			return resp_list, &terror.ErrorCode{Code: terror.TimeOut, Message: timeout.String() + ", timeout"}
 		case routerPkg := <-synrequestPkg.GetSyncChan():
 			resp, err := response.NewResponse(routerPkg)
 			idx += 1
 			if err == nil{
 				resp_list = append(resp_list, resp)
-				count += resp.GetRecordCount()
-				if count < resp.GetRecordMatchCount() {
+				if 1 == resp.HaveMoreResPkgs() {
 					continue
 				}else{
 					return resp_list, nil
@@ -303,11 +303,12 @@ func (c *client) DoTraverse(tra *traverser.Traverser, timeout time.Duration) ([]
 	timeOutChan := time.After(timeout)
 
 	var synrequestPkg router.SyncRequest
-	synrequestPkg.InitTraverseChan(1024)
-	defer synrequestPkg.SyncChanClose()
+	synrequestPkg.InitTraverseChan(requestSeq,1024)
 
-	c.netServer.router.RequestChanMapAdd(requestSeq, synrequestPkg)
-	defer c.netServer.router.RequestChanMapClean(requestSeq)
+	if c.netServer.router.RequestChanMapAdd(&synrequestPkg) == -1 {
+		return nil, &terror.ErrorCode{Code: terror.RouterIsClosed}
+	}
+	defer c.netServer.router.RequestChanMapClean(&synrequestPkg)
 
 	err = tra.Start()
 	if err != nil {
@@ -320,11 +321,11 @@ func (c *client) DoTraverse(tra *traverser.Traverser, timeout time.Duration) ([]
 		select {
 		case <-timeOutChan:
 			logger.ERR("requestSeq %d :%s, timeout, current pkg num %d", requestSeq, timeout.String(), idx)
-			return resp_list, errors.New(timeout.String() + ", timeout")
+			return resp_list, &terror.ErrorCode{Code: terror.TimeOut, Message: timeout.String() + ", timeout"}
 		case routerPkg := <-synrequestPkg.GetSyncChan():
 			resp, err := response.NewResponse(routerPkg)
 			idx += 1
-			if err == nil{
+			if err == nil {
 				resp_list = append(resp_list, resp)
 				if traverser.TraverseStateNormal == tra.State() {
 					continue
@@ -350,10 +351,17 @@ func (c *client) GetTraverser(zoneId uint32, table string) *traverser.Traverser 
 	return c.tm.GetTraverser(zoneId, table)
 }
 
+/*
+	@brief 获取本次连接的appId
+	@retval int appId
+*/
 func (c *client) GetAppId() uint64 {
 	return c.appId
 }
 
+/*
+	@brief 关闭client，释放资源
+*/
 func (c *client) Close() {
 	c.netServer.stopNetWork <- true
 	c.netServer.dirServer.DisConnect()

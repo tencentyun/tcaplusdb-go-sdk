@@ -329,6 +329,10 @@ func (c *PBClient) partkeyOperate(msg proto.Message, keys []string, apicmd int, 
 		}
 	}
 
+	if len(msgs) == 0 && globalErr == nil {
+		return nil, &terror.ErrorCode{Code: terror.TXHDB_ERR_RECORD_NOT_EXIST}
+	}
+
 	return msgs, globalErr
 }
 
@@ -497,6 +501,10 @@ func (c *PBClient) indexQuery(query string, apicmd int, zoneId uint32) ([]proto.
 		}
 	}
 
+	if len(msgs) == 0 && globalErr == nil {
+		return nil, nil, &terror.ErrorCode{Code: terror.TXHDB_ERR_RECORD_NOT_EXIST}
+	}
+
 	return msgs, nil, globalErr
 }
 
@@ -553,7 +561,36 @@ func (c *PBClient) traverseOperate(msg proto.Message, zoneId uint32) ([]proto.Me
 		}
 	}
 
+	if len(msgs) == 0 && globalErr == nil {
+		return nil, &terror.ErrorCode{Code: terror.TXHDB_ERR_RECORD_NOT_EXIST}
+	}
+
 	return msgs, globalErr
+}
+
+func (c *PBClient) countOperate(table string, zoneId uint32) (int, error) {
+	if c.defZone == -1 {
+		logger.ERR("client not dial init")
+		return 0, &terror.ErrorCode{Code: terror.ClientNotDial}
+	}
+
+	req, err := c.NewRequest(zoneId, table, cmd.TcaplusApiGetTableRecordCountReq)
+	if err != nil {
+		logger.ERR("NewRequest error:%s", err)
+		return 0, err
+	}
+
+	resp, err := c.Do(req, 5*time.Second)
+	if err != nil {
+		logger.ERR("NewRequest error:%s", err)
+		return 0, err
+	}
+
+	if resp.GetResult() != terror.GEN_ERR_SUC {
+		return 0, &terror.ErrorCode{Code: resp.GetResult()}
+	}
+
+	return resp.GetTableRecordCount(), nil
 }
 
 /**
@@ -798,4 +835,25 @@ func (c *PBClient) Traverse(msg proto.Message) ([]proto.Message, error) {
 **/
 func (c *PBClient) TraverseWithZone(msg proto.Message, zoneId uint32) ([]proto.Message, error) {
 	return c.traverseOperate(msg, zoneId)
+}
+
+/**
+	@brief 获取表记录总数
+	@param [IN] table string 表名
+	@retval int 记录数，请求失败返回0
+	@retval error 错误码
+**/
+func (c *PBClient) GetTableCount(table string) (int, error) {
+	return c.countOperate(table, uint32(c.defZone))
+}
+
+/**
+	@brief 获取表记录总数。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
+	@param [IN] table string 表名
+	@param [IN] zoneId 指定表所在zone
+	@retval int 记录数，请求失败返回0
+	@retval error 错误码
+**/
+func (c *PBClient) GetTableCountWithZone(table string, zoneId uint32) (int, error) {
+	return c.countOperate(table, zoneId)
 }

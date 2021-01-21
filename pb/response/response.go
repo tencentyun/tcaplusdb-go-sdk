@@ -59,6 +59,9 @@ type TcaplusResponse interface {
 	GetSqlType() int
 
 	GetTcaplusPackagePtr() *tcaplus_protocol_cs.TCaplusPkg
+
+	// 获取表的记录总数，只适用于TCAPLUS_API_GET_TABLE_RECORD_COUNT_REQ请求获取返回结果
+	GetTableRecordCount() int
 }
 
 type commonInterface interface {
@@ -206,7 +209,9 @@ func NewResponse(pkg *tcaplus_protocol_cs.TCaplusPkg) (TcaplusResponse, error) {
 	case cmd.TcaplusApiGetShardListRes:
 		resp.commonInterface, err = newGetShardListResponse(pkg)
 	case cmd.TcaplusApiTableTraverseRes:
-		resp.commonInterface, err = newtraverseResponse(pkg)
+		resp.commonInterface, err = newTraverseResponse(pkg)
+	case cmd.TcaplusApiGetTableRecordCountRes:
+		resp.commonInterface, err = newCountResponse(pkg)
 	default:
 		logger.ERR("invalid cmd %d", pkg.Head.Cmd)
 		return nil, &terror.ErrorCode{Code: terror.InvalidCmd}
@@ -345,6 +350,15 @@ func (res *tcapResponse) GetSqlType() int {
 	switch res.commonInterface.(type) {
 	case *indexQueryResponse:
 		return res.commonInterface.(*indexQueryResponse).GetSqlType()
+	default:
+		return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
+	}
+}
+
+func (res *tcapResponse) GetTableRecordCount() int {
+	switch res.commonInterface.(type) {
+	case *countResponse:
+		return res.commonInterface.(*countResponse).GetTableRecordCount()
 	default:
 		return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
 	}

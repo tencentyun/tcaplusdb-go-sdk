@@ -105,7 +105,9 @@ func (req *updateRequest) Pack() ([]byte, error) {
 		return nil, err
 	}
 
-	logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+	if logger.LogConf.LogLevel == "DEBUG" {
+		logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+	}
 	data, err := req.pkg.Pack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion)
 	if err != nil {
 		logger.ERR("updateRequest pack failed, %s", err.Error())

@@ -29,6 +29,52 @@ type server struct {
 	signUpTime  time.Time
 	router      interface{}
 	prepareStop bool //proxy准备stop
+
+	respMsgChanList []chan []byte
+	closeFlag       chan struct{}
+}
+
+func (s *server) initRecv() {
+	if len(s.respMsgChanList) > 0 {
+		return
+	}
+	s.respMsgChanList = make([]chan []byte, common.ConfigProcRespRoutineNum)
+	s.closeFlag = make(chan struct{})
+	for i := 0; i < common.ConfigProcRespRoutineNum; i++ {
+		s.respMsgChanList[i] = make(chan []byte, common.ConfigProcRespDepth)
+		go func(id int) {
+			proc := func(buf []byte) {
+				logger.DEBUG("recv proxy response, unpack.")
+				start := time.Now()
+				resp := tcaplus_protocol_cs.NewTCaplusPkg()
+				if err := resp.Unpack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion, buf); err != nil {
+					logger.ERR("Unpack proxy msg failed, url %s err %v", s.proxyUrl, err.Error())
+					return
+				}
+
+				if time.Now().Sub(start) > 10*time.Millisecond {
+					logger.WARN("unpack > 10ms data %v.", buf)
+				}
+
+				s.processRsp(resp)
+			}
+			ch := s.respMsgChanList[id]
+			for {
+				select {
+				case <-s.closeFlag:
+					for len(ch) > 0 {
+						for i := 0; i< len(ch); i++ {
+							proc(<- ch)
+						}
+					}
+					logger.INFO("exit recv routine.")
+					return
+				case buf := <- ch:
+					proc(buf)
+				}
+			}
+		}(i)
+	}
 }
 
 func (s *server) getSignUpStat() uint32 {
@@ -63,6 +109,8 @@ func (s *server) isAvailable() bool {
 func (s *server) disConnect() {
 	s.prepareStop = false
 	s.signUpFlag = NotSignUp
+	close(s.closeFlag)
+	s.respMsgChanList = nil
 	if s.conn != nil {
 		s.conn.Close()
 		s.conn = nil
@@ -76,6 +124,7 @@ func (s *server) send(data []byte) error {
 }
 
 func (s *server) connect() {
+	s.initRecv()
 	if s.conn == nil {
 		//连接proxy, 3s超时
 		conn, err := tnet.NewConn(s.proxyUrl, 3*time.Second, ParseProxyPkgLen, ProxyCallBackFunc, s)
@@ -221,28 +270,19 @@ func ParseProxyPkgLen(buf []byte) int {
 @retVal error
 */
 func ProxyCallBackFunc(url *string, buf []byte, cbPara interface{}) error {
-	go func() {
-		server, ok := cbPara.(*server)
-		if !ok {
-			logger.ERR("RecvCallBackFunc cbPara type invalid")
-			return
-		}
-
-		logger.DEBUG("recv proxy response, unpack.")
-		start := time.Now()
-		resp := tcaplus_protocol_cs.NewTCaplusPkg()
-		if err := resp.Unpack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion, buf); err != nil {
-			logger.ERR("Unpack proxy msg failed, url %v err %v", *url, err.Error())
-			return
-		}
-
-		if time.Now().Sub(start) > 10*time.Millisecond {
-			logger.WARN("unpack > 10ms data %v.", buf)
-		}
-
-		server.processRsp(resp)
-	}()
-
+	asyncId := binary.BigEndian.Uint64(buf[12:])
+	seq := binary.BigEndian.Uint32(buf[20:])
+	server, ok := cbPara.(*server)
+	if !ok {
+		logger.ERR("RecvCallBackFunc cbPara type invalid")
+		return nil
+	}
+	id := (int(asyncId)+int(seq))%common.ConfigProcRespRoutineNum
+	select {
+	case <-server.closeFlag:
+		logger.INFO("exit recv routine.")
+	case server.respMsgChanList[id] <- buf:
+	}
 	return nil
 }
 
@@ -301,8 +341,11 @@ func (s *server) processRsp(msg *tcaplus_protocol_cs.TCaplusPkg) {
 		 cmd.TcaplusApiPBFieldUpdateRes,
 		 cmd.TcaplusApiPBFieldIncreaseRes,
 		 cmd.TcaplusApiGetShardListRes,
-		 cmd.TcaplusApiTableTraverseRes:
-		logger.DEBUG("recv proxy %s response %s", s.proxyUrl, common.CsHeadVisualize(msg.Head))
+		 cmd.TcaplusApiTableTraverseRes,
+		 cmd.TcaplusApiGetTableRecordCountRes:
+		 	if logger.LogConf.LogLevel == "DEBUG" {
+				logger.DEBUG("recv proxy %s response %s", s.proxyUrl, common.CsHeadVisualize(msg.Head))
+			}
 		router := s.router.(*Router)
 		if msg.Head.Cmd == cmd.TcaplusApiTableTraverseRes || msg.Head.Cmd == cmd.TcaplusApiGetShardListRes {
 			drop := false

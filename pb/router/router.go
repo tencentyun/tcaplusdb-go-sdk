@@ -2,6 +2,7 @@ package router
 
 import (
 	"container/list"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/common"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/traverser"
 	"sync"
 	"sync/atomic"
@@ -21,20 +22,26 @@ type SyncRequest struct {
 
 	//request package
 	requestPkg request.TcaplusRequest
+
+	delFromMap bool
+	syncId     int32
 }
 
-func (S *SyncRequest) InitTraverseChan(num int32) {
+func (S *SyncRequest) InitTraverseChan(seq, num int32) {
 	S.syncMsgPipe = make(chan *tcaplus_protocol_cs.TCaplusPkg, num)
+	S.syncId = seq
 }
 
 func (S *SyncRequest) InitMoreChan(reqpkg request.TcaplusRequest, num int32) {
 	S.syncMsgPipe = make(chan *tcaplus_protocol_cs.TCaplusPkg, num)
 	S.requestPkg = reqpkg
+	S.syncId = reqpkg.GetSeq()
 }
 
 func (S *SyncRequest) Init(reqpkg request.TcaplusRequest) {
 	S.syncMsgPipe = make(chan *tcaplus_protocol_cs.TCaplusPkg, 1)
 	S.requestPkg = reqpkg
+	S.syncId = reqpkg.GetSeq()
 }
 
 func (S *SyncRequest) GetSyncChan() chan *tcaplus_protocol_cs.TCaplusPkg {
@@ -64,9 +71,62 @@ type Router struct {
 
 	//req chan map
 	reqChanMutex   sync.RWMutex
-	requestChanMap map[int32]SyncRequest
+	requestChanMap []map[int32]*SyncRequest
+
+	// 同步操作公用管道，防止出现响应回来请求还没加到map
+	syncOperateChan      []chan interface{}
+	syncOperateChanClose chan struct{}
 
 	TM *traverser.TraverserManager
+}
+
+func (r *Router) processSyncOperate() {
+	if len(r.syncOperateChan) > 0 {
+		return
+	}
+	r.requestChanMap = make([]map[int32]*SyncRequest, common.ConfigProcRouterRoutineNum)
+	r.syncOperateChan = make([]chan interface{}, common.ConfigProcRouterRoutineNum)
+	r.syncOperateChanClose = make(chan struct{})
+	for i := 0; i < common.ConfigProcRouterRoutineNum; i++ {
+		r.requestChanMap[i] = make(map[int32]*SyncRequest)
+		r.syncOperateChan[i] = make(chan interface{}, common.ConfigProcRouterDepth)
+		go func(id int) {
+			ch := r.syncOperateChan[id]
+			rmap := r.requestChanMap[id]
+			proc := func(p interface{}) {
+				if req, ok := p.(*SyncRequest); ok {
+					if req.delFromMap {
+						delete(rmap, req.syncId)
+					} else {
+						rmap[req.syncId] = req
+					}
+				} else {
+					msg := p.(*tcaplus_protocol_cs.TCaplusPkg)
+					if v, exist := rmap[msg.Head.Seq]; exist {
+						v.syncMsgPipe <- msg
+					} else {
+						logger.ERR("Can not find request chan %d", msg.Head.Seq)
+					}
+				}
+			}
+
+			for {
+				select {
+				case <-r.syncOperateChanClose:
+					// 退出前处理完管道中的包
+					for len(ch) > 0 {
+						for i := 0; i < len(ch); i++ {
+							proc(<-ch)
+						}
+					}
+					logger.INFO("processSyncOperate exit")
+					return
+				case p := <-ch:
+					proc(p)
+				}
+			}
+		}(i)
+	}
 }
 
 //此处的是用户pkg，非用户pkg已在func (s *server)processRsp回调中处理
@@ -79,13 +139,12 @@ func (r *Router) processRouterMsg(msg *tcaplus_protocol_cs.TCaplusPkg) {
 		logger.DEBUG("add one msg to queue, %d", r.respCount)
 		return
 	}
-	r.reqChanMutex.RLock()
-	if v, exist := r.requestChanMap[msg.Head.Seq]; exist {
-		v.syncMsgPipe <- msg
-	} else {
-		logger.ERR("Can not find request chan %d", msg.Head.Seq)
+
+	select {
+	case <-r.syncOperateChanClose:
+		logger.INFO("processSyncOperate exit")
+	case r.syncOperateChan[msg.Head.Seq%4] <- msg:
 	}
-	r.reqChanMutex.RUnlock()
 }
 
 func (r *Router) RecvResponse() (response.TcaplusResponse, error) {
@@ -115,20 +174,31 @@ func (r *Router) Init(appId uint64, zoneList []uint32, signature string) error {
 	r.heartbeatInterval = 1
 	r.lastHeartbeatTime = time.Now()
 	r.respMsgQueue = list.New()
-	r.requestChanMap = make(map[int32]SyncRequest)
+	r.processSyncOperate()
 	return nil
 }
 
-func (r *Router) RequestChanMapAdd(reqseq int32, syncrequest SyncRequest) {
-	r.reqChanMutex.Lock()
-	defer r.reqChanMutex.Unlock()
-	r.requestChanMap[reqseq] = syncrequest
+func (r *Router) RequestChanMapAdd(syncrequest *SyncRequest) int {
+	syncId := syncrequest.syncId%common.ConfigProcRespRoutineNum
+	select {
+	case <-r.syncOperateChanClose:
+		logger.INFO("processSyncOperate exit")
+		return -1
+	case r.syncOperateChan[syncId] <- syncrequest:
+	}
+	return 0
 }
 
-func (r *Router) RequestChanMapClean(reqsq int32) {
-	r.reqChanMutex.Lock()
-	defer r.reqChanMutex.Unlock()
-	delete(r.requestChanMap, reqsq)
+func (r *Router) RequestChanMapClean(syncrequest *SyncRequest) int {
+	syncId := syncrequest.syncId%common.ConfigProcRespRoutineNum
+	syncrequest.delFromMap = true
+	select {
+	case <-r.syncOperateChanClose:
+		logger.INFO("processSyncOperate exit")
+		return -1
+	case r.syncOperateChan[syncId] <- syncrequest:
+	}
+	return 0
 }
 
 func (r *Router) SetHeartbeatInterval(heartbeatInterval time.Duration) {
@@ -244,4 +314,7 @@ func (r *Router) Close() {
 			svr.disConnect()
 		}
 	}
+	close(r.syncOperateChanClose)
+	r.syncOperateChan = nil
+	r.requestChanMap = nil
 }

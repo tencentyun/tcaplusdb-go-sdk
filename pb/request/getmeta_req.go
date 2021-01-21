@@ -6,6 +6,7 @@ import (
 "github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/tcaplus_protocol_cs"
 "github.com/tencentyun/tcaplusdb-go-sdk/pb/record"
 "github.com/tencentyun/tcaplusdb-go-sdk/pb/terror"
+	"time"
 )
 
 type getMetaRequest struct {
@@ -52,7 +53,9 @@ func (req *getMetaRequest) SetResultFlag(flag int) error {
 }
 
 func (req *getMetaRequest) Pack() ([]byte, error) {
-	logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+	if logger.LogConf.LogLevel == "DEBUG" {
+		logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+	}
 	data, err := req.pkg.Pack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion)
 	if err != nil {
 		logger.ERR("getMetaRequest pack failed, %s", err.Error())
@@ -67,7 +70,7 @@ func (req *getMetaRequest) GetZoneId() uint32 {
 }
 
 func (req *getMetaRequest) GetKeyHash() (uint32, error) {
-	return 1, nil
+	return uint32(time.Now().UnixNano()), nil
 }
 
 func (req *getMetaRequest) SetFieldNames(valueNameList []string) error {

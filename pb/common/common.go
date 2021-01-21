@@ -7,6 +7,23 @@ import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/tcaplus_protocol_cs"
 )
 
+const (
+	// 每个server处理响应的协程数
+	ConfigProcRespRoutineNum = 4
+
+	// 处理响应的协程管道深度
+	ConfigProcRespDepth = 1024
+
+	// 处理写请求的协程管道深度，用于合并写请求
+	ConfigProcReqDepth = 1024
+
+	// 处理用户同步请求的协程数
+	ConfigProcRouterRoutineNum = 4
+
+	// 处理用户同步请求的协程管道深度
+	ConfigProcRouterDepth = 1024
+)
+
 func StringToCByte(str string) []byte {
 	b := []byte(str)
 	b = append(b, 0)

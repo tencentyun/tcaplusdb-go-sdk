@@ -102,7 +102,9 @@ func (req *updateByPartKeyRequest) Pack() ([]byte, error) {
 	//	append(req.pkg.Body.UpdateByPartkeyReq.ValueInfo.FieldName, key)
 	//}
 
-	logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+	if logger.LogConf.LogLevel == "DEBUG" {
+		logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+	}
 	data, err := req.pkg.Pack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion)
 	if err != nil {
 		logger.ERR("getRequest pack failed, %s", err.Error())

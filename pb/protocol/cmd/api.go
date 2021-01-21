@@ -161,11 +161,11 @@ const (
 	///** \brief 带有相同Partkey的批量insert响应 */
 	//TCAPLUS_API_INSERT_BY_PARTKEY_RES          = 0x0052
 	//
-	///** \brief table的记录总数请求 */
-	//TCAPLUS_API_GET_TABLE_RECORD_COUNT_REQ     = 0x0053
-	//
-	///** \brief table的记录总数响应 */
-	//TCAPLUS_API_GET_TABLE_RECORD_COUNT_RES     = 0x0054
+	/** \brief table的记录总数请求 */
+	TcaplusApiGetTableRecordCountReq     = 0x0053
+
+	/** \brief table的记录总数响应 */
+	TcaplusApiGetTableRecordCountRes     = 0x0054
 	//
 	///**\brief List table的遍历请求*/
 	//TCAPLUS_API_LIST_TABLE_TRAVERSE_REQ = 0x0057
