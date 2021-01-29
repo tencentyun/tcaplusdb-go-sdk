@@ -4,9 +4,9 @@ const (
 	MAJOR       = 3
 	MINOR       = 46
 	REV         = 0
- 	Version = "3.46.0.192853.x86_64_release_20210121"
+ 	Version = "3.46.0.192853.x86_64_release_20210129"
 	GitBranch   = "Tcaplus3.40.0"
- 	GitCommitId = "5946437"
+ 	GitCommitId = "2f7d634"
 )
 
 func GetModuleName() string {

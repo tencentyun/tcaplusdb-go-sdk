@@ -1191,3 +1191,4 @@ select sum(a) as sum_a from table where a > 1000;
 - 不支持其他未提到的查询。
 
 ## 6. 其它
+

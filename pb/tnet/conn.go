@@ -6,6 +6,7 @@ import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/common"
 	log "github.com/tencentyun/tcaplusdb-go-sdk/pb/logger"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/terror"
+	"io"
 	"net"
 	"strings"
 	"sync"
@@ -198,7 +199,11 @@ func (c *Conn) process() {
 			n, err := c.netConn.Read(buf)
 			if err != nil {
 				atomic.StoreInt32(&c.stat, ReadErr)
-				log.ERR("read err:%s, %s", err.Error(), c.url)
+				if err == io.EOF {
+					log.INFO("read close:%s, %s", err.Error(), c.url)
+				} else {
+					log.ERR("read err:%s, %s", err.Error(), c.url)
+				}
 				return
 			}
 

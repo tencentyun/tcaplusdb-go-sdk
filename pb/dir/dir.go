@@ -383,7 +383,7 @@ func (dir *DirServer) ProcessDirListRes(res *tcapdir_protocol_cs.ResGetDirServer
 	}
 
 	if res.DirServerCount <= 0 {
-		log.ERR("DirListRes DirServerCount invalid %d", res.DirServerCount)
+		log.WARN("DirListRes DirServerCount invalid %d", res.DirServerCount)
 		return
 	}
 
