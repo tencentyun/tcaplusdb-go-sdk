@@ -343,9 +343,9 @@ func (s *server) processRsp(msg *tcaplus_protocol_cs.TCaplusPkg) {
 		 cmd.TcaplusApiGetShardListRes,
 		 cmd.TcaplusApiTableTraverseRes,
 		 cmd.TcaplusApiGetTableRecordCountRes:
-		 	if logger.LogConf.LogLevel == "DEBUG" {
-				logger.DEBUG("recv proxy %s response %s", s.proxyUrl, common.CsHeadVisualize(msg.Head))
-			}
+		if logger.GetLogLevel() == "DEBUG" {
+			logger.DEBUG("recv proxy %s response %s", s.proxyUrl, common.CsHeadVisualize(msg.Head))
+		}
 		router := s.router.(*Router)
 		if msg.Head.Cmd == cmd.TcaplusApiTableTraverseRes || msg.Head.Cmd == cmd.TcaplusApiGetShardListRes {
 			drop := false

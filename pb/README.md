@@ -590,6 +590,40 @@ func (c *PBClient) GetTableCountWithZone(table string, zoneId uint32) (int, erro
 **/
 func (c *client) GetTraverser(zoneId uint32, table string) *traverser.Traverser
 ```
+#### 3.1.21 获取appId
+```
+/**
+    @brief 获取本次连接的appId
+    @retval int appId
+**/
+func (c *client) GetAppId() uint64
+```
+#### 3.1.22 关闭client
+```
+/**
+    @brief 关闭client，释放资源
+**/
+func (c *client) Close()
+```
+#### 3.1.23 遍历表记录
+```
+/**
+    @brief 遍历表
+    @param [IN] msg proto.Message 由proto文件生成的记录结构体
+    @retval []proto.Message 查询结果列表
+    @retval error 错误码
+**/
+func (c *PBClient) Traverse(msg proto.Message) ([]proto.Message, error)
+
+/**
+    @brief 遍历表。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
+    @param [IN] msg proto.Message 由proto文件生成的记录结构体
+    @param [IN] zoneId 指定表所在zone
+    @retval []proto.Message 查询结果列表
+    @retval error 错误码
+**/
+func (c *PBClient) TraverseWithZone(msg proto.Message, zoneId uint32) ([]proto.Message, error)
+```
 
 ### 3.2 TcaplusRequest 接口
 
@@ -974,6 +1008,14 @@ HaveMoreResPkgs() int
                而GetRecordCount()函数只能返回单个分包中的(本响应中的)记录数.
 */
 GetRecordMatchCount() int
+```
+#### 3.4.14 获取表记录总数
+```
+/*
+    @获取表的记录总数，只适用于TCAPLUS_API_GET_TABLE_RECORD_COUNT_REQ请求获取返回结果
+    @retval  <0 出错  记录总数
+*/
+GetTableRecordCount() int
 ```
 
 ### 3.5 遍历

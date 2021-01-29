@@ -18,6 +18,11 @@ type LogInterface interface {
 	Errorf(template string, args ...interface{})
 }
 
+type logInterfaceWithLogLevel interface {
+	LogInterface
+	LogLevel() string
+}
+
 type logCfg struct {
 	XMLName       xml.Name `xml:"LogConfig"` // 指定最外层的标签为LogConfig
 	LogPath       string   `xml:"LogPath"`
@@ -224,4 +229,14 @@ func WARN(s string, args ...interface{}) {
 
 func ERR(s string, args ...interface{}) {
 	Logger.Errorf(s, args...)
+}
+
+func GetLogLevel() string {
+	if l, ok := Logger.(logInterfaceWithLogLevel); ok {
+		return l.LogLevel()
+	} else if LogConf != nil {
+		return LogConf.LogLevel
+	} else {
+		return "DEBUG"
+	}
 }

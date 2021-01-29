@@ -96,7 +96,7 @@ func (req *deleteRequest) Pack() ([]byte, error) {
 		return nil, err
 	}
 
-	if logger.LogConf.LogLevel == "DEBUG" {
+	if logger.GetLogLevel() == "DEBUG" {
 		logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
 	}
 	data, err := req.pkg.Pack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion)
