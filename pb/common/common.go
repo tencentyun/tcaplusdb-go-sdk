@@ -24,6 +24,8 @@ const (
 	ConfigProcRouterDepth = 1024
 )
 
+var PublicIP string
+
 func StringToCByte(str string) []byte {
 	b := []byte(str)
 	b = append(b, 0)

@@ -1,6 +1,7 @@
 package tcaplus
 
 import (
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/common"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/logger"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/tcaplus_protocol_cs"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/version"
@@ -366,4 +367,11 @@ func (c *client) Close() {
 	c.netServer.stopNetWork <- true
 	c.netServer.dirServer.DisConnect()
 	c.netServer.router.Close()
+}
+
+/*
+	@brief 指定IP，主要用于无法访问docker内部ip的情况
+*/
+func (c *client) SetPublicIP(publicIP string) {
+	common.PublicIP = publicIP
 }

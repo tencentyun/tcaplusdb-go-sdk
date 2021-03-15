@@ -3,6 +3,8 @@ package dir
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/common"
 	log "github.com/tencentyun/tcaplusdb-go-sdk/pb/logger"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/tcapdir_protocol_cs"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/version"
@@ -385,6 +387,18 @@ func (dir *DirServer) ProcessDirListRes(res *tcapdir_protocol_cs.ResGetDirServer
 	if res.DirServerCount <= 0 {
 		log.WARN("DirListRes DirServerCount invalid %d", res.DirServerCount)
 		return
+	}
+
+	if common.PublicIP != "" {
+		for index := range res.DirServer[0:res.DirServerCount] {
+			urlNet, _, urlPort, err := tnet.ParseUrl(&res.DirServer[index])
+			if err != nil {
+				log.ERR("proxy url is invalid %s", res.DirServer[index])
+				return
+			}
+			// 变更IP
+			res.DirServer[index] = fmt.Sprintf("%s://%s:%s", urlNet, common.PublicIP, urlPort)
+		}
 	}
 
 	//比较数量

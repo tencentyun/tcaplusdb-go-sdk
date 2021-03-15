@@ -99,7 +99,7 @@ mod 模式需要在能连公网环境下使用。对于用户新建项目，可�
 - 1.在工程中建立 go.mod
 - 2.开启 module 模式
 - 3.执行命令 go clean --modcache
-- 4.执行命令 go mod edit -require="github.com/tencentyun/tcaplusdb-go-sdk@v0.0.1"
+- 4.执行命令 go mod edit -require="github.com/tencentyun/tcaplusdb-go-sdk@v0.0.7"
 - 5.在代码中引入 sdk: import "github.com/tencentyun/tcaplusdb-go-sdk/pb"
 
 ## 3 接口列表

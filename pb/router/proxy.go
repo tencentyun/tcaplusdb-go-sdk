@@ -1,6 +1,8 @@
 package router
 
 import (
+	"fmt"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/common"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/logger"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/tcapdir_protocol_cs"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/terror"
@@ -163,8 +165,13 @@ func (p *proxy) processTablesAndAccessMsg(msg *tcapdir_protocol_cs.ResGetTablesA
 	accessUrlMap := make(map[string]bool)
 	for i := 0; i < int(msg.AccessCount); i++ {
 		url := msg.AccessUrlList[i]
-		if _, _, _, err := tnet.ParseUrl(&url); err != nil {
+		urlNet, _, urlPort, err := tnet.ParseUrl(&url)
+		if err != nil {
 			logger.ERR("proxy url is invalid %s", url)
+		}
+		// 变更IP
+		if common.PublicIP != "" {
+			url = fmt.Sprintf("%s://%s:%s", urlNet, common.PublicIP, urlPort)
 		}
 		accessUrlMap[url] = true
 	}
