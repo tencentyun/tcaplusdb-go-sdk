@@ -57,6 +57,8 @@ func (req *listGetRequest) AddRecord(index int32) (*record.Record, error) {
 	}
 
 	//key value set
+	rec.ShardingKey = &req.pkg.Head.SplitTableKeyBuff
+	rec.ShardingKeyLen = &req.pkg.Head.SplitTableKeyBuffLen
 	rec.KeySet = req.pkg.Head.KeyInfo
 	req.pkg.Body.ListGetReq.ElementIndex = index
 	req.record = rec
@@ -87,19 +89,6 @@ func (req *listGetRequest) Pack() ([]byte, error) {
 		return nil, err
 	}
 
-	if len(req.valueNameMap) > 0 {
-		req.record.ValueMap = make(map[string][]byte)
-		for name, _ := range req.valueNameMap {
-			req.record.ValueMap[name] = []byte{}
-		}
-	}
-
-	for key, _ := range req.record.ValueMap {
-		req.pkg.Body.ListGetReq.ElementValueNames.FieldNum += 1
-		req.pkg.Body.ListGetReq.ElementValueNames.FieldName =
-			append(req.pkg.Body.ListGetReq.ElementValueNames.FieldName, key)
-	}
-
 	logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
 	data, err := req.pkg.Pack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion)
 	if err != nil {
@@ -122,10 +111,7 @@ func (req *listGetRequest) GetKeyHash() (uint32, error) {
 }
 
 func (req *listGetRequest) SetFieldNames(valueNameList []string) error {
-	for _, v := range valueNameList {
-		req.valueNameMap[v] = true
-	}
-	return nil
+	return &terror.ErrorCode{Code: terror.ParameterInvalid, Message: "list get not Support SetFieldNames"}
 }
 
 func (req *listGetRequest) SetUserBuff(userBuffer []byte) error {
@@ -149,9 +135,9 @@ func (req *listGetRequest)SetMultiResponseFlag(multi_flag byte) int32{
 }
 
 func (req *listGetRequest)SetResultFlagForSuccess(result_flag byte) int {
-	return terror.GEN_ERR_SUC
+	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
 }
 
 func (req *listGetRequest)SetResultFlagForFail(result_flag byte) int {
-	return terror.GEN_ERR_SUC
+	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
 }

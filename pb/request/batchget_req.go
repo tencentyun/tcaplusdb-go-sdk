@@ -141,10 +141,6 @@ func (req *batchGetRequest)SetResultLimit(limit int32, offset int32) int32 {
 	return int32(terror.API_ERR_OPERATION_TYPE_NOT_MATCH)
 }
 
-func (req *batchGetRequest)SetAddableIncreaseFlag(increase_flag byte) int32{
-	return int32(terror.GEN_ERR_SUC)
-}
-
 func (req *batchGetRequest)SetMultiResponseFlag(multi_flag byte) int32{
 	if 0 != multi_flag  {
 		req.pkg.Body.BatchGetReq.AllowMultiResponses = 1
@@ -153,9 +149,9 @@ func (req *batchGetRequest)SetMultiResponseFlag(multi_flag byte) int32{
 }
 
 func (req *batchGetRequest)SetResultFlagForSuccess(result_flag byte) int {
-	return terror.GEN_ERR_SUC
+	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
 }
 
 func (req *batchGetRequest)SetResultFlagForFail(result_flag byte) int {
-	return terror.GEN_ERR_SUC
+	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
 }

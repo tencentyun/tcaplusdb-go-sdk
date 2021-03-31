@@ -75,21 +75,21 @@ func (res *listReplaceResponse) GetRecordCount() int {
 			if tcaplus_protocol_cs.TCaplusValueFlag_SAMEWITHREQUEST == iResultFlagForSuccess ||
 				tcaplus_protocol_cs.TCaplusValueFlag_ALLVALUE == iResultFlagForSuccess ||
 				tcaplus_protocol_cs.TCaplusValueFlag_ALLOLDVALUE == iResultFlagForSuccess {
-				return 1
+				return int(res.pkg.Body.ListReplaceRes.ResultInfo.ElementNum)
 			}
 		} else {
 			iResultFlagForFail = GetResultFlagByBit(res.pkg.Body.ListReplaceRes.Flag, false)
 			if tcaplus_protocol_cs.TCaplusValueFlag_SAMEWITHREQUEST == iResultFlagForFail ||
 				(tcaplus_protocol_cs.TCaplusValueFlag_ALLOLDVALUE == iResultFlagForFail &&
 					res.pkg.Body.ListReplaceRes.ResultInfo.ElementNum > 0) {
-				return 1
+				return int(res.pkg.Body.ListReplaceRes.ResultInfo.ElementNum)
 			}
 		}
 	} else {
 		//老版本的result flag 通过ResultFlag判断
 		if 0 == res.pkg.Body.ListReplaceRes.Result ||
 			terror.SVR_ERR_FAIL_INVALID_VERSION == int(res.pkg.Body.ListReplaceRes.Result) {
-			return 1
+			return int(res.pkg.Body.ListReplaceRes.ResultInfo.ElementNum)
 		}
 	}
 	return 0

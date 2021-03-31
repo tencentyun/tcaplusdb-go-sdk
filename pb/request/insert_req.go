@@ -139,18 +139,28 @@ func (req *insertRequest)SetResultLimit(limit int32, offset int32) int32 {
 	return int32(terror.API_ERR_OPERATION_TYPE_NOT_MATCH)
 }
 
-func (req *insertRequest)SetAddableIncreaseFlag(increase_flag byte) int32{
-	return int32(terror.GEN_ERR_SUC)
-}
-
 func (req *insertRequest)SetMultiResponseFlag(multi_flag byte) int32{
-	return int32(terror.GEN_ERR_SUC)
+	return int32(terror.API_ERR_OPERATION_TYPE_NOT_MATCH)
 }
 
-func (req *insertRequest)SetResultFlagForSuccess(result_flag byte) int {
+func (req *insertRequest)SetResultFlagForSuccess(flag byte) int {
+	if flag != 0 && flag != 1 && flag != 2 && flag != 3 {
+		logger.ERR("result flag invalid %d.", flag)
+		return terror.ParameterInvalid
+	}
+	// 0(1个bit位) | 本版本开始该位设置为1(1个bit位) | 成功时的标识(2个bit位) | 失败时的标识(2个bit位) | 本版本以前的标识(2个bit位)
+	req.pkg.Body.InsertReq.Flag = flag << 4
+	req.pkg.Body.InsertReq.Flag |= 1 << 6
 	return terror.GEN_ERR_SUC
 }
 
-func (req *insertRequest)SetResultFlagForFail(result_flag byte) int {
+func (req *insertRequest)SetResultFlagForFail(flag byte) int {
+	if flag != 0 && flag != 1 && flag != 2 && flag != 3 {
+		logger.ERR("result flag invalid %d.", flag)
+		return terror.ParameterInvalid
+	}
+	// 0(1个bit位) | 本版本开始该位设置为1(1个bit位) | 成功时的标识(2个bit位) | 失败时的标识(2个bit位) | 本版本以前的标识(2个bit位)
+	req.pkg.Body.InsertReq.Flag = flag << 2
+	req.pkg.Body.InsertReq.Flag |= 1 << 6
 	return terror.GEN_ERR_SUC
 }

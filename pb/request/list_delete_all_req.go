@@ -57,6 +57,8 @@ func (req *listDeleteAllRequest) AddRecord(index int32) (*record.Record, error) 
 	}
 
 	//key value set
+	rec.ShardingKey = &req.pkg.Head.SplitTableKeyBuff
+	rec.ShardingKeyLen = &req.pkg.Head.SplitTableKeyBuffLen
 	rec.KeySet = req.pkg.Head.KeyInfo
 	req.record = rec
 	return rec, nil
@@ -137,9 +139,9 @@ func (req *listDeleteAllRequest)SetMultiResponseFlag(multi_flag byte) int32{
 }
 
 func (req *listDeleteAllRequest)SetResultFlagForSuccess(result_flag byte) int {
-	return terror.GEN_ERR_SUC
+	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
 }
 
 func (req *listDeleteAllRequest)SetResultFlagForFail(result_flag byte) int {
-	return terror.GEN_ERR_SUC
+	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
 }

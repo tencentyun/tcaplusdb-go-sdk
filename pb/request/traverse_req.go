@@ -122,20 +122,16 @@ func (req *traverseRequest)SetResultLimit(limit int32, offset int32) int32 {
 	return int32(terror.API_ERR_OPERATION_TYPE_NOT_MATCH)
 }
 
-func (req *traverseRequest)SetAddableIncreaseFlag(increase_flag byte) int32{
-	return int32(terror.GEN_ERR_SUC)
-}
-
 func (req *traverseRequest)SetMultiResponseFlag(multi_flag byte) int32{
-	return int32(terror.GEN_ERR_SUC)
+	return int32(terror.API_ERR_OPERATION_TYPE_NOT_MATCH)
 }
 
 func (req *traverseRequest)SetResultFlagForSuccess(result_flag byte) int {
-	return terror.GEN_ERR_SUC
+	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
 }
 
 func (req *traverseRequest)SetResultFlagForFail(result_flag byte) int {
-	return terror.GEN_ERR_SUC
+	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
 }
 
 func (req *traverseRequest) GetTcaplusPackagePtr() *tcaplus_protocol_cs.TCaplusPkg {

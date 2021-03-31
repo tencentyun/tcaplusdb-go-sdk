@@ -232,7 +232,7 @@ type commonInterface interface {
 
 	*/
 
-	//SetResultFlagForSuccess (result_flag byte) int
+	SetResultFlagForSuccess (result_flag byte) int
 
 	/**
 		@brief	设置响应标志。主要是本次请求执行失败后返回给前端的数据
@@ -314,7 +314,7 @@ type commonInterface interface {
 
 	*/
 
-	//SetResultFlagForFail (result_flag byte) int
+	SetResultFlagForFail (result_flag byte) int
 
 	//以下非对外
 	GetSeq() int32
@@ -375,8 +375,8 @@ func NewRequest(appId uint64, zoneId uint32, tableName string, cmd int) (Tcaplus
 	//	req.commonInterface, err = newDeleteByPartKeyRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
 	//case tcaplusCmd.TcaplusApiIncreaseReq:
 	//	req.commonInterface, err = newIncreaseRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
-	//case tcaplusCmd.TcaplusApiListGetAllReq:
-	//	req.commonInterface, err = newListGetAllRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
+	case tcaplusCmd.TcaplusApiListGetAllReq:
+		req.commonInterface, err = newListGetAllRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
 	case tcaplusCmd.TcaplusApiBatchGetReq:
 		req.commonInterface, err = newBatchGetRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
 	//  not support yet
@@ -384,16 +384,16 @@ func NewRequest(appId uint64, zoneId uint32, tableName string, cmd int) (Tcaplus
 	//	req.commonInterface, err = newUpdateByPartKeyRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
 	case tcaplusCmd.TcaplusApiListAddAfterReq:
 		req.commonInterface, err = newListAddAfterRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
-	//case tcaplusCmd.TcaplusApiListGetReq:
-	//	req.commonInterface, err = newListGetRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
-	//case tcaplusCmd.TcaplusApiListDeleteReq:
-	//	req.commonInterface, err = newListDeleteRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
+	case tcaplusCmd.TcaplusApiListGetReq:
+		req.commonInterface, err = newListGetRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
+	case tcaplusCmd.TcaplusApiListDeleteReq:
+		req.commonInterface, err = newListDeleteRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
 	case tcaplusCmd.TcaplusApiListDeleteAllReq:
 		req.commonInterface, err = newListDeleteAllRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
-	//case tcaplusCmd.TcaplusApiListReplaceReq:
-	//	req.commonInterface, err = newListReplaceRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
-	//case tcaplusCmd.TcaplusApiListDeleteBatchReq:
-	//	req.commonInterface, err = newListDeleteBatchRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
+	case tcaplusCmd.TcaplusApiListReplaceReq:
+		req.commonInterface, err = newListReplaceRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
+	case tcaplusCmd.TcaplusApiListDeleteBatchReq:
+		req.commonInterface, err = newListDeleteBatchRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
 	case tcaplusCmd.TcaplusApiSqlReq:
 		req.commonInterface, err = newIndexQueryRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
 	case tcaplusCmd.TcaplusApiMetadataGetReq:

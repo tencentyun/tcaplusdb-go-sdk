@@ -57,6 +57,8 @@ func (req *listReplaceRequest) AddRecord(index int32) (*record.Record, error) {
 	}
 
 	//key value set
+	rec.ShardingKey = &req.pkg.Head.SplitTableKeyBuff
+	rec.ShardingKeyLen = &req.pkg.Head.SplitTableKeyBuffLen
 	rec.KeySet = req.pkg.Head.KeyInfo
 	rec.ValueSet = req.pkg.Body.ListReplaceReq.ElementValueInfo
 	req.pkg.Body.ListReplaceReq.ElementIndex = index
@@ -124,10 +126,7 @@ func (req *listReplaceRequest) GetKeyHash() (uint32, error) {
 }
 
 func (req *listReplaceRequest) SetFieldNames(valueNameList []string) error {
-	for _, v := range valueNameList {
-		req.valueNameMap[v] = true
-	}
-	return nil
+	return &terror.ErrorCode{Code: terror.ParameterInvalid, Message: "list replace not Support SetFieldNames"}
 }
 
 func (req *listReplaceRequest) SetUserBuff(userBuffer []byte) error {
@@ -150,10 +149,24 @@ func (req *listReplaceRequest)SetMultiResponseFlag(multi_flag byte) int32{
 	return int32(terror.API_ERR_OPERATION_TYPE_NOT_MATCH)
 }
 
-func (req *listReplaceRequest)SetResultFlagForSuccess(result_flag byte) int {
+func (req *listReplaceRequest)SetResultFlagForSuccess(flag byte) int {
+	if flag != 0 && flag != 1 && flag != 2 && flag != 3 {
+		logger.ERR("result flag invalid %d.", flag)
+		return terror.ParameterInvalid
+	}
+	// 0(1个bit位) | 本版本开始该位设置为1(1个bit位) | 成功时的标识(2个bit位) | 失败时的标识(2个bit位) | 本版本以前的标识(2个bit位)
+	req.pkg.Body.ListReplaceReq.Flag = flag << 4
+	req.pkg.Body.ListReplaceReq.Flag |= 1 << 6
 	return terror.GEN_ERR_SUC
 }
 
-func (req *listReplaceRequest)SetResultFlagForFail(result_flag byte) int {
+func (req *listReplaceRequest)SetResultFlagForFail(flag byte) int {
+	if flag != 0 && flag != 1 && flag != 2 && flag != 3 {
+		logger.ERR("result flag invalid %d.", flag)
+		return terror.ParameterInvalid
+	}
+	// 0(1个bit位) | 本版本开始该位设置为1(1个bit位) | 成功时的标识(2个bit位) | 失败时的标识(2个bit位) | 本版本以前的标识(2个bit位)
+	req.pkg.Body.ListReplaceReq.Flag = flag << 2
+	req.pkg.Body.ListReplaceReq.Flag |= 1 << 6
 	return terror.GEN_ERR_SUC
 }

@@ -59,6 +59,8 @@ func (req *listAddAfterRequest) AddRecord(index int32) (*record.Record, error) {
 	}
 
 	//key value set
+	rec.ShardingKey = &req.pkg.Head.SplitTableKeyBuff
+	rec.ShardingKeyLen = &req.pkg.Head.SplitTableKeyBuffLen
 	rec.KeySet = req.pkg.Head.KeyInfo
 	rec.ValueSet = req.pkg.Body.ListAddAfterReq.ElementValueInfo
 	req.pkg.Body.ListAddAfterReq.ElementIndex = index
@@ -154,10 +156,24 @@ func (req *listAddAfterRequest)SetListShiftFlag(shiftFlag byte) int32 {
 	return int32(terror.GEN_ERR_SUC)
 }
 
-func (req *listAddAfterRequest)SetResultFlagForSuccess(result_flag byte) int {
+func (req *listAddAfterRequest)SetResultFlagForSuccess(flag byte) int {
+	if flag != 0 && flag != 1 && flag != 2 && flag != 3 {
+		logger.ERR("result flag invalid %d.", flag)
+		return terror.ParameterInvalid
+	}
+	// 0(1个bit位) | 本版本开始该位设置为1(1个bit位) | 成功时的标识(2个bit位) | 失败时的标识(2个bit位) | 本版本以前的标识(2个bit位)
+	req.pkg.Body.ListAddAfterReq.Flag = flag << 4
+	req.pkg.Body.ListAddAfterReq.Flag |= 1 << 6
 	return terror.GEN_ERR_SUC
 }
 
-func (req *listAddAfterRequest)SetResultFlagForFail(result_flag byte) int {
+func (req *listAddAfterRequest)SetResultFlagForFail(flag byte) int {
+	if flag != 0 && flag != 1 && flag != 2 && flag != 3 {
+		logger.ERR("result flag invalid %d.", flag)
+		return terror.ParameterInvalid
+	}
+	// 0(1个bit位) | 本版本开始该位设置为1(1个bit位) | 成功时的标识(2个bit位) | 失败时的标识(2个bit位) | 本版本以前的标识(2个bit位)
+	req.pkg.Body.ListAddAfterReq.Flag = flag << 2
+	req.pkg.Body.ListAddAfterReq.Flag |= 1 << 6
 	return terror.GEN_ERR_SUC
 }

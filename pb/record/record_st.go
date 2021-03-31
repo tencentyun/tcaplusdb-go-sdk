@@ -1048,7 +1048,16 @@ func (r *Record) GetPBDataWithValues(message proto.Message, values []string) err
 	data := &idl.Tbl_Idl{}
 	err := r.GetData(data)
 	if err != nil {
-		return err
+		value, exist := r.ValueMap["value"];
+		if !exist {
+			return err
+		}
+		_, exist = r.ValueMap["vlen"]
+		if !exist {
+			data.Value = value
+		} else {
+			data.Value = value[2:]
+		}
 	}
 	err = proto.Unmarshal(data.Value, message)
 	if err != nil {

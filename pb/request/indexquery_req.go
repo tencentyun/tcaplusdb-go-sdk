@@ -110,11 +110,11 @@ func (req *indexQueryRequest)SetMultiResponseFlag(multi_flag byte) int32{
 }
 
 func (req *indexQueryRequest)SetResultFlagForSuccess(result_flag byte) int {
-	return terror.GEN_ERR_SUC
+	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
 }
 
 func (req *indexQueryRequest)SetResultFlagForFail(result_flag byte) int {
-	return terror.GEN_ERR_SUC
+	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
 }
 
 func (req *indexQueryRequest)SetSql(query string) int {
