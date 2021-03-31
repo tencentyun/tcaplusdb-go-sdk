@@ -31,6 +31,17 @@ Table of Contents
             * [3.1.18 二级索引查询](#3118-\xE4\xBA\x8C\xE7\xBA\xA7\xE7\xB4\xA2\xE5\xBC\x95\xE6\x9F\xA5\xE8\xAF\xA2)
             * [3.1.19 获取表记录数](#3119-\xE8\x8E\xB7\xE5\x8F\x96\xE8\xA1\xA8\xE8\xAE\xB0\xE5\xBD\x95\xE6\x95\xB0)
             * [3.1.20 获取遍历器](#3120-\xE8\x8E\xB7\xE5\x8F\x96\xE9\x81\x8D\xE5\x8E\x86\xE5\x99\xA8)
+            * [3.1.21 获取appid](#3121)
+            * [3.1.22 关闭lient](#3122)
+            * [3.1.23 遍历表记录](#3123)
+            * [3.1.24 指定访问ip](#3124)
+            * [3.1.25 list表插入记录](#3125)
+            * [3.1.26 list表删除记录](#3126)
+            * [3.1.27 list表修改记录](#3127)
+            * [3.1.28 list表查询记录](#3128)
+            * [3.1.29 list表获取key下所有记录](#3129)
+            * [3.1.30 list表删除key下所有记录](#3130)
+            * [3.1.31 list表删除key下多条记录](#3131)
          * [3.2 TcaplusRequest 接口](#32-tcaplusrequest-\xE6\x8E\xA5\xE5\x8F\xA3)
             * [3.2.1 添加记录](#321-\xE6\xB7\xBB\xE5\x8A\xA0\xE8\xAE\xB0\xE5\xBD\x95)
             * [3.2.2 设置请求异步 ID](#322-\xE8\xAE\xBE\xE7\xBD\xAE\xE8\xAF\xB7\xE6\xB1\x82\xE5\xBC\x82\xE6\xAD\xA5-id)
@@ -148,6 +159,28 @@ TcaplusApiTableTraverseReq = 0x0045
 
 //table的记录总数请求
 TcaplusApiGetTableRecordCountReq = 0x0053
+
+//查询List所有元素请求
+TcaplusApiListGetAllReq = 0x000b
+
+//删除List所有元素请求
+TcaplusApiListDeleteAllReq = 0x000d
+
+//删除List多个元素请求
+TcaplusApiListDeleteBatchReq = 0x0041
+
+//查询List单个元素请求
+TcaplusApiListGetReq = 0x000f
+
+//插入List元素请求
+TcaplusApiListAddAfterReq = 0x0011
+
+//删除List单个元素请求
+TcaplusApiListDeleteReq = 0x0013
+
+//替换List单个元素请求
+TcaplusApiListReplaceReq = 0x0015
+
 ```
 
 ### 3.1 Client 接口
@@ -453,10 +486,10 @@ func (c *PBClient) GetByPartKey(msg proto.Message, keys []string) ([]proto.Messa
 
 /**
     @brief 部分key获取记录。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
-	@param [IN] msg proto.Message 由proto文件生成的记录结构体
-	@param [IN] keys []string 部分key，根据 proto 文件中的 index 选择填写
-	@param [IN] zoneId 指定表所在zone
-	@retval []proto.Message 返回记录，可能匹配到多条记录
+    @param [IN] msg proto.Message 由proto文件生成的记录结构体
+    @param [IN] keys []string 部分key，根据 proto 文件中的 index 选择填写
+    @param [IN] zoneId 指定表所在zone
+    @retval []proto.Message 返回记录，可能匹配到多条记录
     @retval error 错误码
 **/
 func (c *PBClient) GetByPartKeyWithZone(msg proto.Message, keys []string, zoneId uint32) ([]proto.Message, error)
@@ -623,6 +656,146 @@ func (c *PBClient) Traverse(msg proto.Message) ([]proto.Message, error)
     @retval error 错误码
 **/
 func (c *PBClient) TraverseWithZone(msg proto.Message, zoneId uint32) ([]proto.Message, error)
+```
+#### 3.1.24 指定访问ip
+```
+/*
+    @brief 指定访问IP，主要用于无法访问docker内部ip的情况
+*/
+func (c *client) SetPublicIP(publicIP string) 
+```
+#### 3.1.25 list表插入记录
+```
+/**
+    @brief list表插入记录，可以使用 SetDefaultZoneId 来设置zoneid； SetDefaultTimeOut 设置超时时间
+    @param [IN] msg proto.Message 由proto文件生成的记录结构体
+    @param [IN] index int32 插入到key中的第index条记录之后
+    @retval error 错误码
+**/
+func (c *PBClient) ListAddAfter(msg proto.Message, index int32) error
+
+/**
+    @brief list表插入记录。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
+    @param [IN] msg proto.Message 由proto文件生成的记录结构体
+    @param [IN] zoneId 指定表所在zone
+    @param [IN] index int32 插入到key中的第index条记录之后
+    @retval error 错误码
+**/
+func (c *PBClient) ListAddAfterWithZone(msg proto.Message, index int32, zoneId uint32) error
+```
+#### 3.1.26 list表删除记录
+```
+/**
+    @brief list表删除记录，可以使用 SetDefaultZoneId 来设置zoneid； SetDefaultTimeOut 设置超时时间
+    @param [IN] msg proto.Message 由proto文件生成的记录结构体
+    @param [IN] index int32 删除key中的第index条记录
+    @retval error 错误码
+**/
+func (c *PBClient) ListDelete(msg proto.Message, index int32) error
+
+/**
+    @brief list表删除记录。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
+    @param [IN] msg proto.Message 由proto文件生成的记录结构体
+    @param [IN] index int32 删除key中的第index条记录
+    @param [IN] zoneId 指定表所在zone
+    @retval error 错误码
+**/
+func (c *PBClient) ListDeleteWithZone(msg proto.Message, index int32, zoneId uint32) error
+```
+#### 3.1.27 list表修改记录
+```
+/**
+    @brief list表更新记录，可以使用 SetDefaultZoneId 来设置zoneid； SetDefaultTimeOut 设置超时时间
+    @param [IN] msg proto.Message 由proto文件生成的记录结构体
+    @param [IN] index int32 更新key中的第index条记录
+    @retval error 错误码
+**/
+func (c *PBClient) ListReplace(msg proto.Message, index int32) error
+
+/**
+    @brief list表更新记录。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
+    @param [IN] msg proto.Message 由proto文件生成的记录结构体
+    @param [IN] index int32 更新key中的第index条记录
+    @param [IN] zoneId 指定表所在zone
+    @retval error 错误码
+**/
+func (c *PBClient) ListReplaceWithZone(msg proto.Message, index int32, zoneId uint32) error
+```
+#### 3.1.28 list表查询记录
+```
+/**
+    @brief list表获取记录，可以使用 SetDefaultZoneId 来设置zoneid； SetDefaultTimeOut 设置超时时间
+    @param [IN] msg proto.Message 由proto文件生成的记录结构体
+    @param [IN] index int32 获取key中的第index条记录
+    @retval error 错误码
+**/
+func (c *PBClient) ListGet(msg proto.Message, index int32) error
+
+/**
+    @brief list表获取记录。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
+    @param [IN] msg proto.Message 由proto文件生成的记录结构体
+    @param [IN] index int32 获取key中的第index条记录
+    @param [IN] zoneId 指定表所在zone
+    @retval error 错误码
+**/
+func (c *PBClient) ListGetWithZone(msg proto.Message, index int32, zoneId uint32) error
+```
+#### 3.1.29 list表获取key下所有记录
+```
+/**
+    @brief list表获取key下所有记录，可以使用 SetDefaultZoneId 来设置zoneid； SetDefaultTimeOut 设置超时时间
+    @param [IN] msg proto.Message 由proto文件生成的记录结构体
+    @retval map[int32]proto.Message 查询结果, key为index 
+    @retval error 错误码
+**/
+func (c *PBClient) ListGetAll(msg proto.Message) (map[int32]proto.Message, error)
+
+/**
+    @brief list表获取key下所有记录。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
+    @param [IN] msg proto.Message 由proto文件生成的记录结构体
+    @param [IN] zoneId 指定表所在zone
+    @retval map[int32]proto.Message 查询结果, key为index
+    @retval error 错误码
+**/
+func (c *PBClient) ListGetAllWithZone(msg proto.Message, zoneId uint32) (map[int32]proto.Message, error)
+```
+#### 3.1.30 list表删除key下所有记录
+```
+/**
+    @brief list表删除key下所有记录，可以使用 SetDefaultZoneId 来设置zoneid； SetDefaultTimeOut 设置超时时间
+    @param [IN] msg proto.Message 由proto文件生成的记录结构体
+    @retval error 错误码
+**/
+func (c *PBClient) ListDeleteAll(msg proto.Message) error
+
+/**
+    @brief list表删除key下所有记录。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
+    @param [IN] msg proto.Message 由proto文件生成的记录结构体
+    @param [IN] zoneId 指定表所在zone
+    @retval error 错误码
+**/
+func (c *PBClient) ListDeleteAllWithZone(msg proto.Message, zoneId uint32) error
+```
+#### 3.1.31 list表删除key下多个记录
+```
+/**
+    @brief list表删除key下多个记录，可以使用 SetDefaultZoneId 来设置zoneid； SetDefaultTimeOut 设置超时时间
+    @param [IN] msg proto.Message 由proto文件生成的记录结构体
+    @param [IN] indexs []int32 删除key下多个记录
+    @retval map[int32]proto.Message 查询结果, key为index
+    @retval error 错误码
+**/
+func (c *PBClient) ListDeleteBatch(msg proto.Message, indexs []int32) (map[int32]proto.Message, error)
+
+/**
+    @brief list表删除key下多个记录。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
+    @param [IN] msg proto.Message 由proto文件生成的记录结构体
+    @param [IN] indexs []int32 删除key下多个记录
+    @param [IN] zoneId 指定表所在zone
+    @retval map[int32]proto.Message 查询结果, key为index
+    @retval error 错误码
+**/
+func (c *PBClient) ListDeleteBatchWithZone(msg proto.Message, indexs []int32, zoneId uint32) (map[int32]proto.Message, error)
 ```
 
 ### 3.2 TcaplusRequest 接口
