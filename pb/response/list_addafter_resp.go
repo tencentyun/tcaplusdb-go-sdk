@@ -79,7 +79,6 @@ func (res *listAddAfterResponse) GetRecordCount() int {
 			if res.pkg.Body.ListAddAfterRes.ResultInfo.ElementNum > 0 {
 				return int(res.pkg.Body.ListAddAfterRes.ResultInfo.ElementNum)
 			}
-			return 1
 		}
 	}
 	return 0

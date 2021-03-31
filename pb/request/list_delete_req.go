@@ -55,6 +55,8 @@ func (req *listDeleteRequest) AddRecord(index int32) (*record.Record, error) {
 	}
 
 	//key value set
+	rec.ShardingKey = &req.pkg.Head.SplitTableKeyBuff
+	rec.ShardingKeyLen = &req.pkg.Head.SplitTableKeyBuffLen
 	rec.KeySet = req.pkg.Head.KeyInfo
 	req.pkg.Body.ListDeleteReq.ElementIndex = index
 	req.record = rec
@@ -139,10 +141,24 @@ func (req *listDeleteRequest)SetMultiResponseFlag(multi_flag byte) int32{
 	return int32(terror.API_ERR_OPERATION_TYPE_NOT_MATCH)
 }
 
-func (req *listDeleteRequest)SetResultFlagForSuccess(result_flag byte) int {
+func (req *listDeleteRequest)SetResultFlagForSuccess(flag byte) int {
+	if flag != 0 && flag != 1 && flag != 2 && flag != 3 {
+		logger.ERR("result flag invalid %d.", flag)
+		return terror.ParameterInvalid
+	}
+	// 0(1个bit位) | 本版本开始该位设置为1(1个bit位) | 成功时的标识(2个bit位) | 失败时的标识(2个bit位) | 本版本以前的标识(2个bit位)
+	req.pkg.Body.ListDeleteReq.Flag = flag << 4
+	req.pkg.Body.ListDeleteReq.Flag |= 1 << 6
 	return terror.GEN_ERR_SUC
 }
 
-func (req *listDeleteRequest)SetResultFlagForFail(result_flag byte) int {
+func (req *listDeleteRequest)SetResultFlagForFail(flag byte) int {
+	if flag != 0 && flag != 1 && flag != 2 && flag != 3 {
+		logger.ERR("result flag invalid %d.", flag)
+		return terror.ParameterInvalid
+	}
+	// 0(1个bit位) | 本版本开始该位设置为1(1个bit位) | 成功时的标识(2个bit位) | 失败时的标识(2个bit位) | 本版本以前的标识(2个bit位)
+	req.pkg.Body.ListDeleteReq.Flag = flag << 2
+	req.pkg.Body.ListDeleteReq.Flag |= 1 << 6
 	return terror.GEN_ERR_SUC
 }

@@ -72,13 +72,13 @@ func (res *listDeleteResponse) GetRecordCount() int {
 		if res.pkg.Body.ListDeleteRes.Result == 0 {
 			iResultFlagForSuccess = GetResultFlagByBit(res.pkg.Body.ListDeleteRes.Flag, true)
 			if tcaplus_protocol_cs.TCaplusValueFlag_ALLOLDVALUE == iResultFlagForSuccess {
-				return 1
+				return int(res.pkg.Body.ListDeleteRes.ResultInfo.ElementNum)
 			}
 		} else {
 			iResultFlagForFail = GetResultFlagByBit(res.pkg.Body.ListDeleteRes.Flag, false)
 			if tcaplus_protocol_cs.TCaplusValueFlag_ALLOLDVALUE == iResultFlagForFail &&
 				res.pkg.Body.ListDeleteRes.ResultInfo.ElementNum > 0 {
-				return 1
+				return int(res.pkg.Body.ListDeleteRes.ResultInfo.ElementNum)
 			}
 		}
 	} else {

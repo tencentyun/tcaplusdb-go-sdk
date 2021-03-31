@@ -132,19 +132,15 @@ func (req *pbFieldGetRequest)SetResultLimit(limit int32, offset int32) int32 {
 	return int32(terror.API_ERR_OPERATION_TYPE_NOT_MATCH)
 }
 
-func (req *pbFieldGetRequest)SetAddableIncreaseFlag(increase_flag byte) int32{
-	return int32(terror.GEN_ERR_SUC)
-}
-
 func (req *pbFieldGetRequest)SetMultiResponseFlag(multi_flag byte) int32{
-	return int32(terror.GEN_ERR_SUC)
+	return int32(terror.API_ERR_OPERATION_TYPE_NOT_MATCH)
 }
 
 func (req *pbFieldGetRequest)SetResultFlagForSuccess(result_flag byte) int {
-	return terror.GEN_ERR_SUC
+	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
 }
 
 func (req *pbFieldGetRequest)SetResultFlagForFail(result_flag byte) int {
-	return terror.GEN_ERR_SUC
+	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
 }
 

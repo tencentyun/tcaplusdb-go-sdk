@@ -146,7 +146,7 @@ func (c *PBClient) simpleOperate(msg proto.Message, apicmd int, zoneId uint32) e
 		return err
 	}
 
-	req.SetResultFlag(3)
+	req.SetResultFlagForSuccess(3)
 
 	res, err := c.Do(req, c.defTimeout)
 	if err != nil {
@@ -213,7 +213,7 @@ func (c *PBClient) batchOperate(msgs []proto.Message, apicmd int, zoneId uint32)
 		msgMap[string(key)] = msg
 	}
 
-	req.SetResultFlag(2)
+	req.SetResultFlagForSuccess(3)
 	req.SetMultiResponseFlag(1)
 
 	resps, err := c.DoMore(req, c.defTimeout)
@@ -390,7 +390,8 @@ func (c *PBClient) fieldOperate(msg proto.Message, values []string, apicmd int, 
 	return nil
 }
 
-func (c *PBClient) indexQuery(query string, apicmd int, zoneId uint32) ([]proto.Message, []string, error) {
+func (c *PBClient) indexQuery(msg proto.Message, query string, apicmd int, zoneId uint32) ([]proto.Message,
+								[]string, error) {
 	if c.defZone == -1 {
 		logger.ERR("client not dial init")
 		return nil, nil, &terror.ErrorCode{Code: terror.ClientNotDial}
@@ -489,15 +490,20 @@ func (c *PBClient) indexQuery(query string, apicmd int, zoneId uint32) ([]proto.
 				continue
 			}
 
-			msg := dynamicpb.NewMessage(grp.Desc)
-			err = record.GetPBDataWithValues(msg, fields)
+			var data proto.Message
+			if msg != nil {
+				data = proto.Clone(msg)
+			} else {
+				data = dynamicpb.NewMessage(grp.Desc)
+			}
+			err = record.GetPBDataWithValues(data, fields)
 			if err != nil {
 				globalErr = err
 				logger.ERR("GetPBData error:%s", err)
 				continue
 			}
 
-			msgs = append(msgs, msg)
+			msgs = append(msgs, data)
 		}
 	}
 
@@ -592,6 +598,138 @@ func (c *PBClient) countOperate(table string, zoneId uint32) (int, error) {
 
 	return resp.GetTableRecordCount(), nil
 }
+
+func (c *PBClient) listSimpleOperate(msg proto.Message, apicmd int, zoneId uint32, index int32) error {
+	if c.defZone == -1 {
+		logger.ERR("client not dial init")
+		return &terror.ErrorCode{Code: terror.ClientNotDial}
+	}
+
+	table := msg.ProtoReflect().Descriptor().Name()
+	req, err := c.NewRequest(zoneId, string(table), apicmd)
+	if err != nil {
+		logger.ERR("NewRequest error:%s", err)
+		return err
+	}
+
+	rec, err := req.AddRecord(index)
+	if err != nil {
+		logger.ERR("AddRecord error:%s", err)
+		return err
+	}
+
+	_, err = rec.SetPBData(msg)
+	if err != nil {
+		logger.ERR("SetPBData error:%s", err)
+		return err
+	}
+
+	req.SetResultFlagForSuccess(3)
+
+	res, err := c.Do(req, c.defTimeout)
+	if err != nil {
+		logger.ERR("Do request error:%s", err)
+		return err
+	}
+
+	ret := res.GetResult()
+	if ret != 0 {
+		//logger.ERR("result is %d, error:%s", ret, terror.GetErrMsg(ret))
+		return &terror.ErrorCode{Code: ret}
+	}
+
+	if res.GetRecordCount() > 0 {
+		record, err := res.FetchRecord()
+		if err != nil {
+			logger.ERR("FetchRecord error:%s", err)
+			return err
+		}
+
+		err = record.GetPBData(msg)
+		if err != nil {
+			logger.ERR("GetPBData error:%s", err)
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (c *PBClient) listBatchOperate(msg proto.Message, apicmd int, zoneId uint32,
+										indexs []int32) (map[int32]proto.Message, error) {
+	if c.defZone == -1 {
+		logger.ERR("client not dial init")
+		return nil, &terror.ErrorCode{Code: terror.ClientNotDial}
+	}
+
+	table := msg.ProtoReflect().Descriptor().Name()
+	req, err := c.NewRequest(zoneId, string(table), apicmd)
+	if err != nil {
+		logger.ERR("NewRequest error:%s", err)
+		return nil, err
+	}
+
+	rec, err := req.AddRecord(0)
+	if err != nil {
+		logger.ERR("AddRecord error:%s", err)
+		return nil, err
+	}
+
+	_, err = rec.SetPBData(msg)
+	if err != nil {
+		logger.ERR("SetPBData error:%s", err)
+		return nil, err
+	}
+
+	req.SetResultFlagForSuccess(3)
+	req.SetMultiResponseFlag(1)
+	for _, index := range indexs {
+		req.AddElementIndex(index)
+	}
+
+	resps, err := c.DoMore(req, c.defTimeout)
+	if err != nil {
+		logger.ERR("Do request error:%s", err)
+		return nil, err
+	}
+
+	msgs := make(map[int32]proto.Message)
+	var globalErr error
+
+	for _, res := range resps {
+		ret := res.GetResult()
+		if ret != 0 {
+			globalErr = &terror.ErrorCode{Code: ret}
+			logger.ERR("result is %d, error:%s", ret, terror.GetErrMsg(ret))
+			continue
+		}
+
+		for i := 0; i < res.GetRecordCount(); i++ {
+			record, err := res.FetchRecord()
+			if err != nil {
+				globalErr = err
+				logger.ERR("FetchRecord error:%s", err)
+				continue
+			}
+
+			err = record.GetPBData(msg)
+			if err != nil {
+				globalErr = err
+				logger.ERR("GetPBData error:%s", err)
+				continue
+			}
+
+			msgs[record.GetIndex()] = proto.Clone(msg)
+		}
+	}
+
+	if len(msgs) == 0 && globalErr == nil {
+		return nil, &terror.ErrorCode{Code: terror.TXHDB_ERR_RECORD_NOT_EXIST}
+	}
+
+	return msgs, globalErr
+}
+
 
 /**
     @brief 插入记录
@@ -801,7 +939,7 @@ func (c *PBClient) FieldIncreaseWithZone(msg proto.Message, values []string, zon
     @retval error 错误码
 **/
 func (c *PBClient) IndexQuery(query string) ([]proto.Message, []string, error) {
-	return c.indexQuery(query, cmd.TcaplusApiSqlReq, uint32(c.defZone))
+	return c.indexQuery(nil, query, cmd.TcaplusApiSqlReq, uint32(c.defZone))
 }
 
 /**
@@ -813,7 +951,33 @@ func (c *PBClient) IndexQuery(query string) ([]proto.Message, []string, error) {
     @retval error 错误码
 **/
 func (c *PBClient) IndexQueryWithZone(query string, zoneId uint32) ([]proto.Message, []string, error) {
-	return c.indexQuery(query, cmd.TcaplusApiSqlReq, zoneId)
+	return c.indexQuery(nil, query, cmd.TcaplusApiSqlReq, zoneId)
+}
+
+/**
+    @brief 分布式索引查询
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] query sql 查询语句 详情见 https://iwiki.woa.com/pages/viewpage.action?pageId=419645505
+	@retval []proto.Message 非聚合查询结果
+	@retval []string 聚合查询结果
+    @retval error 错误码
+**/
+func (c *PBClient) IndexQueryWithMsg(msg proto.Message, query string) ([]proto.Message, []string, error) {
+	return c.indexQuery(msg, query, cmd.TcaplusApiSqlReq, uint32(c.defZone))
+}
+
+/**
+    @brief 分布式索引查询。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] query sql 查询语句 详情见 https://iwiki.woa.com/pages/viewpage.action?pageId=419645505
+	@param [IN] zoneId 指定表所在zone
+	@retval []proto.Message 非聚合查询结果
+	@retval []string 聚合查询结果
+    @retval error 错误码
+**/
+func (c *PBClient) IndexQueryWithZoneAndMsg(msg proto.Message, query string, zoneId uint32) ([]proto.Message,
+												[]string, error) {
+	return c.indexQuery(msg, query, cmd.TcaplusApiSqlReq, zoneId)
 }
 
 /**
@@ -856,4 +1020,154 @@ func (c *PBClient) GetTableCount(table string) (int, error) {
 **/
 func (c *PBClient) GetTableCountWithZone(table string, zoneId uint32) (int, error) {
 	return c.countOperate(table, zoneId)
+}
+
+/**
+    @brief list表插入记录，可以使用 SetDefaultZoneId 来设置zoneid； SetDefaultTimeOut 设置超时时间
+    @param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] index int32 插入到key中的第index条记录之后
+    @retval error 错误码
+**/
+func (c *PBClient) ListAddAfter(msg proto.Message, index int32) error {
+	return c.listSimpleOperate(msg, cmd.TcaplusApiListAddAfterReq, uint32(c.defZone), index)
+}
+
+/**
+	@brief list表插入记录。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] zoneId 指定表所在zone
+	@param [IN] index int32 插入到key中的第index条记录之后
+    @retval error 错误码
+**/
+func (c *PBClient) ListAddAfterWithZone(msg proto.Message, index int32, zoneId uint32) error {
+	return c.listSimpleOperate(msg, cmd.TcaplusApiListAddAfterReq, zoneId, index)
+}
+
+/**
+    @brief list表删除记录，可以使用 SetDefaultZoneId 来设置zoneid； SetDefaultTimeOut 设置超时时间
+    @param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] index int32 删除key中的第index条记录
+    @retval error 错误码
+**/
+func (c *PBClient) ListDelete(msg proto.Message, index int32) error {
+	return c.listSimpleOperate(msg, cmd.TcaplusApiListDeleteReq, uint32(c.defZone), index)
+}
+
+/**
+	@brief list表删除记录。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] index int32 删除key中的第index条记录
+	@param [IN] zoneId 指定表所在zone
+    @retval error 错误码
+**/
+func (c *PBClient) ListDeleteWithZone(msg proto.Message, index int32, zoneId uint32) error {
+	return c.listSimpleOperate(msg, cmd.TcaplusApiListDeleteReq, zoneId, index)
+}
+
+/**
+    @brief list表更新记录，可以使用 SetDefaultZoneId 来设置zoneid； SetDefaultTimeOut 设置超时时间
+    @param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] index int32 更新key中的第index条记录
+    @retval error 错误码
+**/
+func (c *PBClient) ListReplace(msg proto.Message, index int32) error {
+	return c.listSimpleOperate(msg, cmd.TcaplusApiListReplaceReq, uint32(c.defZone), index)
+}
+
+/**
+	@brief list表更新记录。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] index int32 更新key中的第index条记录
+	@param [IN] zoneId 指定表所在zone
+    @retval error 错误码
+**/
+func (c *PBClient) ListReplaceWithZone(msg proto.Message, index int32, zoneId uint32) error {
+	return c.listSimpleOperate(msg, cmd.TcaplusApiListReplaceReq, zoneId, index)
+}
+
+/**
+    @brief list表获取记录，可以使用 SetDefaultZoneId 来设置zoneid； SetDefaultTimeOut 设置超时时间
+    @param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] index int32 获取key中的第index条记录
+    @retval error 错误码
+**/
+func (c *PBClient) ListGet(msg proto.Message, index int32) error {
+	return c.listSimpleOperate(msg, cmd.TcaplusApiListGetReq, uint32(c.defZone), index)
+}
+
+/**
+	@brief list表获取记录。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] index int32 获取key中的第index条记录
+	@param [IN] zoneId 指定表所在zone
+    @retval error 错误码
+**/
+func (c *PBClient) ListGetWithZone(msg proto.Message, index int32, zoneId uint32) error {
+	return c.listSimpleOperate(msg, cmd.TcaplusApiListGetReq, zoneId, index)
+}
+
+/**
+    @brief list表获取key下所有记录，可以使用 SetDefaultZoneId 来设置zoneid； SetDefaultTimeOut 设置超时时间
+    @param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@retval map[int32]proto.Message 查询结果, key为index
+    @retval error 错误码
+**/
+func (c *PBClient) ListGetAll(msg proto.Message) (map[int32]proto.Message, error) {
+	return c.listBatchOperate(msg, cmd.TcaplusApiListGetAllReq, uint32(c.defZone), nil)
+}
+
+/**
+	@brief list表获取key下所有记录。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] zoneId 指定表所在zone
+	@retval map[int32]proto.Message 查询结果, key为index
+    @retval error 错误码
+**/
+func (c *PBClient) ListGetAllWithZone(msg proto.Message, zoneId uint32) (map[int32]proto.Message, error) {
+	return c.listBatchOperate(msg, cmd.TcaplusApiListGetAllReq, zoneId, nil)
+}
+
+/**
+    @brief list表删除key下所有记录，可以使用 SetDefaultZoneId 来设置zoneid； SetDefaultTimeOut 设置超时时间
+    @param [IN] msg proto.Message 由proto文件生成的记录结构体
+    @retval error 错误码
+**/
+func (c *PBClient) ListDeleteAll(msg proto.Message) error {
+	_, err := c.listBatchOperate(msg, cmd.TcaplusApiListDeleteAllReq, uint32(c.defZone), nil)
+	return err
+}
+
+/**
+	@brief list表删除key下所有记录。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] zoneId 指定表所在zone
+    @retval error 错误码
+**/
+func (c *PBClient) ListDeleteAllWithZone(msg proto.Message, zoneId uint32) error {
+	_, err := c.listBatchOperate(msg, cmd.TcaplusApiListDeleteAllReq, zoneId, nil)
+	return err
+}
+
+/**
+    @brief list表删除key下多个记录，可以使用 SetDefaultZoneId 来设置zoneid； SetDefaultTimeOut 设置超时时间
+    @param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] indexs []int32 删除key下多个记录
+	@retval map[int32]proto.Message 查询结果, key为index
+    @retval error 错误码
+**/
+func (c *PBClient) ListDeleteBatch(msg proto.Message, indexs []int32) (map[int32]proto.Message, error) {
+	return c.listBatchOperate(msg, cmd.TcaplusApiListDeleteBatchReq, uint32(c.defZone), indexs)
+}
+
+/**
+	@brief list表删除key下多个记录。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] indexs []int32 删除key下多个记录
+	@param [IN] zoneId 指定表所在zone
+	@retval map[int32]proto.Message 查询结果, key为index
+    @retval error 错误码
+**/
+func (c *PBClient) ListDeleteBatchWithZone(msg proto.Message, indexs []int32,
+											zoneId uint32) (map[int32]proto.Message, error) {
+	return c.listBatchOperate(msg, cmd.TcaplusApiListDeleteBatchReq, zoneId, indexs)
 }

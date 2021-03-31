@@ -57,6 +57,8 @@ func (req *listGetAllRequest) AddRecord(index int32) (*record.Record, error) {
 		UpdFieldSet: nil,
 	}
 
+	rec.ShardingKey = &req.pkg.Head.SplitTableKeyBuff
+	rec.ShardingKeyLen = &req.pkg.Head.SplitTableKeyBuffLen
 	rec.KeySet = req.pkg.Head.KeyInfo
 	//rec.ValueSet = req.pkg.Body.ListGetAllReq.ElementValueNames
 	req.record = rec
@@ -84,19 +86,6 @@ func (req *listGetAllRequest) Pack() ([]byte, error) {
 		logger.ERR("record pack key failed, %s", err.Error())
 		return nil, err
 	}
-
-	if len(req.valueNameMap) > 0 {
-		for name, _ := range req.valueNameMap {
-			req.record.ValueMap[name] = []byte{}
-		}
-	}
-
-	for key, _ := range req.record.ValueMap {
-		req.pkg.Body.ListGetAllReq.ElementValueNames.FieldNum += 1
-		req.pkg.Body.ListGetAllReq.ElementValueNames.FieldName =
-			append(req.pkg.Body.ListGetAllReq.ElementValueNames.FieldName, key)
-	}
-
 
 	logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
 	data, err := req.pkg.Pack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion)
@@ -143,10 +132,6 @@ func (req *listGetAllRequest)SetResultLimit(limit int32, offset int32) int32 {
 	return int32(terror.GEN_ERR_SUC)
 }
 
-func (req *listGetAllRequest)SetAddableIncreaseFlag(increase_flag byte) int32{
-	return int32(terror.GEN_ERR_SUC)
-}
-
 func (req *listGetAllRequest)SetMultiResponseFlag(multi_flag byte) int32{
 	if 1 == multi_flag {
 		req.pkg.Body.ListGetAllReq.AllowMultiResponses = 1
@@ -157,9 +142,9 @@ func (req *listGetAllRequest)SetMultiResponseFlag(multi_flag byte) int32{
 }
 
 func (req *listGetAllRequest)SetResultFlagForSuccess(result_flag byte) int {
-	return terror.GEN_ERR_SUC
+	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
 }
 
 func (req *listGetAllRequest)SetResultFlagForFail(result_flag byte) int {
-	return terror.GEN_ERR_SUC
+	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
 }

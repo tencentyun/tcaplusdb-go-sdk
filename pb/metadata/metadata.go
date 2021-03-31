@@ -303,22 +303,31 @@ func (m *metaManager) CompareMessageMeta(svr, cli protoreflect.MessageDescriptor
 
 	for i := 0; i < svr.Fields().Len(); i++ {
 		svrField := svr.Fields().Get(i)
-		cliField := cli.Fields().Get(i)
-		if svrField == nil || cliField == nil {
-			errMsg := fmt.Sprintf("message field is nil")
+		if svrField == nil{
+			errMsg := fmt.Sprintf("svr message meta field is nil")
 			logger.ERR(errMsg)
 			return fmt.Errorf(errMsg)
 		}
+		cliField := cli.Fields().ByNumber(svrField.Number())
+		svrLabel := descriptorpb.FieldDescriptorProto_Label(svrField.Cardinality())
+		if cliField == nil {
+			if svrLabel == descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL ||
+				svrLabel == descriptorpb.FieldDescriptorProto_LABEL_REPEATED {
+				// client端表新老兼容
+				continue
+			} else {
+				errMsg := fmt.Sprintf("client message meta field is nil")
+				logger.ERR(errMsg)
+				return fmt.Errorf(errMsg)
+			}
+		}
 		bSvrCrypto := proto.GetExtension(svrField.Options(), tcaplusservice.E_TcaplusCrypto).(bool)
 		bCliCrypto := proto.GetExtension(svrField.Options(), tcaplusservice.E_TcaplusCrypto).(bool)
-		svrLabel := descriptorpb.FieldDescriptorProto_Label(svrField.Cardinality())
 		cliLabel := descriptorpb.FieldDescriptorProto_Label(cliField.Cardinality())
 		svrType := descriptorpb.FieldDescriptorProto_Type(svrField.Kind())
 		cliType := descriptorpb.FieldDescriptorProto_Type(cliField.Kind())
 
-		if svrLabel != descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL &&
-			svrLabel != descriptorpb.FieldDescriptorProto_LABEL_REPEATED &&
-			svrLabel != cliLabel {
+		if svrLabel != cliLabel {
 			errMsg := fmt.Sprintf("field %s lable is diff svr-cli:%d-%d", svrField.Name(), svrLabel, cliLabel)
 			logger.ERR(errMsg)
 			return fmt.Errorf(errMsg)
