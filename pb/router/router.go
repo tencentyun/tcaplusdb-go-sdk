@@ -143,7 +143,7 @@ func (r *Router) processRouterMsg(msg *tcaplus_protocol_cs.TCaplusPkg) {
 	select {
 	case <-r.syncOperateChanClose:
 		logger.INFO("processSyncOperate exit")
-	case r.syncOperateChan[msg.Head.Seq%4] <- msg:
+	case r.syncOperateChan[msg.Head.Seq%common.ConfigProcRouterRoutineNum] <- msg:
 	}
 }
 
@@ -179,7 +179,7 @@ func (r *Router) Init(appId uint64, zoneList []uint32, signature string) error {
 }
 
 func (r *Router) RequestChanMapAdd(syncrequest *SyncRequest) int {
-	syncId := syncrequest.syncId%common.ConfigProcRespRoutineNum
+	syncId := syncrequest.syncId%common.ConfigProcRouterRoutineNum
 	select {
 	case <-r.syncOperateChanClose:
 		logger.INFO("processSyncOperate exit")
@@ -190,7 +190,7 @@ func (r *Router) RequestChanMapAdd(syncrequest *SyncRequest) int {
 }
 
 func (r *Router) RequestChanMapClean(syncrequest *SyncRequest) int {
-	syncId := syncrequest.syncId%common.ConfigProcRespRoutineNum
+	syncId := syncrequest.syncId%common.ConfigProcRouterRoutineNum
 	syncrequest.delFromMap = true
 	select {
 	case <-r.syncOperateChanClose:
@@ -317,4 +317,10 @@ func (r *Router) Close() {
 	close(r.syncOperateChanClose)
 	r.syncOperateChan = nil
 	r.requestChanMap = nil
+}
+
+func (r *Router) UpdateHashList() {
+	for _, p := range r.proxyMap {
+		p.updateHashList()
+	}
 }

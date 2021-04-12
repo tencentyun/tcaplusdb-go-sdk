@@ -129,10 +129,24 @@ func (p *proxy) switchServerList() {
 	p.hashMutex.Lock()
 	p.hashList = make([]*server, 0, len(p.usingServerList))
 	for _, v := range p.usingServerList {
-		p.hashList = append(p.hashList, v)
+		if v.isAvailable() {
+			p.hashList = append(p.hashList, v)
+		}
 	}
 	p.hashMutex.Unlock()
 	logger.INFO("hashList %v", p.usingServerList)
+}
+
+func (p *proxy) updateHashList() {
+	//设置选路hash表
+	p.hashMutex.Lock()
+	p.hashList = make([]*server, 0, len(p.usingServerList))
+	for _, v := range p.usingServerList {
+		if v.isAvailable() {
+			p.hashList = append(p.hashList, v)
+		}
+	}
+	p.hashMutex.Unlock()
 }
 
 func (p *proxy) update() {

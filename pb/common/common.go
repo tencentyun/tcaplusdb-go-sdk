@@ -11,17 +11,19 @@ const (
 	// 每个server处理响应的协程数
 	ConfigProcRespRoutineNum = 4
 
+	// 管道深度大一些可以防止瞬间并发太多请求导致管道满了而阻塞住
+
 	// 处理响应的协程管道深度
-	ConfigProcRespDepth = 1024
+	ConfigProcRespDepth = 10000
 
 	// 处理写请求的协程管道深度，用于合并写请求
-	ConfigProcReqDepth = 1024
+	ConfigProcReqDepth = 10000
 
 	// 处理用户同步请求的协程数
 	ConfigProcRouterRoutineNum = 4
 
 	// 处理用户同步请求的协程管道深度
-	ConfigProcRouterDepth = 1024
+	ConfigProcRouterDepth = 10000
 )
 
 var PublicIP string

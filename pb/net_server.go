@@ -71,6 +71,7 @@ func (n *netServer) netPkgProcess() {
 	updateTimer := time.NewTimer(100 * time.Millisecond)
 
 	updateTraverse := time.NewTimer(time.Millisecond)
+	updateHashListTimer := time.NewTimer(10*time.Second)
 
 	for {
 		select {
@@ -122,6 +123,9 @@ func (n *netServer) netPkgProcess() {
 		case <-updateTraverse.C:
 			n.router.TM.ContinueTraverse()
 			updateTraverse.Reset(time.Millisecond)
+		case <-updateHashListTimer.C:
+			n.router.UpdateHashList()
+			updateHashListTimer.Reset(10*time.Second)
 		}
 	}
 }

@@ -116,7 +116,7 @@ func (m *metaManager) AddTableDesGrp(appId uint64, zoneId uint32, tableName stri
 	if len(strPrimary) == 0 {
 		// 如果用户未初始化 option 文件可能出现不识别的情况，从unknown中获取
 		unknowMap = m.unKnownField(opts.ProtoReflect().GetUnknown())
-		if value, exist := unknowMap[60000]; exist {
+		if value, exist := unknowMap[protowire.Number(tcaplusservice.E_TcaplusPrimaryKey.Field)]; exist {
 			strPrimary = value.(string)
 		} else {
 			errMsg := fmt.Sprintf("table %s not find primarykey", tableName)
@@ -142,7 +142,7 @@ func (m *metaManager) AddTableDesGrp(appId uint64, zoneId uint32, tableName stri
 	// 获取ShardingKey
 	group.ShardingKey = proto.GetExtension(opts, tcaplusservice.E_TcaplusShardingKey).(string)
 	if len(unknowMap) != 0 {
-		if shardingKey, exist := unknowMap[60005]; exist {
+		if shardingKey, exist := unknowMap[protowire.Number(tcaplusservice.E_TcaplusShardingKey.Field)]; exist {
 			group.ShardingKey = shardingKey.(string)
 		}
 	}
@@ -460,7 +460,7 @@ func (m *metaManager) unKnownField(b protoreflect.RawFields) map[protowire.Numbe
 			return unknownMap
 		}
 		b = b[n:]
-		if num == 60001 {
+		if num == protowire.Number(tcaplusservice.E_TcaplusIndex.Field) {
 			if value, exist := unknownMap[num]; exist {
 				unknownMap[num] = append(value.([]string), string(v))
 			} else {
