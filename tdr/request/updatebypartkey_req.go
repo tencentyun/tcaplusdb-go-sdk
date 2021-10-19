@@ -18,10 +18,11 @@ type updateByPartKeyRequest struct {
 	record       *record.Record
 	pkg          *tcaplus_protocol_cs.TCaplusPkg
 	valueNameMap map[string]bool
+	isPB         bool
 }
 
 func newUpdateByPartKeyRequest(appId uint64, zoneId uint32, tableName string, cmd int,
-	seq uint32, pkg *tcaplus_protocol_cs.TCaplusPkg) (*updateByPartKeyRequest, error) {
+	seq uint32, pkg *tcaplus_protocol_cs.TCaplusPkg, isPB bool) (*updateByPartKeyRequest, error) {
 	if pkg == nil || pkg.Body == nil || pkg.Body.UpdateByPartkeyReq == nil {
 		return nil, &terror.ErrorCode{Code: terror.API_ERR_PARAMETER_INVALID, Message: "pkg init fail"}
 	}
@@ -36,6 +37,7 @@ func newUpdateByPartKeyRequest(appId uint64, zoneId uint32, tableName string, cm
 		record:       nil,
 		pkg:          pkg,
 		valueNameMap: make(map[string]bool),
+		isPB:         isPB,
 	}
 	return req, nil
 }
@@ -56,6 +58,7 @@ func (req *updateByPartKeyRequest) AddRecord(index int32) (*record.Record, error
 		KeySet:      nil,
 		ValueSet:    nil,
 		UpdFieldSet: nil,
+		IsPB:        req.isPB,
 	}
 
 	rec.KeySet = req.pkg.Head.KeyInfo
@@ -72,7 +75,7 @@ func (req *updateByPartKeyRequest) SetVersionPolicy(p uint8) error {
 	if p != policy.CheckDataVersionAutoIncrease && p != policy.NoCheckDataVersionAutoIncrease &&
 		p != policy.NoCheckDataVersionOverwrite {
 		logger.ERR("policy type Invalid %d", p)
-		return terror.ErrorCode{Code: terror.InvalidPolicy}
+		return &terror.ErrorCode{Code: terror.InvalidPolicy}
 	}
 	req.pkg.Body.UpdateByPartkeyReq.CheckVersiontType = p
 	return nil
@@ -102,7 +105,9 @@ func (req *updateByPartKeyRequest) Pack() ([]byte, error) {
 	//	append(req.pkg.Body.UpdateByPartkeyReq.ValueInfo.FieldName, key)
 	//}
 
-	logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+	if logger.GetLogLevel() == "DEBUG" {
+		logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+	}
 	data, err := req.pkg.Pack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion)
 	if err != nil {
 		logger.ERR("getRequest pack failed, %s", err.Error())
@@ -149,13 +154,39 @@ func (req *updateByPartKeyRequest) SetResultLimit(limit int32, offset int32) int
 }
 
 func (req *updateByPartKeyRequest) SetMultiResponseFlag(multi_flag byte) int32 {
-	return int32(terror.GEN_ERR_SUC)
+	return int32(terror.API_ERR_OPERATION_TYPE_NOT_MATCH)
 }
 
 func (req *updateByPartKeyRequest) SetResultFlagForSuccess(result_flag byte) int {
-	return terror.GEN_ERR_SUC
+	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
 }
 
 func (req *updateByPartKeyRequest) SetResultFlagForFail(result_flag byte) int {
+	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
+}
+
+func (req *updateByPartKeyRequest) SetPerfTest(sendTime uint64) int {
+	perf := tcaplus_protocol_cs.NewPerfTest()
+	perf.ApiSendTime = sendTime
+	perf.Version = tcaplus_protocol_cs.PerfTestCurrentVersion
+	p, err := perf.Pack(tcaplus_protocol_cs.PerfTestCurrentVersion)
+	if err != nil {
+		logger.ERR("pack perf error: %s", err)
+		return terror.API_ERR_PARAMETER_INVALID
+	}
+	req.pkg.Head.PerfTest = p
+	req.pkg.Head.PerfTestLen = uint32(len(p))
 	return terror.GEN_ERR_SUC
+}
+
+func (req *updateByPartKeyRequest) SetFlags(flag int32) int {
+	return setFlags(req.pkg, flag)
+}
+
+func (req *updateByPartKeyRequest) ClearFlags(flag int32) int {
+	return clearFlags(req.pkg, flag)
+}
+
+func (req *updateByPartKeyRequest) GetFlags() int32 {
+	return req.pkg.Head.Flags
 }

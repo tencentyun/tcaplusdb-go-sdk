@@ -17,10 +17,11 @@ type listDeleteAllRequest struct {
 	seq       uint32
 	record    *record.Record
 	pkg       *tcaplus_protocol_cs.TCaplusPkg
+	isPB      bool
 }
 
 func newListDeleteAllRequest(appId uint64, zoneId uint32, tableName string, cmd int,
-	seq uint32, pkg *tcaplus_protocol_cs.TCaplusPkg) (*listDeleteAllRequest, error) {
+	seq uint32, pkg *tcaplus_protocol_cs.TCaplusPkg, isPB bool) (*listDeleteAllRequest, error) {
 	if pkg == nil || pkg.Body == nil || pkg.Body.ListDeleteAllReq == nil {
 		return nil, &terror.ErrorCode{Code: terror.API_ERR_PARAMETER_INVALID, Message: "pkg init fail"}
 	}
@@ -34,6 +35,7 @@ func newListDeleteAllRequest(appId uint64, zoneId uint32, tableName string, cmd 
 		seq:       seq,
 		record:    nil,
 		pkg:       pkg,
+		isPB:      isPB,
 	}
 	return req, nil
 }
@@ -54,9 +56,12 @@ func (req *listDeleteAllRequest) AddRecord(index int32) (*record.Record, error) 
 		KeySet:      nil,
 		ValueSet:    nil,
 		UpdFieldSet: nil,
+		IsPB:        req.isPB,
 	}
 
 	//key value set
+	rec.ShardingKey = &req.pkg.Head.SplitTableKeyBuff
+	rec.ShardingKeyLen = &req.pkg.Head.SplitTableKeyBuffLen
 	rec.KeySet = req.pkg.Head.KeyInfo
 	req.record = rec
 	return rec, nil
@@ -70,7 +75,7 @@ func (req *listDeleteAllRequest) SetVersionPolicy(p uint8) error {
 	if p != policy.CheckDataVersionAutoIncrease && p != policy.NoCheckDataVersionAutoIncrease &&
 		p != policy.NoCheckDataVersionOverwrite {
 		logger.ERR("policy type Invalid %d", p)
-		return terror.ErrorCode{Code: terror.InvalidPolicy}
+		return &terror.ErrorCode{Code: terror.InvalidPolicy}
 	}
 	req.pkg.Body.ListDeleteAllReq.CheckVersiontType = p
 	return nil
@@ -113,7 +118,7 @@ func (req *listDeleteAllRequest) GetKeyHash() (uint32, error) {
 }
 
 func (req *listDeleteAllRequest) SetFieldNames(valueNameList []string) error {
-	return &terror.ErrorCode{Code: terror.ParameterInvalid, Message: "list delete all not Support SetFieldNames"}
+	return nil
 }
 
 func (req *listDeleteAllRequest) SetUserBuff(userBuffer []byte) error {
@@ -137,9 +142,35 @@ func (req *listDeleteAllRequest) SetMultiResponseFlag(multi_flag byte) int32 {
 }
 
 func (req *listDeleteAllRequest) SetResultFlagForSuccess(result_flag byte) int {
-	return terror.GEN_ERR_SUC
+	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
 }
 
 func (req *listDeleteAllRequest) SetResultFlagForFail(result_flag byte) int {
+	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
+}
+
+func (req *listDeleteAllRequest) SetPerfTest(sendTime uint64) int {
+	perf := tcaplus_protocol_cs.NewPerfTest()
+	perf.ApiSendTime = sendTime
+	perf.Version = tcaplus_protocol_cs.PerfTestCurrentVersion
+	p, err := perf.Pack(tcaplus_protocol_cs.PerfTestCurrentVersion)
+	if err != nil {
+		logger.ERR("pack perf error: %s", err)
+		return terror.API_ERR_PARAMETER_INVALID
+	}
+	req.pkg.Head.PerfTest = p
+	req.pkg.Head.PerfTestLen = uint32(len(p))
 	return terror.GEN_ERR_SUC
+}
+
+func (req *listDeleteAllRequest) SetFlags(flag int32) int {
+	return setFlags(req.pkg, flag)
+}
+
+func (req *listDeleteAllRequest) ClearFlags(flag int32) int {
+	return clearFlags(req.pkg, flag)
+}
+
+func (req *listDeleteAllRequest) GetFlags() int32 {
+	return req.pkg.Head.Flags
 }

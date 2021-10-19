@@ -17,10 +17,11 @@ type increaseRequest struct {
 	record       *record.Record
 	pkg          *tcaplus_protocol_cs.TCaplusPkg
 	valueNameMap map[string]bool
+	isPB         bool
 }
 
 func newIncreaseRequest(appId uint64, zoneId uint32, tableName string, cmd int,
-	seq uint32, pkg *tcaplus_protocol_cs.TCaplusPkg) (*increaseRequest, error) {
+	seq uint32, pkg *tcaplus_protocol_cs.TCaplusPkg, isPB bool) (*increaseRequest, error) {
 	if pkg == nil || pkg.Body == nil || pkg.Body.IncreaseReq == nil {
 		return nil, &terror.ErrorCode{Code: terror.API_ERR_PARAMETER_INVALID, Message: "pkg init fail"}
 	}
@@ -34,6 +35,7 @@ func newIncreaseRequest(appId uint64, zoneId uint32, tableName string, cmd int,
 		record:       nil,
 		pkg:          pkg,
 		valueNameMap: make(map[string]bool),
+		isPB:         isPB,
 	}
 	return req, nil
 }
@@ -54,6 +56,7 @@ func (req *increaseRequest) AddRecord(index int32) (*record.Record, error) {
 		KeySet:      nil,
 		ValueSet:    nil,
 		UpdFieldSet: nil,
+		IsPB:        req.isPB,
 	}
 
 	//key value set
@@ -71,7 +74,7 @@ func (req *increaseRequest) SetVersionPolicy(p uint8) error {
 	if p != policy.CheckDataVersionAutoIncrease && p != policy.NoCheckDataVersionAutoIncrease &&
 		p != policy.NoCheckDataVersionOverwrite {
 		logger.ERR("policy type Invalid %d", p)
-		return terror.ErrorCode{Code: terror.InvalidPolicy}
+		return &terror.ErrorCode{Code: terror.InvalidPolicy}
 	}
 	req.pkg.Body.IncreaseReq.CheckVersiontType = p
 	return nil
@@ -148,9 +151,35 @@ func (req *increaseRequest) SetMultiResponseFlag(multi_flag byte) int32 {
 }
 
 func (req *increaseRequest) SetResultFlagForSuccess(result_flag byte) int {
-	return terror.GEN_ERR_SUC
+	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
 }
 
 func (req *increaseRequest) SetResultFlagForFail(result_flag byte) int {
+	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
+}
+
+func (req *increaseRequest) SetPerfTest(sendTime uint64) int {
+	perf := tcaplus_protocol_cs.NewPerfTest()
+	perf.ApiSendTime = sendTime
+	perf.Version = tcaplus_protocol_cs.PerfTestCurrentVersion
+	p, err := perf.Pack(tcaplus_protocol_cs.PerfTestCurrentVersion)
+	if err != nil {
+		logger.ERR("pack perf error: %s", err)
+		return terror.API_ERR_PARAMETER_INVALID
+	}
+	req.pkg.Head.PerfTest = p
+	req.pkg.Head.PerfTestLen = uint32(len(p))
 	return terror.GEN_ERR_SUC
+}
+
+func (req *increaseRequest) SetFlags(flag int32) int {
+	return setFlags(req.pkg, flag)
+}
+
+func (req *increaseRequest) ClearFlags(flag int32) int {
+	return clearFlags(req.pkg, flag)
+}
+
+func (req *increaseRequest) GetFlags() int32 {
+	return req.pkg.Head.Flags
 }

@@ -17,10 +17,11 @@ type deleteByPartKeyRequest struct {
 	seq       uint32
 	record    *record.Record
 	pkg       *tcaplus_protocol_cs.TCaplusPkg
+	isPB      bool
 }
 
 func newDeleteByPartKeyRequest(appId uint64, zoneId uint32, tableName string, cmd int,
-	seq uint32, pkg *tcaplus_protocol_cs.TCaplusPkg) (*deleteByPartKeyRequest, error) {
+	seq uint32, pkg *tcaplus_protocol_cs.TCaplusPkg, isPB bool) (*deleteByPartKeyRequest, error) {
 	if pkg == nil || pkg.Body == nil || pkg.Body.DeleteByPartkeyReq == nil {
 		return nil, &terror.ErrorCode{Code: terror.API_ERR_PARAMETER_INVALID, Message: "pkg init fail"}
 	}
@@ -33,6 +34,7 @@ func newDeleteByPartKeyRequest(appId uint64, zoneId uint32, tableName string, cm
 		seq:       seq,
 		record:    nil,
 		pkg:       pkg,
+		isPB:      isPB,
 	}
 	return req, nil
 }
@@ -53,6 +55,7 @@ func (req *deleteByPartKeyRequest) AddRecord(index int32) (*record.Record, error
 		KeySet:      nil,
 		ValueSet:    nil,
 		UpdFieldSet: nil,
+		IsPB:        req.isPB,
 	}
 
 	//key set
@@ -69,7 +72,7 @@ func (req *deleteByPartKeyRequest) SetVersionPolicy(p uint8) error {
 	if p != policy.CheckDataVersionAutoIncrease && p != policy.NoCheckDataVersionAutoIncrease &&
 		p != policy.NoCheckDataVersionOverwrite {
 		logger.ERR("policy type Invalid %d", p)
-		return terror.ErrorCode{Code: terror.InvalidPolicy}
+		return &terror.ErrorCode{Code: terror.InvalidPolicy}
 	}
 	req.pkg.Body.DeleteByPartkeyReq.CheckVersiontType = p
 	return nil
@@ -90,7 +93,9 @@ func (req *deleteByPartKeyRequest) Pack() ([]byte, error) {
 		return nil, err
 	}
 
-	logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+	if logger.GetLogLevel() == "DEBUG" {
+		logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+	}
 	data, err := req.pkg.Pack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion)
 	if err != nil {
 		logger.ERR("deleteByPartKeyRequest pack failed, %s", err.Error())
@@ -112,7 +117,7 @@ func (req *deleteByPartKeyRequest) GetKeyHash() (uint32, error) {
 }
 
 func (req *deleteByPartKeyRequest) SetFieldNames(valueNameList []string) error {
-	return &terror.ErrorCode{Code: terror.ParameterInvalid, Message: "DeleteByPartkey not Support SetFieldNames"}
+	return nil
 }
 
 func (req *deleteByPartKeyRequest) SetUserBuff(userBuffer []byte) error {
@@ -133,18 +138,40 @@ func (req *deleteByPartKeyRequest) SetResultLimit(limit int32, offset int32) int
 	return int32(terror.GEN_ERR_SUC)
 }
 
-func (req *deleteByPartKeyRequest) SetAddableIncreaseFlag(increase_flag byte) int32 {
-	return int32(terror.GEN_ERR_SUC)
-}
-
 func (req *deleteByPartKeyRequest) SetMultiResponseFlag(multi_flag byte) int32 {
-	return int32(terror.GEN_ERR_SUC)
+	return int32(terror.API_ERR_OPERATION_TYPE_NOT_MATCH)
 }
 
 func (req *deleteByPartKeyRequest) SetResultFlagForSuccess(result_flag byte) int {
-	return terror.GEN_ERR_SUC
+	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
 }
 
 func (req *deleteByPartKeyRequest) SetResultFlagForFail(result_flag byte) int {
+	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
+}
+
+func (req *deleteByPartKeyRequest) SetPerfTest(sendTime uint64) int {
+	perf := tcaplus_protocol_cs.NewPerfTest()
+	perf.ApiSendTime = sendTime
+	perf.Version = tcaplus_protocol_cs.PerfTestCurrentVersion
+	p, err := perf.Pack(tcaplus_protocol_cs.PerfTestCurrentVersion)
+	if err != nil {
+		logger.ERR("pack perf error: %s", err)
+		return terror.API_ERR_PARAMETER_INVALID
+	}
+	req.pkg.Head.PerfTest = p
+	req.pkg.Head.PerfTestLen = uint32(len(p))
 	return terror.GEN_ERR_SUC
+}
+
+func (req *deleteByPartKeyRequest) SetFlags(flag int32) int {
+	return setFlags(req.pkg, flag)
+}
+
+func (req *deleteByPartKeyRequest) ClearFlags(flag int32) int {
+	return clearFlags(req.pkg, flag)
+}
+
+func (req *deleteByPartKeyRequest) GetFlags() int32 {
+	return req.pkg.Head.Flags
 }

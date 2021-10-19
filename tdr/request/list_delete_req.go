@@ -17,10 +17,11 @@ type listDeleteRequest struct {
 	seq       uint32
 	record    *record.Record
 	pkg       *tcaplus_protocol_cs.TCaplusPkg
+	isPB      bool
 }
 
 func newListDeleteRequest(appId uint64, zoneId uint32, tableName string, cmd int,
-	seq uint32, pkg *tcaplus_protocol_cs.TCaplusPkg) (*listDeleteRequest, error) {
+	seq uint32, pkg *tcaplus_protocol_cs.TCaplusPkg, isPB bool) (*listDeleteRequest, error) {
 	if pkg == nil || pkg.Body == nil || pkg.Body.ListDeleteReq == nil {
 		return nil, &terror.ErrorCode{Code: terror.API_ERR_PARAMETER_INVALID, Message: "pkg init fail"}
 	}
@@ -32,6 +33,7 @@ func newListDeleteRequest(appId uint64, zoneId uint32, tableName string, cmd int
 		seq:       seq,
 		record:    nil,
 		pkg:       pkg,
+		isPB:      isPB,
 	}
 	return req, nil
 }
@@ -52,9 +54,12 @@ func (req *listDeleteRequest) AddRecord(index int32) (*record.Record, error) {
 		KeySet:      nil,
 		ValueSet:    nil,
 		UpdFieldSet: nil,
+		IsPB:        req.isPB,
 	}
 
 	//key value set
+	rec.ShardingKey = &req.pkg.Head.SplitTableKeyBuff
+	rec.ShardingKeyLen = &req.pkg.Head.SplitTableKeyBuffLen
 	rec.KeySet = req.pkg.Head.KeyInfo
 	req.pkg.Body.ListDeleteReq.ElementIndex = index
 	req.record = rec
@@ -69,7 +74,7 @@ func (req *listDeleteRequest) SetVersionPolicy(p uint8) error {
 	if p != policy.CheckDataVersionAutoIncrease && p != policy.NoCheckDataVersionAutoIncrease &&
 		p != policy.NoCheckDataVersionOverwrite {
 		logger.ERR("policy type Invalid %d", p)
-		return terror.ErrorCode{Code: terror.InvalidPolicy}
+		return &terror.ErrorCode{Code: terror.InvalidPolicy}
 	}
 	req.pkg.Body.ListDeleteReq.CheckVersiontType = p
 	return nil
@@ -116,7 +121,7 @@ func (req *listDeleteRequest) GetKeyHash() (uint32, error) {
 }
 
 func (req *listDeleteRequest) SetFieldNames(valueNameList []string) error {
-	return &terror.ErrorCode{Code: terror.ParameterInvalid, Message: "list delete not Support SetFieldNames"}
+	return nil
 }
 
 func (req *listDeleteRequest) SetUserBuff(userBuffer []byte) error {
@@ -139,10 +144,50 @@ func (req *listDeleteRequest) SetMultiResponseFlag(multi_flag byte) int32 {
 	return int32(terror.API_ERR_OPERATION_TYPE_NOT_MATCH)
 }
 
-func (req *listDeleteRequest) SetResultFlagForSuccess(result_flag byte) int {
+func (req *listDeleteRequest) SetResultFlagForSuccess(flag byte) int {
+	if flag != 0 && flag != 1 && flag != 2 && flag != 3 {
+		logger.ERR("result flag invalid %d.", flag)
+		return terror.ParameterInvalid
+	}
+	// 0(1个bit位) | 本版本开始该位设置为1(1个bit位) | 成功时的标识(2个bit位) | 失败时的标识(2个bit位) | 本版本以前的标识(2个bit位)
+	req.pkg.Body.ListDeleteReq.Flag = flag << 4
+	req.pkg.Body.ListDeleteReq.Flag |= 1 << 6
 	return terror.GEN_ERR_SUC
 }
 
-func (req *listDeleteRequest) SetResultFlagForFail(result_flag byte) int {
+func (req *listDeleteRequest) SetResultFlagForFail(flag byte) int {
+	if flag != 0 && flag != 1 && flag != 2 && flag != 3 {
+		logger.ERR("result flag invalid %d.", flag)
+		return terror.ParameterInvalid
+	}
+	// 0(1个bit位) | 本版本开始该位设置为1(1个bit位) | 成功时的标识(2个bit位) | 失败时的标识(2个bit位) | 本版本以前的标识(2个bit位)
+	req.pkg.Body.ListDeleteReq.Flag = flag << 2
+	req.pkg.Body.ListDeleteReq.Flag |= 1 << 6
 	return terror.GEN_ERR_SUC
+}
+
+func (req *listDeleteRequest) SetPerfTest(sendTime uint64) int {
+	perf := tcaplus_protocol_cs.NewPerfTest()
+	perf.ApiSendTime = sendTime
+	perf.Version = tcaplus_protocol_cs.PerfTestCurrentVersion
+	p, err := perf.Pack(tcaplus_protocol_cs.PerfTestCurrentVersion)
+	if err != nil {
+		logger.ERR("pack perf error: %s", err)
+		return terror.API_ERR_PARAMETER_INVALID
+	}
+	req.pkg.Head.PerfTest = p
+	req.pkg.Head.PerfTestLen = uint32(len(p))
+	return terror.GEN_ERR_SUC
+}
+
+func (req *listDeleteRequest) SetFlags(flag int32) int {
+	return setFlags(req.pkg, flag)
+}
+
+func (req *listDeleteRequest) ClearFlags(flag int32) int {
+	return clearFlags(req.pkg, flag)
+}
+
+func (req *listDeleteRequest) GetFlags() int32 {
+	return req.pkg.Head.Flags
 }

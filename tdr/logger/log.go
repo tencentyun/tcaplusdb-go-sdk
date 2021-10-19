@@ -11,11 +11,18 @@ import (
 	"time"
 )
 
+// 日志句柄接口需要实现 debug warn info error 四种级别的打印
 type LogInterface interface {
 	Debugf(template string, args ...interface{})
 	Infof(template string, args ...interface{})
 	Warnf(template string, args ...interface{})
 	Errorf(template string, args ...interface{})
+}
+
+// 日志句柄接口，除上面四个接口外还需加上获取日志配置级别接口用于性能优化
+type logInterfaceWithLogLevel interface {
+	LogInterface
+	LogLevel() string
 }
 
 type logCfg struct {
@@ -224,4 +231,14 @@ func WARN(s string, args ...interface{}) {
 
 func ERR(s string, args ...interface{}) {
 	Logger.Errorf(s, args...)
+}
+
+func GetLogLevel() string {
+	if l, ok := Logger.(logInterfaceWithLogLevel); ok {
+		return l.LogLevel()
+	} else if LogConf != nil {
+		return LogConf.LogLevel
+	} else {
+		return "DEBUG"
+	}
 }

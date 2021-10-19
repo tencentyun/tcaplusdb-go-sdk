@@ -2,6 +2,7 @@ package tcaplus
 
 import (
 	"container/list"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/common"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -70,15 +71,23 @@ func (n *netServer) netPkgProcess() {
 	//100ms 一次update
 	updateTimer := time.NewTimer(100 * time.Millisecond)
 
+	updateTraverse := time.NewTimer(time.Millisecond)
+	updateHashListTimer := time.NewTimer(10 * time.Second)
+
+	// 更新下当前时间，用于不需要精确时间的接口，防止一直去获取时间
+	updateTimeNow := time.NewTimer(time.Second)
+
 	for {
 		select {
 		case <-n.stopNetWork:
-			logger.ERR("client init failed, net routine exit")
+			logger.ERR("client net routine exit, close client")
+			n.dirServer.DisConnect()
+			n.router.Close()
 			return
 		//dir响应消息
 		case dirPkg := <-n.dirServer.MsgPipe:
 			n.processDirMsg(dirPkg)
-		//proxy响应消息
+		//proxy控制面响应消息
 		case routerPkg := <-n.router.MsgPipe:
 			n.processRouterMsg(routerPkg)
 		//proxy列表更新定时器300s
@@ -117,6 +126,15 @@ func (n *netServer) netPkgProcess() {
 			} else {
 				updateTimer.Reset(1 * time.Second)
 			}
+		case <-updateTraverse.C:
+			n.router.TM.ContinueTraverse()
+			updateTraverse.Reset(time.Millisecond)
+		case <-updateTimeNow.C:
+			common.TimeNow = time.Now()
+			updateTimeNow.Reset(time.Second)
+		case <-updateHashListTimer.C:
+			n.router.UpdateHashList()
+			updateHashListTimer.Reset(10 * time.Second)
 		}
 	}
 }
@@ -193,20 +211,6 @@ func (n *netServer) processRouterMsg(msg *tcaplus_protocol_cs.TCaplusPkg) {
 
 func (n *netServer) recvResponse() (response.TcaplusResponse, error) {
 	return n.router.RecvResponse()
-	if atomic.LoadInt64(&n.respCount) <= 0 {
-		return nil, nil
-	}
-	logger.DEBUG("pop one msg from queue, %d", n.respCount)
-	n.respMsgMutex.Lock()
-	defer n.respMsgMutex.Unlock()
-	ele := n.respMsgQueue.Front()
-	if ele != nil {
-		pkg := ele.Value.(*tcaplus_protocol_cs.TCaplusPkg)
-		n.respMsgQueue.Remove(ele)
-		atomic.AddInt64(&n.respCount, -1)
-		return response.NewResponse(pkg)
-	}
-	return nil, nil
 }
 
 func (n *netServer) sendRequest(req request.TcaplusRequest) error {

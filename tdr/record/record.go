@@ -5,12 +5,11 @@ import (
 )
 
 /*
-注意：用户请通过函数接口进行record的操作
-设置record有两套接口，切记不可混用：
-1. setKey setValue接口设置的数据，只能通过getKey，getValue接口读取
-2. setData接口设置的数据，只能通过getData读取
+	注意：用户请通过函数接口进行record的操作
+	设置record有两套接口，切记不可混用：
+	1. setKey setValue接口设置的数据，只能通过getKey，getValue接口读取
+	2. setData接口设置的数据，只能通过getData读取
 */
-
 type Record struct {
 	AppId             uint64
 	ZoneId            uint32
@@ -22,8 +21,14 @@ type Record struct {
 	Index             int32
 	KeySet            *tcaplus_protocol_cs.TCaplusKeySet
 	ValueSet          *tcaplus_protocol_cs.TCaplusValueSet_
+	NameSet           *tcaplus_protocol_cs.TCaplusNameSet
 	UpdFieldSet       *tcaplus_protocol_cs.TCaplusUpdFieldSet
 	SplitTableKeyBuff *tcaplus_protocol_cs.SplitTableKeyBuff
+	PBValueSet        *tcaplus_protocol_cs.ProtobufValueSet_
+	PBFieldMap        map[string]bool
+	ShardingKey       *[]byte
+	ShardingKeyLen    *uint32
+	IsPB              bool
 }
 
 /**

@@ -1,0 +1,7 @@
+<ApiTstCfg>
+		<dir_addr>tcp://x.x.x.x:xxxx</dir_addr>
+		<signature>xxxxxxxxxxxxxx</signature>
+		<app_id>x</app_id>
+		<zone_id>x</zone_id>
+		<pb_table>game_players</pb_table>
+</ApiTstCfg>

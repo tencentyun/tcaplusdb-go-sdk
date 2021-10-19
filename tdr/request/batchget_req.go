@@ -18,10 +18,11 @@ type batchGetRequest struct {
 	pkg          *tcaplus_protocol_cs.TCaplusPkg
 	valueNameMap map[string]bool
 	idx          int
+	isPB         bool
 }
 
 func newBatchGetRequest(appId uint64, zoneId uint32, tableName string, cmd int,
-	seq uint32, pkg *tcaplus_protocol_cs.TCaplusPkg) (*batchGetRequest, error) {
+	seq uint32, pkg *tcaplus_protocol_cs.TCaplusPkg, isPB bool) (*batchGetRequest, error) {
 	if pkg == nil || pkg.Body == nil || pkg.Body.BatchGetReq == nil {
 		return nil, &terror.ErrorCode{Code: terror.API_ERR_PARAMETER_INVALID, Message: "pkg init fail"}
 	}
@@ -36,6 +37,7 @@ func newBatchGetRequest(appId uint64, zoneId uint32, tableName string, cmd int,
 		record:       nil,
 		pkg:          pkg,
 		valueNameMap: make(map[string]bool),
+		isPB:         isPB,
 	}
 	return req, nil
 }
@@ -54,6 +56,7 @@ func (req *batchGetRequest) AddRecord(index int32) (*record.Record, error) {
 		ValueSet:          nil,
 		UpdFieldSet:       nil,
 		SplitTableKeyBuff: nil,
+		IsPB:              req.isPB,
 	}
 
 	rec.KeySet = new(tcaplus_protocol_cs.TCaplusKeySet)
@@ -83,22 +86,39 @@ func (req *batchGetRequest) Pack() ([]byte, error) {
 		return nil, &terror.ErrorCode{Code: terror.RequestHasNoRecord}
 	}
 
+	req.pkg.Body.BatchGetReq.RecordNum = 0
+	req.pkg.Body.BatchGetReq.KeyInfo = make([]*tcaplus_protocol_cs.TCaplusKeySet, len(req.record))
 	for _, rec := range req.record {
 		if err := rec.PackKey(); err != nil {
 			logger.ERR("record pack key failed, %s", err.Error())
 			return nil, err
 		}
-		req.pkg.Body.BatchGetReq.RecordNum += 1
-		req.pkg.Body.BatchGetReq.KeyInfo = append(req.pkg.Body.BatchGetReq.KeyInfo, rec.KeySet)
+		req.pkg.Body.BatchGetReq.KeyInfo[req.pkg.Body.BatchGetReq.RecordNum] = rec.KeySet
+		req.pkg.Body.BatchGetReq.RecordNum++
 	}
 
-	req.pkg.Body.BatchGetReq.ValueInfo.FieldNum = 0
-	for key, _ := range req.valueNameMap {
-		req.pkg.Body.BatchGetReq.ValueInfo.FieldNum += 1
-		req.pkg.Body.BatchGetReq.ValueInfo.FieldName = append(req.pkg.Body.BatchGetReq.ValueInfo.FieldName, key)
+	if req.isPB {
+		req.pkg.Body.BatchGetReq.ValueInfo.FieldNum = 3
+		req.pkg.Body.BatchGetReq.ValueInfo.FieldName = []string{"klen", "vlen", "value"}
+	} else {
+		if len(req.valueNameMap) > 0 {
+			req.record[0].ValueMap = make(map[string][]byte)
+			for name, _ := range req.valueNameMap {
+				req.record[0].ValueMap[name] = []byte{}
+			}
+		}
+		nameSet := req.pkg.Body.BatchGetReq.ValueInfo
+		nameSet.FieldNum = 0
+		nameSet.FieldName = make([]string, len(req.record[0].ValueMap))
+		for key, _ := range req.record[0].ValueMap {
+			nameSet.FieldName[nameSet.FieldNum] = key
+			nameSet.FieldNum++
+		}
 	}
 
-	logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+	if logger.GetLogLevel() == "DEBUG" {
+		logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+	}
 	data, err := req.pkg.Pack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion)
 	if err != nil {
 		logger.ERR("batchGetRequest pack failed, %s", err.Error())
@@ -142,10 +162,6 @@ func (req *batchGetRequest) SetResultLimit(limit int32, offset int32) int32 {
 	return int32(terror.API_ERR_OPERATION_TYPE_NOT_MATCH)
 }
 
-func (req *batchGetRequest) SetAddableIncreaseFlag(increase_flag byte) int32 {
-	return int32(terror.GEN_ERR_SUC)
-}
-
 func (req *batchGetRequest) SetMultiResponseFlag(multi_flag byte) int32 {
 	if 0 != multi_flag {
 		req.pkg.Body.BatchGetReq.AllowMultiResponses = 1
@@ -154,9 +170,35 @@ func (req *batchGetRequest) SetMultiResponseFlag(multi_flag byte) int32 {
 }
 
 func (req *batchGetRequest) SetResultFlagForSuccess(result_flag byte) int {
-	return terror.GEN_ERR_SUC
+	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
 }
 
 func (req *batchGetRequest) SetResultFlagForFail(result_flag byte) int {
+	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
+}
+
+func (req *batchGetRequest) SetPerfTest(sendTime uint64) int {
+	perf := tcaplus_protocol_cs.NewPerfTest()
+	perf.ApiSendTime = sendTime
+	perf.Version = tcaplus_protocol_cs.PerfTestCurrentVersion
+	p, err := perf.Pack(tcaplus_protocol_cs.PerfTestCurrentVersion)
+	if err != nil {
+		logger.ERR("pack perf error: %s", err)
+		return terror.API_ERR_PARAMETER_INVALID
+	}
+	req.pkg.Head.PerfTest = p
+	req.pkg.Head.PerfTestLen = uint32(len(p))
 	return terror.GEN_ERR_SUC
+}
+
+func (req *batchGetRequest) SetFlags(flag int32) int {
+	return setFlags(req.pkg, flag)
+}
+
+func (req *batchGetRequest) ClearFlags(flag int32) int {
+	return clearFlags(req.pkg, flag)
+}
+
+func (req *batchGetRequest) GetFlags() int32 {
+	return req.pkg.Head.Flags
 }

@@ -7,16 +7,20 @@ import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/autotest/unittest/cfg"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/autotest/unittest/table/tcaplus_tb"
-	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/cmd"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/common"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/request"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/response"
+	"strings"
+	"sync"
 	"time"
 )
 
-var TestTableName = "table_generic"
+type clieninf interface {
+	RecvResponse() (response.TcaplusResponse, error)
+}
 
 //同步接收
-func RecvResponse(client *tcaplus.Client) (response.TcaplusResponse, error) {
+func RecvResponse(client clieninf) (response.TcaplusResponse, error) {
 	//recv response
 	timeOutChan := time.After(5 * time.Second)
 	for {
@@ -44,6 +48,97 @@ func StToJson(args interface{}) string {
 	}
 	return string(js)
 }
+
+var pbclient *tcaplus.PBClient
+var once sync.Once
+var ZoneId uint32
+
+func InitPBSyncClient() *tcaplus.PBClient {
+	var err error
+	once.Do(func() {
+		err = cfg.ReadApiCfg("../cfg/api_cfg.xml")
+		if err != nil {
+			fmt.Printf("ReadApiCfg fail %s", err.Error())
+			return
+		}
+
+		pbclient = tcaplus.NewPBClient()
+		err = pbclient.SetLogCfg("../cfg/logconf.xml")
+		if err != nil {
+			fmt.Printf("excepted SetLogCfg success")
+			return
+		}
+
+		ZoneId = cfg.ApiConfig.ZoneId
+
+		tables := strings.Split(cfg.ApiConfig.Table, ",")
+		zoneTable := map[uint32][]string{cfg.ApiConfig.ZoneId: tables}
+		err = pbclient.Dial(cfg.ApiConfig.AppId, []uint32{cfg.ApiConfig.ZoneId}, cfg.ApiConfig.DirUrl, cfg.ApiConfig.Signature, 30, zoneTable)
+		if err != nil {
+			fmt.Printf("excepted dial success, %s", err.Error())
+			return
+		}
+	})
+	if err != nil {
+		return nil
+	}
+	return pbclient
+}
+
+func InitPBClientAndReqWithTableName(cmd int, tableName string) (*tcaplus.PBClient, request.TcaplusRequest) {
+	var err error
+	once.Do(func() {
+		err = cfg.ReadApiCfg("../cfg/api_cfg.xml")
+		if err != nil {
+			fmt.Printf("ReadApiCfg fail %s", err.Error())
+			return
+		}
+
+		pbclient = tcaplus.NewPBClient()
+		err = pbclient.SetLogCfg("../cfg/logconf.xml")
+		if err != nil {
+			fmt.Printf("excepted SetLogCfg success")
+			return
+		}
+
+		pbclient.SetPublicIP(cfg.ApiConfig.PublicIP)
+		fmt.Println("public ip", common.PublicIP)
+		tables := strings.Split(cfg.ApiConfig.Table, ",")
+		zoneTable := map[uint32][]string{cfg.ApiConfig.ZoneId: tables}
+		err = pbclient.Dial(cfg.ApiConfig.AppId, []uint32{cfg.ApiConfig.ZoneId}, cfg.ApiConfig.DirUrl, cfg.ApiConfig.Signature, 30, zoneTable)
+		if err != nil {
+			fmt.Printf("excepted dial success, %s", err.Error())
+			return
+		}
+	})
+	if err != nil {
+		return nil, nil
+	}
+	req, err := pbclient.NewRequest(cfg.ApiConfig.ZoneId, tableName, cmd)
+	if err != nil {
+		fmt.Printf("NewRequest fail, %s", err.Error())
+		return nil, nil
+	}
+	return pbclient, req
+}
+
+func Bytes256K() string {
+	buf := make([]byte, 255000)
+	for i, _ := range buf {
+		buf[i] = 100
+	}
+	return string(buf)
+}
+
+func Bytes80K() string {
+	buf := make([]byte, 80000)
+	for i, _ := range buf {
+		buf[i] = 100
+	}
+	return string(buf)
+}
+
+var TestTableName = "table_generic"
 
 //new GenericTable表的一条记录，并赋值
 func NewGenericTableRec() *tcaplus_tb.Table_Generic {
@@ -175,6 +270,7 @@ func InitClientAndReqWithTableName(cmd int, tableName string) (*tcaplus.Client, 
 			return nil, nil
 		}
 
+		ZoneId = cfg.ApiConfig.ZoneId
 		err := client.Dial(cfg.ApiConfig.AppId, []uint32{cfg.ApiConfig.ZoneId}, cfg.ApiConfig.DirUrl, cfg.ApiConfig.Signature, 30)
 		if err != nil {
 			fmt.Printf("excepted dial success, %s", err.Error())
@@ -194,35 +290,4 @@ func AsyncSendAndGetRes(client *tcaplus.Client, req request.TcaplusRequest) (res
 		return nil, err
 	}
 	return RecvResponse(client)
-}
-
-func InsertKV(uin uint64, key4 string) {
-	client, req := InitClientAndReq(cmd.TcaplusApiInsertReq)
-	if nil == client || nil == req {
-		fmt.Printf("NewRequest fail")
-		return
-	}
-
-	//data
-	data := NewGenericTableRec()
-	data.Uin = uin
-	data.Name = RandomStrChar("nm", 10)
-	data.Key3 = RandomStrChar("3", 10)
-	data.Key4 = key4
-
-	rec, err := req.AddRecord(0)
-	if err != nil {
-		fmt.Printf("AddRecord fail, %s", err.Error())
-		return
-	}
-
-	if err := rec.SetData(data); err != nil {
-		fmt.Printf("SetData fail, %s", err.Error())
-		return
-	}
-
-	if _, err := AsyncSendAndGetRes(client, req); err != nil {
-		fmt.Printf("recvResponse fail, %s", err.Error())
-		return
-	}
 }

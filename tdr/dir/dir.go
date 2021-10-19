@@ -1,8 +1,9 @@
 package dir
 
 import (
-	"bytes"
 	"encoding/binary"
+	"fmt"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/common"
 	log "github.com/tencentyun/tcaplusdb-go-sdk/tdr/logger"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/tcapdir_protocol_cs"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/version"
@@ -21,6 +22,7 @@ const (
 	SignUpFail    = 3
 )
 
+// dir服务管理
 type DirServer struct {
 	appId     uint64
 	zoneList  []uint32
@@ -67,6 +69,14 @@ func (dir *DirServer) Init(appId uint64, zoneList []uint32, dirUrl string, signa
 	dir.curDirIndex = uint32(rand.Intn(len(dir.urlList)))
 	dir.oldDirIndex = dir.curDirIndex
 	return nil
+}
+
+func (dir *DirServer) SendRequest(buf []byte) (int, error) {
+	if dir.conn != nil {
+		return dir.conn.Send(buf)
+	}
+	log.ERR("dir.conn is nil")
+	return 0, &terror.ErrorCode{Code: terror.SendRequestFail, Message: "dir not connected"}
 }
 
 func (dir *DirServer) Update() {
@@ -165,10 +175,8 @@ func (dir *DirServer) ProcessSignUpRes(res int) {
 //TcapdirCSHead = Magic(2) + Cmd(2) + Version(2) + HeadLen(2) + BodyLen(4) + AppID(8) = 20
 func ParseDirPkgLen(buf []byte) int {
 	if len(buf) >= 20 {
-		headLen := int16(0)
-		bodyLen := int32(0)
-		binary.Read(bytes.NewReader(buf[6:8]), binary.BigEndian, &headLen)
-		binary.Read(bytes.NewReader(buf[8:12]), binary.BigEndian, &bodyLen)
+		headLen := binary.BigEndian.Uint16(buf[6:8])
+		bodyLen := binary.BigEndian.Uint32(buf[8:12])
 		return int(headLen) + int(bodyLen)
 	}
 	return 0
@@ -181,7 +189,8 @@ func ParseDirPkgLen(buf []byte) int {
 @param cbPara 回调参数，此处为*DirServer
 @retVal error
 */
-func DirCallBackFunc(url *string, buf []byte, cbPara interface{}) error {
+func DirCallBackFunc(url *string, pkg *common.PKGBuffer, cbPara interface{}) error {
+	buf := pkg.GetData()
 	dir, ok := cbPara.(*DirServer)
 	if !ok {
 		log.ERR("RecvCallBackFunc cbPara type invalid")
@@ -189,7 +198,10 @@ func DirCallBackFunc(url *string, buf []byte, cbPara interface{}) error {
 	}
 
 	resp := tcapdir_protocol_cs.NewTCapdirCSPkg()
-	if err := resp.Unpack(tcapdir_protocol_cs.TCapdirCSPkgCurrentVersion, buf); err != nil {
+	err := resp.Unpack(tcapdir_protocol_cs.TCapdirCSPkgCurrentVersion, buf)
+	// 之后这个pkg不会再被用到，回收到对象池中
+	pkg.Done()
+	if err != nil {
 		log.ERR("Unpack dir msg failed, url %v err %v", *url, err.Error())
 		return err
 	}
@@ -286,7 +298,7 @@ func (dir *DirServer) signUp() error {
 				log.ERR("Unpack dir msg failed, err %v", err.Error())
 			}*/
 		log.DEBUG("msg:%+v signUp pack len %v", *req.Head, len(buf))
-		go dir.conn.Send(buf)
+		dir.SendRequest(buf)
 	}
 	log.DEBUG("signUp send ")
 	return nil
@@ -323,7 +335,7 @@ func (dir *DirServer) GetDirList() error {
 		return err
 	} else {
 		log.DEBUG("msg:%+v GetDirList pack len %v", *req.Head, len(buf))
-		go dir.conn.Send(buf)
+		dir.SendRequest(buf)
 	}
 	log.DEBUG("GetDirList send ")
 	return nil
@@ -367,7 +379,7 @@ func (dir *DirServer) GetAccessProxy() error {
 			return err
 		} else {
 			log.DEBUG("msg:%+v GetAccessProxy pack len %v", *req.Head, len(buf))
-			go dir.conn.Send(buf)
+			dir.SendRequest(buf)
 		}
 		log.DEBUG("GetAccessProxy send, zone %v", dir.zoneList[i])
 	}
@@ -383,8 +395,20 @@ func (dir *DirServer) ProcessDirListRes(res *tcapdir_protocol_cs.ResGetDirServer
 	}
 
 	if res.DirServerCount <= 0 {
-		log.ERR("DirListRes DirServerCount invalid %d", res.DirServerCount)
+		log.INFO("DirListRes DirServerCount invalid %d", res.DirServerCount)
 		return
+	}
+
+	if common.PublicIP != "" {
+		for index := range res.DirServer[0:res.DirServerCount] {
+			urlNet, _, urlPort, err := tnet.ParseUrl(&res.DirServer[index])
+			if err != nil {
+				log.ERR("proxy url is invalid %s", res.DirServer[index])
+				return
+			}
+			// 变更IP
+			res.DirServer[index] = fmt.Sprintf("%s://%s:%s", urlNet, common.PublicIP, urlPort)
+		}
 	}
 
 	//比较数量
@@ -448,7 +472,7 @@ func (dir *DirServer) SendHeartbeat() {
 		return
 	} else {
 		log.DEBUG("msg:%+v SendHeartbeat pack len %v", *req.Head, len(buf))
-		go dir.conn.Send(buf)
+		dir.SendRequest(buf)
 	}
 	log.DEBUG("SendHeartbeat send, dir %v", dir.url)
 }

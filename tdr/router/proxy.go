@@ -1,6 +1,8 @@
 package router
 
 import (
+	"fmt"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/common"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/logger"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/tcapdir_protocol_cs"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/terror"
@@ -12,7 +14,7 @@ type proxy struct {
 	appId     uint64
 	zoneId    uint32
 	signature string
-	router    interface{}
+	router    *Router
 
 	//用户协程和网络协程会同时操作
 	tbMutex       sync.RWMutex
@@ -127,10 +129,24 @@ func (p *proxy) switchServerList() {
 	p.hashMutex.Lock()
 	p.hashList = make([]*server, 0, len(p.usingServerList))
 	for _, v := range p.usingServerList {
-		p.hashList = append(p.hashList, v)
+		if v.isAvailable() {
+			p.hashList = append(p.hashList, v)
+		}
 	}
 	p.hashMutex.Unlock()
 	logger.INFO("hashList %v", p.usingServerList)
+}
+
+func (p *proxy) updateHashList() {
+	//设置选路hash表
+	p.hashMutex.Lock()
+	p.hashList = make([]*server, 0, len(p.usingServerList))
+	for _, v := range p.usingServerList {
+		if v.isAvailable() {
+			p.hashList = append(p.hashList, v)
+		}
+	}
+	p.hashMutex.Unlock()
 }
 
 func (p *proxy) update() {
@@ -143,7 +159,7 @@ func (p *proxy) update() {
 func (p *proxy) sendHeartbeat() {
 	for _, v := range p.usingServerList {
 		if v.isAvailable() {
-			go v.sendHeartbeat()
+			v.sendHeartbeat()
 		}
 	}
 }
@@ -163,8 +179,13 @@ func (p *proxy) processTablesAndAccessMsg(msg *tcapdir_protocol_cs.ResGetTablesA
 	accessUrlMap := make(map[string]bool)
 	for i := 0; i < int(msg.AccessCount); i++ {
 		url := msg.AccessUrlList[i]
-		if _, _, _, err := tnet.ParseUrl(&url); err != nil {
+		urlNet, _, urlPort, err := tnet.ParseUrl(&url)
+		if err != nil {
 			logger.ERR("proxy url is invalid %s", url)
+		}
+		// 变更IP
+		if common.PublicIP != "" {
+			url = fmt.Sprintf("%s://%s:%s", urlNet, common.PublicIP, urlPort)
 		}
 		accessUrlMap[url] = true
 	}

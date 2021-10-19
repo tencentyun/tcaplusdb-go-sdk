@@ -1,11 +1,12 @@
 package record
 
 import (
-	"bytes"
 	"encoding/binary"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/logger"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/tcaplus_protocol_cs"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/terror"
+	"math"
+	"unsafe"
 )
 
 /**
@@ -16,6 +17,12 @@ import (
 	@notice		请根据xml表准确填写类型，最好调用SetKeyInt8等接口
 */
 func (r *Record) SetKey(name string, data interface{}) error {
+	if r.IsPB {
+		return &terror.ErrorCode{Code: terror.API_ERR_OPERATION_TYPE_NOT_MATCH}
+	}
+	return r.setKey(name, data)
+}
+func (r *Record) setKey(name string, data interface{}) error {
 	if len(name) >= int(tcaplus_protocol_cs.TCAPLUS_MAX_FIELD_NAME) {
 		logger.ERR("key name len over %d", tcaplus_protocol_cs.TCAPLUS_MAX_FIELD_NAME)
 		return &terror.ErrorCode{Code: terror.KeyNameLenOverMax}
@@ -24,12 +31,53 @@ func (r *Record) SetKey(name string, data interface{}) error {
 	//check type
 	var value []byte
 	switch t := data.(type) {
-	case bool, byte, int8, int16, uint16, int32, uint32, int64, uint64, float32, float64:
-		buf := new(bytes.Buffer)
-		if err := binary.Write(buf, binary.LittleEndian, data); err != nil {
-			return err
+	case bool:
+		value = make([]byte, 1, 1)
+		if t {
+			value[0] = 1
+		} else {
+			value[0] = 0
 		}
-		value = buf.Bytes()
+		break
+	case int8:
+		value = make([]byte, 1, 1)
+		value[0] = byte(t)
+		break
+	case int16:
+		value = make([]byte, 2, 2)
+		binary.LittleEndian.PutUint16(value, uint16(t))
+		break
+	case int32:
+		value = make([]byte, 4, 4)
+		binary.LittleEndian.PutUint32(value, uint32(t))
+		break
+	case int64:
+		value = make([]byte, 8, 8)
+		binary.LittleEndian.PutUint64(value, uint64(t))
+		break
+	case uint8:
+		value = make([]byte, 1, 1)
+		value[0] = t
+		break
+	case uint16:
+		value = make([]byte, 2, 2)
+		binary.LittleEndian.PutUint16(value, t)
+		break
+	case uint32:
+		value = make([]byte, 4, 4)
+		binary.LittleEndian.PutUint32(value, t)
+		break
+	case uint64:
+		value = make([]byte, 8, 8)
+		binary.LittleEndian.PutUint64(value, t)
+		break
+	case float32:
+		value = make([]byte, 4, 4)
+		binary.LittleEndian.PutUint32(value, math.Float32bits(t))
+		break
+	case float64:
+		value = make([]byte, 8, 8)
+		binary.LittleEndian.PutUint64(value, math.Float64bits(t))
 		break
 	case []byte:
 		if b, ok := data.([]byte); !ok {
@@ -148,6 +196,12 @@ func (r *Record) SetKeyBlob(name string, data []byte) error {
 	@notice		请根据xml表准确填写类型，最好调用SetValueInt8等接口
 */
 func (r *Record) SetValue(name string, data interface{}) error {
+	if r.IsPB {
+		return &terror.ErrorCode{Code: terror.API_ERR_OPERATION_TYPE_NOT_MATCH}
+	}
+	return r.setValue(name, data)
+}
+func (r *Record) setValue(name string, data interface{}) error {
 	if len(name) >= int(tcaplus_protocol_cs.TCAPLUS_MAX_FIELD_NAME) {
 		logger.ERR("value name len over %d", tcaplus_protocol_cs.TCAPLUS_MAX_FIELD_NAME)
 		return &terror.ErrorCode{Code: terror.ValueNameLenOverMax}
@@ -156,12 +210,53 @@ func (r *Record) SetValue(name string, data interface{}) error {
 	//check type
 	var value []byte
 	switch t := data.(type) {
-	case bool, byte, int8, int16, uint16, int32, uint32, int64, uint64, float32, float64:
-		buf := new(bytes.Buffer)
-		if err := binary.Write(buf, binary.LittleEndian, data); err != nil {
-			return err
+	case bool:
+		value = make([]byte, 1, 1)
+		if t {
+			value[0] = 1
+		} else {
+			value[0] = 0
 		}
-		value = buf.Bytes()
+		break
+	case int8:
+		value = make([]byte, 1, 1)
+		value[0] = byte(t)
+		break
+	case int16:
+		value = make([]byte, 2, 2)
+		binary.LittleEndian.PutUint16(value, uint16(t))
+		break
+	case int32:
+		value = make([]byte, 4, 4)
+		binary.LittleEndian.PutUint32(value, uint32(t))
+		break
+	case int64:
+		value = make([]byte, 8, 8)
+		binary.LittleEndian.PutUint64(value, uint64(t))
+		break
+	case uint8:
+		value = make([]byte, 1, 1)
+		value[0] = t
+		break
+	case uint16:
+		value = make([]byte, 2, 2)
+		binary.LittleEndian.PutUint16(value, t)
+		break
+	case uint32:
+		value = make([]byte, 4, 4)
+		binary.LittleEndian.PutUint32(value, t)
+		break
+	case uint64:
+		value = make([]byte, 8, 8)
+		binary.LittleEndian.PutUint64(value, t)
+		break
+	case float32:
+		value = make([]byte, 4, 4)
+		binary.LittleEndian.PutUint32(value, math.Float32bits(t))
+		break
+	case float64:
+		value = make([]byte, 8, 8)
+		binary.LittleEndian.PutUint64(value, math.Float64bits(t))
 		break
 	case []byte:
 		if b, ok := data.([]byte); !ok {
@@ -186,8 +281,8 @@ func (r *Record) SetValue(name string, data interface{}) error {
 		return &terror.ErrorCode{Code: terror.RecordKeyTypeInvalid}
 	}
 
-	if len(value) > int(tcaplus_protocol_cs.TCAPLUS_MAX_VALUE_FIELD_LEN) {
-		logger.ERR("value len over %d", tcaplus_protocol_cs.TCAPLUS_MAX_VALUE_FIELD_LEN)
+	if len(value) > int(tcaplus_protocol_cs.TCAPLUS_MAX_VALUE_ALL_FIELDS_LEN) {
+		logger.ERR("value len over %d", tcaplus_protocol_cs.TCAPLUS_MAX_VALUE_ALL_FIELDS_LEN)
 		return &terror.ErrorCode{Code: terror.ValueLenOverMax}
 	}
 
@@ -334,6 +429,12 @@ func (r *Record) AddValueOperation(name string, op uint32, lowerLimit int64, upp
 	@notice		请根据xml表准确填写类型，最好调用GetKeyInt8等接口
 */
 func (r *Record) GetKey(name string, data interface{}) error {
+	if r.IsPB {
+		return &terror.ErrorCode{Code: terror.API_ERR_OPERATION_TYPE_NOT_MATCH}
+	}
+	return r.getKey(name, data)
+}
+func (r *Record) getKey(name string, data interface{}) error {
 	if len(name) >= int(tcaplus_protocol_cs.TCAPLUS_MAX_FIELD_NAME) {
 		logger.ERR("key name len over %d", tcaplus_protocol_cs.TCAPLUS_MAX_FIELD_NAME)
 		return &terror.ErrorCode{Code: terror.KeyNameLenOverMax}
@@ -344,11 +445,28 @@ func (r *Record) GetKey(name string, data interface{}) error {
 		return &terror.ErrorCode{Code: terror.RecordKeyNotExist}
 	} else {
 		switch t := data.(type) {
-		case *bool, *byte, *int8, *int16, *uint16, *int32, *uint32, *int64, *uint64, *float32, *float64:
-			if err := binary.Read(bytes.NewReader(keyData), binary.LittleEndian, data); err != nil {
-				logger.ERR("zone %d table %s key %s binary.Read err %s", r.TableName, r.ZoneId, name, err.Error())
-				return err
-			}
+		case *bool:
+			*t = keyData[0] != 0
+		case *int8:
+			*t = int8(keyData[0])
+		case *uint8:
+			*t = keyData[0]
+		case *int16:
+			*t = *(*int16)(unsafe.Pointer(&keyData[0]))
+		case *uint16:
+			*t = *(*uint16)(unsafe.Pointer(&keyData[0]))
+		case *int32:
+			*t = *(*int32)(unsafe.Pointer(&keyData[0]))
+		case *uint32:
+			*t = *(*uint32)(unsafe.Pointer(&keyData[0]))
+		case *int64:
+			*t = *(*int64)(unsafe.Pointer(&keyData[0]))
+		case *uint64:
+			*t = *(*uint64)(unsafe.Pointer(&keyData[0]))
+		case *float32:
+			*t = *(*float32)(unsafe.Pointer(&keyData[0]))
+		case *float64:
+			*t = *(*float64)(unsafe.Pointer(&keyData[0]))
 		case *[]byte:
 			*t = keyData
 		case *string:
@@ -470,6 +588,12 @@ func (r *Record) GetKeyBlob(name string) ([]byte, error) {
 	@notice		请根据xml表准确填写类型，最好调用GetValueInt8等接口
 */
 func (r *Record) GetValue(name string, data interface{}) error {
+	if r.IsPB {
+		return &terror.ErrorCode{Code: terror.API_ERR_OPERATION_TYPE_NOT_MATCH}
+	}
+	return r.getValue(name, data)
+}
+func (r *Record) getValue(name string, data interface{}) error {
 	if len(name) >= int(tcaplus_protocol_cs.TCAPLUS_MAX_FIELD_NAME) {
 		logger.ERR("value name len over %d", tcaplus_protocol_cs.TCAPLUS_MAX_FIELD_NAME)
 		return &terror.ErrorCode{Code: terror.KeyNameLenOverMax}
@@ -480,11 +604,28 @@ func (r *Record) GetValue(name string, data interface{}) error {
 		return &terror.ErrorCode{Code: terror.RecordValueNotExist}
 	} else {
 		switch t := data.(type) {
-		case *bool, *byte, *int8, *int16, *uint16, *int32, *uint32, *int64, *uint64, *float32, *float64:
-			if err := binary.Read(bytes.NewReader(valueData), binary.LittleEndian, data); err != nil {
-				logger.ERR("zone %d table %s key %s binary.Read err %s", r.ZoneId, r.TableName, name, err.Error())
-				return err
-			}
+		case *bool:
+			*t = valueData[0] != 0
+		case *int8:
+			*t = int8(valueData[0])
+		case *uint8:
+			*t = valueData[0]
+		case *int16:
+			*t = *(*int16)(unsafe.Pointer(&valueData[0]))
+		case *uint16:
+			*t = *(*uint16)(unsafe.Pointer(&valueData[0]))
+		case *int32:
+			*t = *(*int32)(unsafe.Pointer(&valueData[0]))
+		case *uint32:
+			*t = *(*uint32)(unsafe.Pointer(&valueData[0]))
+		case *int64:
+			*t = *(*int64)(unsafe.Pointer(&valueData[0]))
+		case *uint64:
+			*t = *(*uint64)(unsafe.Pointer(&valueData[0]))
+		case *float32:
+			*t = *(*float32)(unsafe.Pointer(&valueData[0]))
+		case *float64:
+			*t = *(*float64)(unsafe.Pointer(&valueData[0]))
 		case *[]byte:
 			*t = valueData
 		case *string:

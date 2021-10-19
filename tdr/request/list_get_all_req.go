@@ -17,10 +17,11 @@ type listGetAllRequest struct {
 	record       *record.Record
 	pkg          *tcaplus_protocol_cs.TCaplusPkg
 	valueNameMap map[string]bool
+	isPB         bool
 }
 
 func newListGetAllRequest(appId uint64, zoneId uint32, tableName string, cmd int,
-	seq uint32, pkg *tcaplus_protocol_cs.TCaplusPkg) (*listGetAllRequest, error) {
+	seq uint32, pkg *tcaplus_protocol_cs.TCaplusPkg, isPB bool) (*listGetAllRequest, error) {
 	if pkg == nil || pkg.Body == nil || pkg.Body.ListGetAllReq == nil {
 		return nil, &terror.ErrorCode{Code: terror.API_ERR_PARAMETER_INVALID, Message: "pkg init fail"}
 	}
@@ -35,6 +36,7 @@ func newListGetAllRequest(appId uint64, zoneId uint32, tableName string, cmd int
 		record:       nil,
 		pkg:          pkg,
 		valueNameMap: make(map[string]bool),
+		isPB:         isPB,
 	}
 	return req, nil
 }
@@ -55,8 +57,11 @@ func (req *listGetAllRequest) AddRecord(index int32) (*record.Record, error) {
 		KeySet:      nil,
 		ValueSet:    nil,
 		UpdFieldSet: nil,
+		IsPB:        req.isPB,
 	}
 
+	rec.ShardingKey = &req.pkg.Head.SplitTableKeyBuff
+	rec.ShardingKeyLen = &req.pkg.Head.SplitTableKeyBuffLen
 	rec.KeySet = req.pkg.Head.KeyInfo
 	//rec.ValueSet = req.pkg.Body.ListGetAllReq.ElementValueNames
 	req.record = rec
@@ -85,16 +90,22 @@ func (req *listGetAllRequest) Pack() ([]byte, error) {
 		return nil, err
 	}
 
-	if len(req.valueNameMap) > 0 {
-		for name, _ := range req.valueNameMap {
-			req.record.ValueMap[name] = []byte{}
+	if req.isPB {
+		//req.pkg.Body.ListGetAllReq.ElementValueNames.FieldNum = 3
+		//req.pkg.Body.ListGetAllReq.ElementValueNames.FieldName = []string{"klen", "vlen", "value"}
+	} else {
+		if len(req.valueNameMap) > 0 {
+			for name, _ := range req.valueNameMap {
+				req.record.ValueMap[name] = []byte{}
+			}
 		}
-	}
-
-	for key, _ := range req.record.ValueMap {
-		req.pkg.Body.ListGetAllReq.ElementValueNames.FieldNum += 1
-		req.pkg.Body.ListGetAllReq.ElementValueNames.FieldName =
-			append(req.pkg.Body.ListGetAllReq.ElementValueNames.FieldName, key)
+		nameSet := req.pkg.Body.ListGetAllReq.ElementValueNames
+		nameSet.FieldNum = 0
+		nameSet.FieldName = make([]string, len(req.record.ValueMap))
+		for key, _ := range req.record.ValueMap {
+			nameSet.FieldName[nameSet.FieldNum] = key
+			nameSet.FieldNum++
+		}
 	}
 
 	logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
@@ -142,10 +153,6 @@ func (req *listGetAllRequest) SetResultLimit(limit int32, offset int32) int32 {
 	return int32(terror.GEN_ERR_SUC)
 }
 
-func (req *listGetAllRequest) SetAddableIncreaseFlag(increase_flag byte) int32 {
-	return int32(terror.GEN_ERR_SUC)
-}
-
 func (req *listGetAllRequest) SetMultiResponseFlag(multi_flag byte) int32 {
 	if 1 == multi_flag {
 		req.pkg.Body.ListGetAllReq.AllowMultiResponses = 1
@@ -156,9 +163,35 @@ func (req *listGetAllRequest) SetMultiResponseFlag(multi_flag byte) int32 {
 }
 
 func (req *listGetAllRequest) SetResultFlagForSuccess(result_flag byte) int {
-	return terror.GEN_ERR_SUC
+	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
 }
 
 func (req *listGetAllRequest) SetResultFlagForFail(result_flag byte) int {
+	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
+}
+
+func (req *listGetAllRequest) SetPerfTest(sendTime uint64) int {
+	perf := tcaplus_protocol_cs.NewPerfTest()
+	perf.ApiSendTime = sendTime
+	perf.Version = tcaplus_protocol_cs.PerfTestCurrentVersion
+	p, err := perf.Pack(tcaplus_protocol_cs.PerfTestCurrentVersion)
+	if err != nil {
+		logger.ERR("pack perf error: %s", err)
+		return terror.API_ERR_PARAMETER_INVALID
+	}
+	req.pkg.Head.PerfTest = p
+	req.pkg.Head.PerfTestLen = uint32(len(p))
 	return terror.GEN_ERR_SUC
+}
+
+func (req *listGetAllRequest) SetFlags(flag int32) int {
+	return setFlags(req.pkg, flag)
+}
+
+func (req *listGetAllRequest) ClearFlags(flag int32) int {
+	return clearFlags(req.pkg, flag)
+}
+
+func (req *listGetAllRequest) GetFlags() int32 {
+	return req.pkg.Head.Flags
 }

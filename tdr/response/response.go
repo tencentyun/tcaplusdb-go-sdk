@@ -57,8 +57,17 @@ type TcaplusResponse interface {
 		获取分布式索引类型 2 为聚合操作  1 为非聚合操作  0 为无效操作
 	*/
 	GetSqlType() int
+
+	GetTcaplusPackagePtr() *tcaplus_protocol_cs.TCaplusPkg
+
+	// 获取表的记录总数，只适用于TCAPLUS_API_GET_TABLE_RECORD_COUNT_REQ请求获取返回结果
+	GetTableRecordCount() int
 }
 
+/*
+	大多数响应都会用到的函数放到commonInterface接口中
+	个别或者极少数响应的特殊方法放到TcaplusResponse
+*/
 type commonInterface interface {
 	/*
 		@brief  获取响应结果
@@ -144,6 +153,9 @@ type commonInterface interface {
 	               而GetRecordCount()函数只能返回单个分包中的(本响应中的)记录数.
 	*/
 	GetRecordMatchCount() int
+
+	// 获取perf用于定位各阶段耗时，recvTime 为接收时间戳，单位us
+	GetPerfTest(recvTime uint64) *tcaplus_protocol_cs.PerfTest
 }
 
 func NewResponse(pkg *tcaplus_protocol_cs.TCaplusPkg) (TcaplusResponse, error) {
@@ -192,6 +204,20 @@ func NewResponse(pkg *tcaplus_protocol_cs.TCaplusPkg) (TcaplusResponse, error) {
 		resp.commonInterface, err = newListDeleteBatchResponse(pkg)
 	case cmd.TcaplusApiSqlRes:
 		resp.commonInterface, err = newIndexQueryResponse(pkg)
+	case cmd.TcaplusApiMetadataGetRes:
+		resp.commonInterface, err = newGetMetaResponse(pkg)
+	case cmd.TcaplusApiPBFieldGetRes:
+		resp.commonInterface, err = newPbFieldGetResponse(pkg)
+	case cmd.TcaplusApiPBFieldUpdateRes:
+		resp.commonInterface, err = newPbFieldUpdateResponse(pkg)
+	case cmd.TcaplusApiPBFieldIncreaseRes:
+		resp.commonInterface, err = newPbFieldIncreaseResponse(pkg)
+	case cmd.TcaplusApiGetShardListRes:
+		resp.commonInterface, err = newGetShardListResponse(pkg)
+	case cmd.TcaplusApiTableTraverseRes:
+		resp.commonInterface, err = newTraverseResponse(pkg)
+	case cmd.TcaplusApiGetTableRecordCountRes:
+		resp.commonInterface, err = newCountResponse(pkg)
 	default:
 		logger.ERR("invalid cmd %d", pkg.Head.Cmd)
 		return nil, &terror.ErrorCode{Code: terror.InvalidCmd}
@@ -313,10 +339,32 @@ func (res *tcapResponse) ProcAggregationSqlQueryType() ([]string, error) {
 	}
 }
 
+func (res *tcapResponse) GetTcaplusPackagePtr() *tcaplus_protocol_cs.TCaplusPkg {
+	switch res.commonInterface.(type) {
+	case *getMetaResponse:
+		return res.commonInterface.(*getMetaResponse).GetTcaplusPackagePtr()
+	case *getShardListResponse:
+		return res.commonInterface.(*getShardListResponse).GetTcaplusPackagePtr()
+	case *traverseResponse:
+		return res.commonInterface.(*traverseResponse).GetTcaplusPackagePtr()
+	default:
+		return nil
+	}
+}
+
 func (res *tcapResponse) GetSqlType() int {
 	switch res.commonInterface.(type) {
 	case *indexQueryResponse:
 		return res.commonInterface.(*indexQueryResponse).GetSqlType()
+	default:
+		return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
+	}
+}
+
+func (res *tcapResponse) GetTableRecordCount() int {
+	switch res.commonInterface.(type) {
+	case *countResponse:
+		return res.commonInterface.(*countResponse).GetTableRecordCount()
 	default:
 		return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
 	}

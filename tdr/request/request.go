@@ -59,12 +59,18 @@ type TcaplusRequest interface {
 		@retval 非0               设置失败，具体错误参见 \link ErrorCode \endlink
 	*/
 	SetSql(query string) int
+
+	GetTcaplusPackagePtr() *tcaplus_protocol_cs.TCaplusPkg
 }
 
+/*
+	大多数响应都会用到的函数放到commonInterface接口中
+	个别或者极少数响应的特殊方法放到TcaplusRequest
+*/
 type commonInterface interface {
 	/**
 	  @brief  向请求中添加一条记录。
-	  @param [IN] index         用于List操作(目前不支持)，通常>=0，表示该Record在所属List中的Index；
+	  @param [IN] index         用于List操作,通常>=0，表示该Record在所属List中的Index；
 								对于Generic操作，index无意义，设0即可
 	  @retval record.Record     返回记录指针
 	  @retval error   			错误码
@@ -230,7 +236,7 @@ type commonInterface interface {
 
 	*/
 
-	//SetResultFlagForSuccess (result_flag byte) int
+	SetResultFlagForSuccess(result_flag byte) int
 
 	/**
 		@brief	设置响应标志。主要是本次请求执行失败后返回给前端的数据
@@ -312,7 +318,77 @@ type commonInterface interface {
 
 	*/
 
-	//SetResultFlagForFail (result_flag byte) int
+	SetResultFlagForFail(result_flag byte) int
+
+	// 设置perf用于定位各阶段耗时，sendTime 为发送时间戳，单位us
+	SetPerfTest(sendTime uint64) int
+
+	/**
+	    @brief  设置请求的通用标志位，可以通过"按位或"操作同时设定多个值
+	    @param  [IN]  flag. 请求标志位的值
+	    @retval 0     设置成功
+	    @retval <0    失败，返回对应的错误码。通常因为未初始化。
+	    @note   有效的标志位包括：
+	    *  TCAPLUS_FLAG_FETCH_ONLY_IF_MODIFIED:
+	    *       "数据变更才取回"标志位。在发起读操作之前，用户代码通过 TcaplusServiceRecord::SetVersion()
+	    *       带上本地缓存数据的版本号，并将此标志置位，那么存储端检测到当前数据与API本地缓存的数据版本
+	    *       一致时，表明该记录未发生过修改，API缓存的数据是最新的，因此在响应中将不会携带实际的数据，
+	    *       只是返回 TcapErrCode::COMMON_INFO_DATA_NOT_MODIFIED 的错误码
+	    *
+	    *       在请求中设置了此标志位之后，收到响应后应首先通过 TcaplusServiceResponse::GetFlags() 来获知
+	    *       发送请求时是否设置了TCAPLUS_FLAG_FETCH_ONLY_IF_MODIFIED标志.
+	    *
+	    *       只有如下请求支持设置此标志：
+	    *           TCAPLUS_API_GET_REQ,
+	    *           TCAPLUS_API_LIST_GET_REQ,
+	    *           TCAPLUS_API_LIST_GETALL_REQ
+	    *
+	    *  TCAPLUS_FLAG_FETCH_ONLY_IF_EXPIRED:
+	    *       "数据过期才取回"标志位。在发起读操作之前，用户代码通过 SetExpireTime() 设定数据过期时间，
+	    *       并将此标志置位，那么存储端若检测到记录在指定时间内发生过更新，则将数据返回，
+	    *       否则不返回实际数据，只是返回 TcapErrCode::COMMON_INFO_DATA_NOT_MODIFIED 的错误码。
+	    *
+	    *       在请求中设置了此标志位之后，收到响应后应首先通过 TcaplusServiceResponse::GetFlags() 来获知
+	    *       发送请求时是否设置了 TCAPLUS_FLAG_FETCH_ONLY_IF_EXPIRED 标志.
+	    *
+	    *       只有如下请求支持设置此标志：
+	    *           TCAPLUS_API_BATCH_GET_REQ
+	    *
+	    *  TCAPLUS_FLAG_ONLY_READ_FROM_SLAVE
+	    *       设置此标志后，读请求将会直接发送给Tcapsvr Slave 节点。
+	    *       Tcapsvr Slave 通常比较空闲，设置此标志有助于充分利用Tcapsvr Slave 资源。
+	    *
+	    *       适用场景:
+	    *                              对于数据实时性要求不高的读请求，
+	    *                              包括generic表和list表的所有读请求以及batchget，遍历请求
+		*
+	    *  TCAPLUS_FLAG_LIST_RESERVE_INDEX_HAVING_NO_ELEMENTS
+	    *       设置此标志后，List表删除最后一个元素时需要保留index和version。
+	    *       ListDelete ListDeleteBatch ListDeleteAll操作在删除list表最后一个元素时，
+	    *          设置此标志在写入新的List记录时，版本号依次增长，不会被重置为1。
+	    *
+	    *       适用场景:
+	    *                              业务需要确定某个表在删除最后一个元素时是否需要保留index和version
+	    *                              主要涉及List表的使用体验
+	    *
+	*/
+	SetFlags(flag int32) int
+
+	/**
+	  @brief  清理请求的通用标志位，可以通过"按位或"操作同时设定多个值
+	  @param  [IN]  flag. 请求标志位的值
+	  @retval 0     设置成功
+	  @retval <0    失败，返回对应的错误码。通常因为未初始化。
+	  @note   有效的标志位列表及详细解释请参考 SetFlags()
+	*/
+	ClearFlags(flag int32) int
+
+	/**
+	  @brief   获取请求的通用标志位
+	  @return  返回请求的通用标志位
+	  @note   有效的标志位列表及详细解释请参考 SetFlags()
+	*/
+	GetFlags() int32
 
 	//以下非对外
 	GetSeq() int32
@@ -322,7 +398,7 @@ type commonInterface interface {
 	Pack() ([]byte, error)
 }
 
-func NewRequest(appId uint64, zoneId uint32, tableName string, cmd int) (TcaplusRequest, error) {
+func NewRequest(appId uint64, zoneId uint32, tableName string, cmd int, isPB bool) (TcaplusRequest, error) {
 	innerSeq := uint32(0)
 	pkg := tcaplus_protocol_cs.NewTCaplusPkg()
 	pkg.Head.Magic = uint16(tcaplus_protocol_cs.TCAPLUS_PROTOCOL_MAGIC_CS)
@@ -345,42 +421,56 @@ func NewRequest(appId uint64, zoneId uint32, tableName string, cmd int) (Tcaplus
 
 	switch cmd {
 	case tcaplusCmd.TcaplusApiInsertReq:
-		req.commonInterface, err = newInsertRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
+		req.commonInterface, err = newInsertRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
 	case tcaplusCmd.TcaplusApiGetReq:
-		req.commonInterface, err = newGetRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
+		req.commonInterface, err = newGetRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
 	case tcaplusCmd.TcaplusApiUpdateReq:
-		req.commonInterface, err = newUpdateRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
+		req.commonInterface, err = newUpdateRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
 	case tcaplusCmd.TcaplusApiReplaceReq:
-		req.commonInterface, err = newReplaceRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
+		req.commonInterface, err = newReplaceRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
 	case tcaplusCmd.TcaplusApiDeleteReq:
-		req.commonInterface, err = newdeleteRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
+		req.commonInterface, err = newdeleteRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
 	case tcaplusCmd.TcaplusApiGetByPartkeyReq:
-		req.commonInterface, err = newGetByPartKeyRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
+		req.commonInterface, err = newGetByPartKeyRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
 	case tcaplusCmd.TcaplusApiDeleteByPartkeyReq:
-		req.commonInterface, err = newDeleteByPartKeyRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
+		req.commonInterface, err = newDeleteByPartKeyRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
 	case tcaplusCmd.TcaplusApiIncreaseReq:
-		req.commonInterface, err = newIncreaseRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
+		req.commonInterface, err = newIncreaseRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
 	case tcaplusCmd.TcaplusApiListGetAllReq:
-		req.commonInterface, err = newListGetAllRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
+		req.commonInterface, err = newListGetAllRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
 	case tcaplusCmd.TcaplusApiBatchGetReq:
-		req.commonInterface, err = newBatchGetRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
+		req.commonInterface, err = newBatchGetRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
 	//  not support yet
 	//case tcaplusCmd.TcaplusApiUpdateByPartkeyReq:
-	//	req.commonInterface, err = newUpdateByPartKeyRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
+	//	req.commonInterface, err = newUpdateByPartKeyRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
 	case tcaplusCmd.TcaplusApiListAddAfterReq:
-		req.commonInterface, err = newListAddAfterRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
+		req.commonInterface, err = newListAddAfterRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
 	case tcaplusCmd.TcaplusApiListGetReq:
-		req.commonInterface, err = newListGetRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
+		req.commonInterface, err = newListGetRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
 	case tcaplusCmd.TcaplusApiListDeleteReq:
-		req.commonInterface, err = newListDeleteRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
+		req.commonInterface, err = newListDeleteRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
 	case tcaplusCmd.TcaplusApiListDeleteAllReq:
-		req.commonInterface, err = newListDeleteAllRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
+		req.commonInterface, err = newListDeleteAllRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
 	case tcaplusCmd.TcaplusApiListReplaceReq:
-		req.commonInterface, err = newListReplaceRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
+		req.commonInterface, err = newListReplaceRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
 	case tcaplusCmd.TcaplusApiListDeleteBatchReq:
-		req.commonInterface, err = newListDeleteBatchRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
+		req.commonInterface, err = newListDeleteBatchRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
 	case tcaplusCmd.TcaplusApiSqlReq:
-		req.commonInterface, err = newIndexQueryRequest(appId, zoneId, tableName, cmd, innerSeq, pkg)
+		req.commonInterface, err = newIndexQueryRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
+	case tcaplusCmd.TcaplusApiMetadataGetReq:
+		req.commonInterface, err = newGetMetaRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
+	case tcaplusCmd.TcaplusApiPBFieldGetReq:
+		req.commonInterface, err = newPBFieldGetRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
+	case tcaplusCmd.TcaplusApiPBFieldUpdateReq:
+		req.commonInterface, err = newPBFieldUpdateRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
+	case tcaplusCmd.TcaplusApiPBFieldIncreaseReq:
+		req.commonInterface, err = newPBFieldIncreaseRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
+	case tcaplusCmd.TcaplusApiGetShardListReq:
+		req.commonInterface, err = newGetShardListRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
+	case tcaplusCmd.TcaplusApiTableTraverseReq:
+		req.commonInterface, err = newTraverseRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
+	case tcaplusCmd.TcaplusApiGetTableRecordCountReq:
+		req.commonInterface, err = newCountRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
 	default:
 		logger.ERR("invalid cmd %d", cmd)
 		return nil, &terror.ErrorCode{Code: terror.InvalidCmd}
@@ -396,7 +486,7 @@ func setUserBuffer(pkg *tcaplus_protocol_cs.TCaplusPkg, userBuffer []byte) error
 
 	if bufLen > int(tcaplus_protocol_cs.TCAPLUS_MAX_USERBUFF_LEN) {
 		logger.ERR("userBuffer len %d > %d", bufLen, tcaplus_protocol_cs.TCAPLUS_MAX_USERBUFF_LEN)
-		return terror.ErrorCode{Code: terror.API_ERR_INVALID_DATA_SIZE}
+		return &terror.ErrorCode{Code: terror.API_ERR_INVALID_DATA_SIZE}
 	}
 
 	pkg.Head.UserBuff = userBuffer
@@ -425,6 +515,70 @@ func keyHashCode(keySet *tcaplus_protocol_cs.TCaplusKeySet) (uint32, error) {
 		return 0, nil
 	}
 	return crc32.ChecksumIEEE(buf), nil
+}
+
+var allowd_flag_cmd_map = [][]uint32{
+	/* bit1 (0x00000001): TCAPLUS_FLAG_FETCH_ONLY_IF_MODIFIED */
+	{tcaplusCmd.TcaplusApiGetReq,
+		tcaplusCmd.TcaplusApiListGetReq,
+		tcaplusCmd.TcaplusApiListGetAllReq},
+	/* bit2 (0x00000002): TCAPLUS_FLAG_FETCH_ONLY_IF_EXPIRED */
+	{tcaplusCmd.TcaplusApiBatchGetReq},
+	/* bit3 (0x00000004): TCAPLUS_FLAG_ONLY_READ_FROM_SLAVE */
+	{tcaplusCmd.TcaplusApiGetReq,
+		//TCAPLUS_API_GET_TABLE_RECORD_COUNT_REQ,
+		tcaplusCmd.TcaplusApiListGetReq,
+		tcaplusCmd.TcaplusApiListGetAllReq,
+		tcaplusCmd.TcaplusApiGetByPartkeyReq,
+		//TCAPLUS_API_BATCH_GET_BY_PARTKEY_REQ,
+		//TCAPLUS_API_METADATA_GET_REQ,
+		tcaplusCmd.TcaplusApiTableTraverseReq,
+		//TCAPLUS_API_LIST_TABLE_TRAVERSE_REQ,
+		tcaplusCmd.TcaplusApiBatchGetReq},
+	/* bit4 (0x00000008): TCAPLUS_FLAG_LIST_RESERVE_INDEX_HAVING_NO_ELEMENTS */
+	{tcaplusCmd.TcaplusApiListDeleteReq,
+		tcaplusCmd.TcaplusApiListDeleteAllReq,
+		tcaplusCmd.TcaplusApiListDeleteBatchReq},
+}
+
+func manipulateFlags(pkg *tcaplus_protocol_cs.TCaplusPkg, flags int32, clear bool) int {
+	if pkg == nil {
+		return -1
+	}
+
+	// 针对每个flag检查合法
+	for i := 0; i < len(allowd_flag_cmd_map); i++ {
+		if ((1 << i) & flags) != 0 {
+			continue
+		}
+
+		k := 0
+		for ; k < len(allowd_flag_cmd_map[i]); k++ {
+			if allowd_flag_cmd_map[i][k] == pkg.Head.Cmd {
+				break
+			}
+		}
+
+		if k >= len(allowd_flag_cmd_map[i]) {
+			return -1
+		}
+	}
+
+	if clear {
+		pkg.Head.Flags &= ^flags
+	} else {
+		pkg.Head.Flags |= flags
+	}
+
+	return 0
+}
+
+func setFlags(pkg *tcaplus_protocol_cs.TCaplusPkg, flags int32) int {
+	return manipulateFlags(pkg, flags, false)
+}
+
+func clearFlags(pkg *tcaplus_protocol_cs.TCaplusPkg, flags int32) int {
+	return manipulateFlags(pkg, flags, true)
 }
 
 type tcapRequest struct {
@@ -464,5 +618,16 @@ func (req *tcapRequest) SetSql(query string) int {
 		return req.commonInterface.(*indexQueryRequest).SetSql(query)
 	default:
 		return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
+	}
+}
+
+func (req *tcapRequest) GetTcaplusPackagePtr() *tcaplus_protocol_cs.TCaplusPkg {
+	switch req.commonInterface.(type) {
+	case *getShardListRequest:
+		return req.commonInterface.(*getShardListRequest).GetTcaplusPackagePtr()
+	case *traverseRequest:
+		return req.commonInterface.(*traverseRequest).GetTcaplusPackagePtr()
+	default:
+		return nil
 	}
 }

@@ -1,10 +1,10 @@
 package record
 
 import (
-	"bytes"
-	"encoding/binary"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/logger"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/tcaplus_protocol_cs"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/terror"
+	"unsafe"
 )
 
 func (r *Record) UnPackKey() error {
@@ -41,14 +41,17 @@ func (r *Record) UnPackValue() error {
 		return &terror.ErrorCode{Code: terror.ParameterInvalid, Message: "record valueSet is nil"}
 	}
 
-	compactValueSet := r.ValueSet.CompactValueSet
-	//get fieldNum(4B)
-	fieldNum := int32(0)
-	if err := binary.Read(bytes.NewReader(compactValueSet.ValueBuf[0:4]), binary.LittleEndian, &fieldNum); err != nil {
-		logger.ERR("read fieldNum failed %s", err.Error())
-		return err
-	}
+	return r.unPackCompactValueSet(r.ValueSet.CompactValueSet)
+}
 
+func (r *Record) unPackCompactValueSet(compactValueSet *tcaplus_protocol_cs.CompactValueSet) error {
+	if nil == compactValueSet {
+		errMsg := "record valueSet compactValueSet is nil"
+		logger.ERR(errMsg)
+		return &terror.ErrorCode{Code: terror.ParameterInvalid, Message: errMsg}
+	}
+	//get fieldNum(4B)
+	fieldNum := *(*int32)(unsafe.Pointer(&compactValueSet.ValueBuf[0]))
 	if fieldNum != compactValueSet.FieldIndexNum {
 		logger.ERR("compactValueSet fieldNum %d not equal compactValueSet.FieldIndexNum %d",
 			compactValueSet.FieldIndexNum)
@@ -56,11 +59,7 @@ func (r *Record) UnPackValue() error {
 	}
 
 	//get version(4B)
-	version := int32(0)
-	if err := binary.Read(bytes.NewReader(compactValueSet.ValueBuf[4:8]), binary.LittleEndian, &version); err != nil {
-		logger.ERR("read version failed %s", err.Error())
-		return err
-	}
+	version := *(*int32)(unsafe.Pointer(&compactValueSet.ValueBuf[4]))
 	if r.Version != version {
 		logger.WARN("value version %d not equal key version %d", version, r.Version)
 	}
@@ -74,12 +73,7 @@ func (r *Record) UnPackValue() error {
 			logger.ERR("read offset is invalid %d", offset)
 			return &terror.ErrorCode{Code: terror.RecordUnpackFailed}
 		}
-		nameLen := int16(0)
-		if err := binary.Read(bytes.NewReader(compactValueSet.ValueBuf[offset:offset+2]),
-			binary.LittleEndian, &nameLen); err != nil {
-			logger.ERR("read nameLen failed %s", err.Error())
-			return err
-		}
+		nameLen := *(*int16)(unsafe.Pointer(&compactValueSet.ValueBuf[offset]))
 		if nameLen <= 1 {
 			//name 以0结尾必然大于1
 			logger.ERR("read nameLen is invalid %d", nameLen)
@@ -100,12 +94,7 @@ func (r *Record) UnPackValue() error {
 			logger.ERR("read offset is invalid %d", offset)
 			return &terror.ErrorCode{Code: terror.RecordUnpackFailed}
 		}
-		dataLen := int32(0)
-		if err := binary.Read(bytes.NewReader(compactValueSet.ValueBuf[offset:offset+4]),
-			binary.LittleEndian, &dataLen); err != nil {
-			logger.ERR("read value dataLen failed %s", err.Error())
-			return err
-		}
+		dataLen := *(*int32)(unsafe.Pointer(&compactValueSet.ValueBuf[offset]))
 		if dataLen < 0 {
 			logger.ERR("read dataLen is invalid %d", dataLen)
 			return &terror.ErrorCode{Code: terror.RecordUnpackFailed}
@@ -123,4 +112,13 @@ func (r *Record) UnPackValue() error {
 		r.ValueMap[name] = data
 	}
 	return nil
+}
+
+func (r *Record) UnPackPBValue() error {
+	if nil == r.PBValueSet {
+		logger.ERR("record valueSet is nil")
+		return &terror.ErrorCode{Code: terror.ParameterInvalid, Message: "record PBValueSet is nil"}
+	}
+
+	return r.unPackCompactValueSet(r.PBValueSet.CompactValueSet)
 }

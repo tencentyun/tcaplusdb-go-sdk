@@ -97,9 +97,9 @@ const (
 	/** \brief 更新应答 */
 	TcaplusApiUpdateRes = 0x001e
 
-	//TCAPLUS_API_METADATA_GET_REQ           = 0x001b
-	//
-	//TCAPLUS_API_METADATA_GET_RES           = 0x001c
+	TcaplusApiMetadataGetReq = 0x001b
+
+	TcaplusApiMetadataGetRes = 0x001c
 
 	// 服务化应用身份认证请求
 	TcaplusApiAppSignUpReq = 51
@@ -118,19 +118,19 @@ const (
 
 	// 客户端响应tcaproxy，表示暂时不再发送请求
 	TcaplusApiNotifyStopRes = 68
-	//
-	///** \brief 表遍历请求 */
-	//TCAPLUS_API_TABLE_TRAVERSE_REQ = 0x0045
-	//
-	///** \brief 表遍历响应 */
-	//TCAPLUS_API_TABLE_TRAVERSE_RES = 0x0046
-	//
-	///** \brief 表遍历前获取shard list请求 */
-	//TCAPLUS_API_GET_SHARD_LIST_REQ = 0x0047
-	//
-	///** \brief 表遍历前获取shard list响应 */
-	//TCAPLUS_API_GET_SHARD_LIST_RES = 0x0048
-	//
+
+	/** \brief 表遍历请求 */
+	TcaplusApiTableTraverseReq = 0x0045
+
+	/** \brief 表遍历响应 */
+	TcaplusApiTableTraverseRes = 0x0046
+
+	/** \brief 表遍历前获取shard list请求 */
+	TcaplusApiGetShardListReq = 0x0047
+
+	/** \brief 表遍历前获取shard list响应 */
+	TcaplusApiGetShardListRes = 0x0048
+
 	///** \brief 批量Partkey查询请求 */
 	//TCAPLUS_API_BATCH_GET_BY_PARTKEY_REQ           = 0x0049
 	//
@@ -161,36 +161,36 @@ const (
 	///** \brief 带有相同Partkey的批量insert响应 */
 	//TCAPLUS_API_INSERT_BY_PARTKEY_RES          = 0x0052
 	//
-	///** \brief table的记录总数请求 */
-	//TCAPLUS_API_GET_TABLE_RECORD_COUNT_REQ     = 0x0053
-	//
-	///** \brief table的记录总数响应 */
-	//TCAPLUS_API_GET_TABLE_RECORD_COUNT_RES     = 0x0054
+	/** \brief table的记录总数请求 */
+	TcaplusApiGetTableRecordCountReq = 0x0053
+
+	/** \brief table的记录总数响应 */
+	TcaplusApiGetTableRecordCountRes = 0x0054
 	//
 	///**\brief List table的遍历请求*/
 	//TCAPLUS_API_LIST_TABLE_TRAVERSE_REQ = 0x0057
 	//
 	///**\brief List table的遍历响应*/
 	//TCAPLUS_API_LIST_TABLE_TRAVERSE_RES = 0x0058
-	//
-	///** \brief protobuf部分字段获取请求 */
-	//TCAPLUS_API_PB_FIELD_GET_REQ           = 0x0067
-	//
-	///** \brief protobuf部分字段获取响应 */
-	//TCAPLUS_API_PB_FIELD_GET_RES           = 0x0068
-	//
-	///** \brief protobuf部分字段更新请求 */
-	//TCAPLUS_API_PB_FIELD_SET_REQ           = 0x0069
-	//
-	///** \brief protobuf部分字段更新响应 */
-	//TCAPLUS_API_PB_FIELD_SET_RES           = 0x006a
-	//
-	///** \brief protobuf部分字段自增请求 */
-	//TCAPLUS_API_PB_FIELD_INC_REQ           = 0x006b
-	//
-	///** \brief protobuf部分字段自增响应 */
-	//TCAPLUS_API_PB_FIELD_INC_RES           = 0x006c
-	//
+
+	/** \brief protobuf部分字段获取请求 */
+	TcaplusApiPBFieldGetReq = 0x0067
+
+	/** \brief protobuf部分字段获取响应 */
+	TcaplusApiPBFieldGetRes = 0x0068
+
+	/** \brief protobuf部分字段更新请求 */
+	TcaplusApiPBFieldUpdateReq = 0x0069
+
+	/** \brief protobuf部分字段更新响应 */
+	TcaplusApiPBFieldUpdateRes = 0x006a
+
+	/** \brief protobuf部分字段自增请求 */
+	TcaplusApiPBFieldIncreaseReq = 0x006b
+
+	/** \brief protobuf部分字段自增响应 */
+	TcaplusApiPBFieldIncreaseRes = 0x006c
+
 	///** \brief protobuf部分字段自增请求 */
 	//TCAPLUS_API_PB_BATCH_FIELD_GET_REQ           = 0x0075
 	//

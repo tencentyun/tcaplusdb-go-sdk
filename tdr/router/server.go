@@ -1,12 +1,12 @@
 package router
 
 import (
-	"bytes"
 	"encoding/binary"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/common"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/logger"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/cmd"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/tcaplus_protocol_cs"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/terror"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/tnet"
 	"time"
 )
@@ -27,8 +27,64 @@ type server struct {
 	conn        *tnet.Conn
 	connectTime time.Time
 	signUpTime  time.Time
-	router      interface{}
+	router      *Router
 	prepareStop bool //proxy准备stop
+
+	respMsgChanList []chan *common.PKGBuffer
+	closeFlag       chan struct{}
+}
+
+func (s *server) initRecv() {
+	if len(s.respMsgChanList) > 0 {
+		return
+	}
+	s.respMsgChanList = make([]chan *common.PKGBuffer, common.ConfigProcRespRoutineNum)
+	s.closeFlag = make(chan struct{})
+	for i := 0; i < common.ConfigProcRespRoutineNum; i++ {
+		s.respMsgChanList[i] = make(chan *common.PKGBuffer, common.ConfigProcRespDepth)
+		go func(ch chan *common.PKGBuffer, closeFlag chan struct{}) {
+			defer func() {
+				if r := recover(); r != nil {
+					logger.DEBUG("Recovered %v.", r)
+				}
+			}()
+
+			proc := func(pkg *common.PKGBuffer) {
+				buf := pkg.GetData()
+				logger.DEBUG("recv proxy response, unpack.")
+				start := time.Now()
+				resp := tcaplus_protocol_cs.NewTCaplusPkg()
+				err := resp.Unpack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion, buf)
+				// 之后这个pkg不会再被用到，回收到对象池中
+				pkg.Done()
+				if err != nil {
+					logger.ERR("Unpack proxy msg failed, url %s err %v", s.proxyUrl, err.Error())
+					return
+				}
+
+				if time.Now().Sub(start) > 10*time.Millisecond {
+					logger.WARN("unpack > 10ms data %v.", buf)
+				}
+
+				s.processRsp(resp)
+			}
+
+			for {
+				select {
+				case <-closeFlag:
+					for len(ch) > 0 {
+						for i := 0; i < len(ch); i++ {
+							proc(<-ch)
+						}
+					}
+					logger.INFO("exit recv routine.")
+					return
+				case buf := <-ch:
+					proc(buf)
+				}
+			}
+		}(s.respMsgChanList[i], s.closeFlag)
+	}
 }
 
 func (s *server) getSignUpStat() uint32 {
@@ -63,6 +119,8 @@ func (s *server) isAvailable() bool {
 func (s *server) disConnect() {
 	s.prepareStop = false
 	s.signUpFlag = NotSignUp
+	close(s.closeFlag)
+	s.respMsgChanList = nil
 	if s.conn != nil {
 		s.conn.Close()
 		s.conn = nil
@@ -71,11 +129,19 @@ func (s *server) disConnect() {
 
 func (s *server) send(data []byte) error {
 	logger.DEBUG("send to proxy %s", s.proxyUrl)
-	_, err := s.conn.Send(data)
-	return err
+	if s.conn != nil {
+		_, err := s.conn.Send(data)
+		return err
+	}
+	logger.ERR("proxy svr %s conn is empty", s.proxyUrl)
+	return &terror.ErrorCode{Code: terror.SendRequestFail, Message: "proxy con is nil"}
 }
 
 func (s *server) connect() {
+	if s.prepareStop {
+		return
+	}
+	s.initRecv()
 	if s.conn == nil {
 		//连接proxy, 3s超时
 		conn, err := tnet.NewConn(s.proxyUrl, 3*time.Second, ParseProxyPkgLen, ProxyCallBackFunc, s)
@@ -146,7 +212,7 @@ func (s *server) signUp() {
 		return
 	} else {
 		logger.INFO("proxy %s msg:%s signUp pack len %v", s.proxyUrl, common.CsHeadVisualize(req.Head), len(buf))
-		go s.conn.Send(buf)
+		s.send(buf)
 	}
 }
 
@@ -172,7 +238,7 @@ func (s *server) sendHeartbeat() {
 		return
 	} else {
 		logger.DEBUG("proxy %s msg:%s sendHeartbeat pack len %v", s.proxyUrl, common.CsHeadVisualize(req.Head), len(buf))
-		s.conn.Send(buf)
+		s.send(buf)
 	}
 }
 
@@ -196,7 +262,7 @@ func (s *server) sendStopNotifyRes(asynID uint64) {
 		return
 	} else {
 		logger.INFO("proxy %s msg:%s sendStopNotifyRes pack len %v", s.proxyUrl, common.CsHeadVisualize(req.Head), len(buf))
-		s.conn.Send(buf)
+		s.send(buf)
 	}
 }
 
@@ -204,10 +270,8 @@ func (s *server) sendStopNotifyRes(asynID uint64) {
 //TCaplusPkgHead = Magic(2) + Version(2) + HeadLen(4) + BodyLen(4) = 12
 func ParseProxyPkgLen(buf []byte) int {
 	if len(buf) >= 12 {
-		headLen := int32(0)
-		bodyLen := int32(0)
-		binary.Read(bytes.NewReader(buf[4:8]), binary.BigEndian, &headLen)
-		binary.Read(bytes.NewReader(buf[8:12]), binary.BigEndian, &bodyLen)
+		headLen := binary.BigEndian.Uint32(buf[4:8])
+		bodyLen := binary.BigEndian.Uint32(buf[8:12])
 		return int(headLen) + int(bodyLen)
 	}
 	return 0
@@ -220,29 +284,21 @@ func ParseProxyPkgLen(buf []byte) int {
 @param cbPara 回调参数，此处为ProxyServer
 @retVal error
 */
-func ProxyCallBackFunc(url *string, buf []byte, cbPara interface{}) error {
-	go func() {
-		server, ok := cbPara.(*server)
-		if !ok {
-			logger.ERR("RecvCallBackFunc cbPara type invalid")
-			return
-		}
-
-		logger.DEBUG("recv proxy response, unpack.")
-		start := time.Now()
-		resp := tcaplus_protocol_cs.NewTCaplusPkg()
-		if err := resp.Unpack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion, buf); err != nil {
-			logger.ERR("Unpack proxy msg failed, url %v err %v", *url, err.Error())
-			return
-		}
-
-		if time.Now().Sub(start) > 10*time.Millisecond {
-			logger.WARN("unpack > 10ms data %v.", buf)
-		}
-
-		server.processRsp(resp)
-	}()
-
+func ProxyCallBackFunc(url *string, pkg *common.PKGBuffer, cbPara interface{}) error {
+	buf := pkg.GetData()
+	asyncId := binary.BigEndian.Uint64(buf[12:])
+	seq := binary.BigEndian.Uint32(buf[20:])
+	server, ok := cbPara.(*server)
+	if !ok {
+		logger.ERR("RecvCallBackFunc cbPara type invalid")
+		return nil
+	}
+	id := (asyncId + uint64(seq)) % uint64(common.ConfigProcRespRoutineNum)
+	select {
+	case <-server.closeFlag:
+		logger.INFO("exit recv routine.")
+	case server.respMsgChanList[id] <- pkg:
+	}
 	return nil
 }
 
@@ -261,9 +317,7 @@ func (s *server) processRsp(msg *tcaplus_protocol_cs.TCaplusPkg) {
 	case cmd.TcaplusApiNotifyStopReq:
 		logger.INFO("recv TcaplusApiNotifyStopReq from %s", s.proxyUrl)
 		s.prepareStop = true
-		time.AfterFunc(time.Second, func() {
-			s.sendStopNotifyRes(msg.Head.AsynID)
-		})
+		s.sendStopNotifyRes(msg.Head.AsynID)
 
 	case cmd.TcaplusApiHeartBeatRes:
 		curTime := time.Now().UnixNano() / 1000
@@ -295,12 +349,25 @@ func (s *server) processRsp(msg *tcaplus_protocol_cs.TCaplusPkg) {
 		cmd.TcaplusApiListDeleteAllRes,
 		cmd.TcaplusApiListReplaceRes,
 		cmd.TcaplusApiListDeleteBatchRes,
-		cmd.TcaplusApiSqlRes:
-		if msg.Body.TCaplusSqlRes != nil {
-			logger.INFO("%s", common.CovertToJson(msg.Body.TCaplusSqlRes))
+		cmd.TcaplusApiSqlRes,
+		cmd.TcaplusApiMetadataGetRes,
+		cmd.TcaplusApiPBFieldGetRes,
+		cmd.TcaplusApiPBFieldUpdateRes,
+		cmd.TcaplusApiPBFieldIncreaseRes,
+		cmd.TcaplusApiGetShardListRes,
+		cmd.TcaplusApiTableTraverseRes,
+		cmd.TcaplusApiGetTableRecordCountRes:
+		if logger.GetLogLevel() == "DEBUG" {
+			logger.DEBUG("recv proxy %s response %s", s.proxyUrl, common.CsHeadVisualize(msg.Head))
 		}
-		logger.DEBUG("recv proxy %s response %s", s.proxyUrl, common.CsHeadVisualize(msg.Head))
-		router := s.router.(*Router)
+		router := s.router
+		if msg.Head.Cmd == cmd.TcaplusApiTableTraverseRes || msg.Head.Cmd == cmd.TcaplusApiGetShardListRes {
+			drop := false
+			router.TM.OnRecvResponse(s.zoneId, msg, &drop)
+			if drop {
+				return
+			}
+		}
 		router.processRouterMsg(msg)
 		logger.DEBUG("recv proxy response finish")
 

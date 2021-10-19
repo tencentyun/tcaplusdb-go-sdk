@@ -27,7 +27,7 @@ func (res *updataByPartKeyResponse) GetResult() int {
 }
 
 func (res *updataByPartKeyResponse) GetTableName() string {
-	tableName := string(res.pkg.Head.RouterInfo.TableName[0:res.pkg.Head.RouterInfo.TableNameLen])
+	tableName := string(res.pkg.Head.RouterInfo.TableName[0 : res.pkg.Head.RouterInfo.TableNameLen-1])
 	return tableName
 }
 
@@ -61,7 +61,7 @@ func (res *updataByPartKeyResponse) FetchRecord() (*record.Record, error) {
 	rec := &record.Record{
 		AppId:       uint64(res.pkg.Head.RouterInfo.AppID),
 		ZoneId:      uint32(res.pkg.Head.RouterInfo.ZoneID),
-		TableName:   string(res.pkg.Head.RouterInfo.TableName[0:res.pkg.Head.RouterInfo.TableNameLen]),
+		TableName:   string(res.pkg.Head.RouterInfo.TableName[0 : res.pkg.Head.RouterInfo.TableNameLen-1]),
 		Cmd:         int(res.pkg.Head.Cmd),
 		KeyMap:      make(map[string][]byte),
 		ValueMap:    make(map[string][]byte),
@@ -77,15 +77,15 @@ func (res *updataByPartKeyResponse) FetchRecord() (*record.Record, error) {
 			rec.AppId, rec.ZoneId, rec.TableName, err.Error())
 		return nil, err
 	}
-	resutl := int32(0)
-	read_bytes := int32(0)
-	if err := unpack_suc_keys_buffLen(s.SucKeysBuff[res.offset:s.SucKeysBuffLen],
-		s.SucKeysBuffLen-res.offset, &resutl, rec.KeyMap, &read_bytes); err != nil {
+	result := int32(0)
+	readBytes := int32(0)
+	if err := unpackSucKeysBuffLen(s.SucKeysBuff[res.offset:s.SucKeysBuffLen],
+		s.SucKeysBuffLen-res.offset, &result, rec.KeyMap, &readBytes); err != nil {
 		logger.ERR("record unpack succ keys failed, app %d zone %d table %s ,err %s",
 			rec.AppId, rec.ZoneId, rec.TableName, err.Error())
 		return nil, err
 	}
-	res.offset += read_bytes
+	res.offset += readBytes
 	res.idx += 1
 	//logger.DEBUG("record unpack success, app %d zone %d table %s", rec.AppId, rec.ZoneId, rec.TableName)
 	res.record = rec
@@ -119,7 +119,7 @@ func (res *updataByPartKeyResponse) FetchErrorRecord() (*record.Record, error) {
 	rec := &record.Record{
 		AppId:       uint64(res.pkg.Head.RouterInfo.AppID),
 		ZoneId:      uint32(res.pkg.Head.RouterInfo.ZoneID),
-		TableName:   string(res.pkg.Head.RouterInfo.TableName[0:res.pkg.Head.RouterInfo.TableNameLen]),
+		TableName:   string(res.pkg.Head.RouterInfo.TableName[0 : res.pkg.Head.RouterInfo.TableNameLen-1]),
 		Cmd:         int(res.pkg.Head.Cmd),
 		KeyMap:      make(map[string][]byte),
 		ValueMap:    make(map[string][]byte),
@@ -134,4 +134,18 @@ func (res *updataByPartKeyResponse) FetchErrorRecord() (*record.Record, error) {
 
 func (res *updataByPartKeyResponse) GetRecordMatchCount() int {
 	return int(res.pkg.Body.UpdateByPartkeyRes.SucNum)
+}
+
+func (res *updataByPartKeyResponse) GetPerfTest(recvTime uint64) *tcaplus_protocol_cs.PerfTest {
+	if res.pkg.Head.PerfTestLen == 0 {
+		return nil
+	}
+	perf := tcaplus_protocol_cs.NewPerfTest()
+	err := perf.Unpack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion, res.pkg.Head.PerfTest)
+	if err != nil {
+		logger.ERR("unpack perf error: %s", err)
+		return nil
+	}
+	perf.ApiRecvTime = recvTime
+	return perf
 }

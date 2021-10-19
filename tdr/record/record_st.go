@@ -3,11 +3,18 @@ package record
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/logger"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/metadata"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/cmd"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/idl"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/tcaplus_protocol_cs"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/tcapdbproto"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/terror"
 	"github.com/tencentyun/tsf4g/tdrcom"
+	"google.golang.org/protobuf/encoding/protowire"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"reflect"
 	"strconv"
 	"strings"
@@ -21,9 +28,13 @@ const (
 	TdrSliceMaxCount = "tdr_count"
 )
 
+// 设置字段值函数定义
 type setFieldFunc func(name string, data interface{}) error
+
+// 获取字段值函数定义
 type getFieldFunc func(name string, data interface{}) error
 
+// tdr结构体接口，用于打解包
 type TdrTableSt interface {
 	GetTDRDBFeilds() *tdrcom.TDRDBFeilds
 	Init()
@@ -33,6 +44,7 @@ type TdrTableSt interface {
 	GetCurrentVersion() uint32
 }
 
+// tdr结构体接口，用于打解包
 type TdrSt interface {
 	Init()
 	Pack(cutVer uint32) ([]byte, error)
@@ -41,6 +53,7 @@ type TdrSt interface {
 	UnpackFrom(cutVer uint32, r *tdrcom.Reader) error
 }
 
+// tdr结构体接口，用于打解包
 type TdrUnion interface {
 	Init(selector int64)
 	Pack(cutVer uint32, selector int64) ([]byte, error)
@@ -113,11 +126,16 @@ func (r *Record) SetDataWithIndexAndField(data TdrTableSt, FieldNameList []strin
 	logger.DEBUG("st type %v", stType)
 
 	//遍历字段
-	for i := 0; i < stType.Elem().NumField(); i++ {
-		fieldTag := stType.Elem().Field(i).Tag.Get(TdrFieldTag)
-		fieldName := stType.Elem().Field(i).Name
-		fieldType := stType.Elem().Field(i).Type
-		fieldValue := stValue.Elem().Field(i)
+	numField := stType.Elem().NumField()
+	fieldFunc := stType.Elem().Field
+	valFieldFunc := stValue.Elem().Field
+
+	for i := 0; i < numField; i++ {
+		field := fieldFunc(i)
+		fieldTag := field.Tag.Get(TdrFieldTag)
+		fieldName := field.Name
+		fieldType := field.Type
+		fieldValue := valFieldFunc(i)
 		if len(fieldTag) <= 0 {
 			logger.ERR("data name %s has no tag", fieldName)
 			return &terror.ErrorCode{Code: terror.ParameterInvalid, Message: "data struct has no tag"}
@@ -127,7 +145,7 @@ func (r *Record) SetDataWithIndexAndField(data TdrTableSt, FieldNameList []strin
 		var setFieldFunc setFieldFunc
 		if _, exist := keyMap[fieldName]; exist {
 			//设置key字段
-			setFieldFunc = r.SetKey
+			setFieldFunc = r.setKey
 		} else if r.ValueSet != nil {
 			if r.Cmd == cmd.TcaplusApiGetReq {
 				//Get请求不关注value的内容
@@ -135,7 +153,7 @@ func (r *Record) SetDataWithIndexAndField(data TdrTableSt, FieldNameList []strin
 				continue
 			}
 			//设置value字段
-			setFieldFunc = r.SetValue
+			setFieldFunc = r.setValue
 		} else {
 			if r.Cmd == cmd.TcaplusApiGetByPartkeyReq {
 				if _, exist := fullkeyMap[fieldName]; false == exist {
@@ -184,7 +202,7 @@ func (r *Record) SetDataWithIndexAndField(data TdrTableSt, FieldNameList []strin
 			}
 
 			var stBuf []byte
-			unionTag := stType.Elem().Field(i).Tag.Get(TdrSelectTag)
+			unionTag := field.Tag.Get(TdrSelectTag)
 			//判断是否是union类型
 			if len(unionTag) > 0 {
 				//打包union
@@ -230,11 +248,8 @@ func (r *Record) SetDataWithIndexAndField(data TdrTableSt, FieldNameList []strin
 
 			//set data会埋入版本号
 			version := int16(data.GetCurrentVersion())
-			vBuf := new(bytes.Buffer)
-			if err := binary.Write(vBuf, binary.LittleEndian, version); err != nil {
-				return err
-			}
-			value := vBuf.Bytes()
+			value := make([]byte, 2, 2)
+			binary.LittleEndian.PutUint16(value, uint16(version))
 			value = append(value, stBuf...)
 			if err := setFieldFunc(fieldTag, value); err != nil {
 				return err
@@ -243,7 +258,7 @@ func (r *Record) SetDataWithIndexAndField(data TdrTableSt, FieldNameList []strin
 		//slice字段
 		case reflect.Slice:
 			//获取数组的大小
-			referTag := stType.Elem().Field(i).Tag.Get(TdrReferTag)
+			referTag := field.Tag.Get(TdrReferTag)
 			arrayCount := 0
 			if len(referTag) > 0 {
 				//exist refer
@@ -261,7 +276,7 @@ func (r *Record) SetDataWithIndexAndField(data TdrTableSt, FieldNameList []strin
 				arrayCount = count
 			} else {
 				//没有refer，则认为取最大长度
-				countTag := stType.Elem().Field(i).Tag.Get(TdrSliceMaxCount)
+				countTag := field.Tag.Get(TdrSliceMaxCount)
 				if len(countTag) <= 0 {
 					logger.ERR("field array tdr_count failed, name %s tag %s ", fieldName, fieldTag)
 					return &terror.ErrorCode{Code: terror.ParameterInvalid,
@@ -305,7 +320,7 @@ func (r *Record) SetDataWithIndexAndField(data TdrTableSt, FieldNameList []strin
 					if err := binary.Write(vBuf, binary.LittleEndian, version); err != nil {
 						return err
 					}
-					unionTag := stType.Elem().Field(i).Tag.Get(TdrSelectTag)
+					unionTag := field.Tag.Get(TdrSelectTag)
 					for j := 0; j < arrayCount; j++ {
 						eleValue := fieldValue.Index(j)
 						if eleValue.Elem().Kind() != reflect.Struct {
@@ -422,11 +437,16 @@ func (r *Record) GetData(data TdrTableSt) error {
 	logger.DEBUG("st type %v", stType)
 
 	//遍历字段
-	for i := 0; i < stType.Elem().NumField(); i++ {
-		fieldTag := stType.Elem().Field(i).Tag.Get(TdrFieldTag)
-		fieldName := stType.Elem().Field(i).Name
-		fieldType := stType.Elem().Field(i).Type
-		fieldValue := stValue.Elem().Field(i)
+	numField := stType.Elem().NumField()
+	fieldFunc := stType.Elem().Field
+	valFieldFunc := stValue.Elem().Field
+
+	for i := 0; i < numField; i++ {
+		field := fieldFunc(i)
+		fieldTag := field.Tag.Get(TdrFieldTag)
+		fieldName := field.Name
+		fieldType := field.Type
+		fieldValue := valFieldFunc(i)
 		if len(fieldTag) <= 0 {
 			logger.ERR("data name %s has no tag", fieldName)
 			return &terror.ErrorCode{Code: terror.ParameterInvalid, Message: "data struct has no tag"}
@@ -435,10 +455,10 @@ func (r *Record) GetData(data TdrTableSt) error {
 		var getFieldFunc getFieldFunc
 		var findMap map[string][]byte
 		if _, exist := keyMap[fieldName]; exist {
-			getFieldFunc = r.GetKey
+			getFieldFunc = r.getKey
 			findMap = r.KeyMap
 		} else {
-			getFieldFunc = r.GetValue
+			getFieldFunc = r.getValue
 			findMap = r.ValueMap
 		}
 
@@ -450,8 +470,73 @@ func (r *Record) GetData(data TdrTableSt) error {
 
 		//设置字段
 		switch fieldType.Kind() {
-		case reflect.Bool, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint8,
-			reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Float32, reflect.Float64, reflect.String:
+		case reflect.Bool:
+			var vData bool
+			if err := getFieldFunc(fieldTag, &vData); err != nil {
+				return err
+			}
+			fieldValue.SetBool(vData)
+		case reflect.Int8:
+			var vData int8
+			if err := getFieldFunc(fieldTag, &vData); err != nil {
+				return err
+			}
+			fieldValue.SetInt(int64(vData))
+		case reflect.Int16:
+			var vData int16
+			if err := getFieldFunc(fieldTag, &vData); err != nil {
+				return err
+			}
+			fieldValue.SetInt(int64(vData))
+		case reflect.Int32:
+			var vData int32
+			if err := getFieldFunc(fieldTag, &vData); err != nil {
+				return err
+			}
+			fieldValue.SetInt(int64(vData))
+		case reflect.Int64:
+			var vData int64
+			if err := getFieldFunc(fieldTag, &vData); err != nil {
+				return err
+			}
+			fieldValue.SetInt(vData)
+		case reflect.Uint8:
+			var vData uint8
+			if err := getFieldFunc(fieldTag, &vData); err != nil {
+				return err
+			}
+			fieldValue.SetUint(uint64(vData))
+		case reflect.Uint16:
+			var vData uint16
+			if err := getFieldFunc(fieldTag, &vData); err != nil {
+				return err
+			}
+			fieldValue.SetUint(uint64(vData))
+		case reflect.Uint32:
+			var vData uint32
+			if err := getFieldFunc(fieldTag, &vData); err != nil {
+				return err
+			}
+			fieldValue.SetUint(uint64(vData))
+		case reflect.Uint64:
+			var vData uint64
+			if err := getFieldFunc(fieldTag, &vData); err != nil {
+				return err
+			}
+			fieldValue.SetUint(uint64(vData))
+		case reflect.Float32:
+			var vData float32
+			if err := getFieldFunc(fieldTag, &vData); err != nil {
+				return err
+			}
+			fieldValue.SetFloat(float64(vData))
+		case reflect.Float64:
+			var vData float64
+			if err := getFieldFunc(fieldTag, &vData); err != nil {
+				return err
+			}
+			fieldValue.SetFloat(vData)
+		case reflect.String:
 			vData := reflect.New(fieldType)
 			if err := getFieldFunc(fieldTag, vData.Interface()); err != nil {
 				logger.ERR("getFieldFunc %s failed err %s", fieldTag, err.Error())
@@ -474,21 +559,14 @@ func (r *Record) GetData(data TdrTableSt) error {
 			}
 
 			if len(vData) <= 2 {
-				logger.DEBUG("getFieldFunc %s struct data len < 2", fieldTag)
+				logger.WARN("getFieldFunc %s struct data len < 2", fieldTag)
 				continue
 			}
 
 			//版本号2B
-			version := int16(0)
-			if err := binary.Read(bytes.NewReader(vData), binary.LittleEndian, &version); err != nil {
-				logger.ERR("zone %d table %s key %s binary.Read err %s",
-					r.ZoneId, r.TableName, fieldTag, err.Error())
-				return err
-			}
+			version := *(*int16)(unsafe.Pointer(&vData[0]))
 
-			newData := reflect.New(fieldType.Elem())
-			st := newData.Interface()
-			unionTag := stType.Elem().Field(i).Tag.Get(TdrSelectTag)
+			unionTag := field.Tag.Get(TdrSelectTag)
 			//判断是union类型
 			if len(unionTag) > 0 {
 				//解包union
@@ -498,7 +576,7 @@ func (r *Record) GetData(data TdrTableSt) error {
 					return err
 				}
 
-				tdrUnion, ok := st.(TdrUnion)
+				tdrUnion, ok := fieldValue.Interface().(TdrUnion)
 				if !ok {
 					logger.ERR("field type invalid name %s tag %s value %v trans to tdrUnion failed",
 						fieldName, fieldTag, fieldValue)
@@ -512,7 +590,7 @@ func (r *Record) GetData(data TdrTableSt) error {
 				}
 			} else {
 				//解包struct
-				tdrSt, ok := st.(TdrSt)
+				tdrSt, ok := fieldValue.Interface().(TdrSt)
 				if !ok {
 					logger.ERR("field type invalid name %s tag %s value %v trans to tdrSt failed",
 						fieldName, fieldTag, fieldValue)
@@ -526,7 +604,6 @@ func (r *Record) GetData(data TdrTableSt) error {
 					return err
 				}
 			}
-			fieldValue.Set(newData)
 
 		//slice 数组字段
 		case reflect.Slice:
@@ -538,20 +615,15 @@ func (r *Record) GetData(data TdrTableSt) error {
 			}
 
 			if len(vData) <= 2 {
-				logger.DEBUG("getFieldFunc %s array data len < 2", fieldTag)
+				logger.WARN("getFieldFunc %s array data len < 2", fieldTag)
 				continue
 			}
 
 			//版本号2B
-			version := int16(0)
-			if err := binary.Read(bytes.NewReader(vData), binary.LittleEndian, &version); err != nil {
-				logger.ERR("zone %d table %s key %s binary.Read err %s",
-					r.ZoneId, r.TableName, fieldTag, err.Error())
-				return err
-			}
+			version := *(*int16)(unsafe.Pointer(&vData[0]))
 
 			//获取数组的大小
-			referTag := stType.Elem().Field(i).Tag.Get(TdrReferTag)
+			referTag := field.Tag.Get(TdrReferTag)
 			arrayCount := 0
 			if len(referTag) > 0 {
 				//exist refer
@@ -749,9 +821,9 @@ func (r *Record) getUnionSelectForGetData(data TdrTableSt, selector string, keyM
 	//key or value get func
 	var getFieldFunc getFieldFunc
 	if _, exist := keyMap[selector]; exist {
-		getFieldFunc = r.GetKey
+		getFieldFunc = r.getKey
 	} else {
-		getFieldFunc = r.GetValue
+		getFieldFunc = r.getValue
 	}
 	stValue := reflect.ValueOf(data)
 	stType := reflect.TypeOf(data)
@@ -791,9 +863,9 @@ func (r *Record) getSliceCountForGetData(data TdrTableSt, refer string, keyMap m
 	//key or value get func
 	var getFieldFunc getFieldFunc
 	if _, exist := keyMap[refer]; exist {
-		getFieldFunc = r.GetKey
+		getFieldFunc = r.getKey
 	} else {
-		getFieldFunc = r.GetValue
+		getFieldFunc = r.getValue
 	}
 	stValue := reflect.ValueOf(data)
 	stType := reflect.TypeOf(data)
@@ -847,4 +919,318 @@ func (r *Record) AddValueOperation(FieldName string, FieldBuff []byte, FieldLen 
 	r.UpdFieldSet.Fields = append(r.UpdFieldSet.Fields, Fields)
 	return nil
 
+}
+
+/**
+  @brief  基于 PB Message 设置record数据
+  @param [IN] data  PB Message
+  @retval []byte 记录的keybuf，用来唯一确定一条记录，多用于请求与响应记录相对应
+  @retval error     错误码
+*/
+func (r *Record) SetPBData(message proto.Message) ([]byte, error) {
+	return r.setPBDataCommon(message, nil, nil)
+}
+
+/**
+    @brief 设置部分value字段，专用于field操作，TcaplusApiPBFieldGetReq TcaplusApiPBFieldUpdateReq TcaplusApiPBFieldIncreaseReq
+    @param [IN] msg proto.Message 由proto文件生成的记录结构体
+    @param [IN] values []string 指定本次设置的 value 字段
+    @retval []byte 由记录key字段编码生成，由于多条记录的响应记录是无序的，可以用这个值来匹配记录
+    @retval error 错误码
+**/
+func (r *Record) SetPBFieldValues(message proto.Message, values []string) ([]byte, error) {
+	return r.setPBDataCommon(message, nil, values)
+}
+
+/**
+    @brief 设置部分key字段，专用于partkey操作，TcaplusApiGetByPartkeyReq
+    @param [IN] msg proto.Message 由proto文件生成的记录结构体
+    @param [IN] keys []string 指定本次设置的 key 字段
+    @retval []byte 由记录key字段编码生成，由于多条记录的响应记录是无序的，可以用这个值来匹配记录
+    @retval error 错误码
+**/
+func (r *Record) SetPBPartKeys(message proto.Message, keys []string) ([]byte, error) {
+	return r.setPBDataCommon(message, keys, nil)
+}
+
+// 设置 protobuf 值。
+// 当 keys 不为空时，说明为 partkey 操作
+// 当 values 不为空时，说明为 field 操作
+func (r *Record) setPBDataCommon(message proto.Message, keys, values []string) ([]byte, error) {
+	// 检查 message 名与表名是否相符
+	table := message.ProtoReflect().Descriptor().Name()
+	if string(table) != r.TableName {
+		errMsg := fmt.Sprintf("message name (%s) not table name (%s)", table, r.TableName)
+		logger.ERR(errMsg)
+		return nil, &terror.ErrorCode{Code: terror.API_ERR_PARAMETER_INVALID, Message: errMsg}
+	}
+
+	// 检查是否从服务端获取到了这张表的元数据
+	zoneTable := fmt.Sprintf("%d|%d|%s", r.AppId, r.ZoneId, r.TableName)
+	msgDesGrp := metadata.GetMetaManager().GetTableDesGrp(zoneTable)
+	if msgDesGrp == nil {
+		errMsg := fmt.Sprintf("zone %d table %s is not in table map", r.ZoneId, r.TableName)
+		logger.ERR(errMsg)
+		return nil, &terror.ErrorCode{Code: terror.TableNotExist, Message: errMsg}
+	}
+
+	// 对比元数据，防止字段属性有修改但未更新db
+	if !msgDesGrp.Checked {
+		err := metadata.GetMetaManager().CompareMessageMeta(msgDesGrp.Desc, message.ProtoReflect().Descriptor())
+		if err != nil {
+			errMsg := fmt.Sprintf("CompareMessageMeta error:%s", err)
+			logger.ERR(errMsg)
+			return nil, &terror.ErrorCode{Code: terror.API_ERR_PARAMETER_INVALID, Message: errMsg}
+		}
+		msgDesGrp.Checked = true
+	}
+
+	// 如果有shardingkey则设置
+	if msgDesGrp.ShardingKey != "" {
+		keys := strings.Split(msgDesGrp.ShardingKey, ",")
+		shardingKey, _ := metadata.GetMetaManager().ExtractMsgPartKey(message, keys)
+		if r.ShardingKey != nil {
+			*r.ShardingKey = shardingKey
+			*r.ShardingKeyLen = uint32(len(shardingKey))
+		}
+		if r.SplitTableKeyBuff != nil {
+			r.SplitTableKeyBuff.SplitTableKeyBuff = shardingKey
+			r.SplitTableKeyBuff.SplitTableKeyBuffLen = uint32(len(shardingKey))
+		}
+	}
+
+	// 计算 key 值，区分 partkey 操作
+	if len(keys) == 0 {
+		keys = msgDesGrp.Keys
+	}
+	keybuf, err := metadata.GetMetaManager().ExtractMsgPartKey(message, keys)
+	if err != nil {
+		return nil, err
+	}
+
+	// 计算 value 值，区分 field 操作
+	var buf []byte
+	if len(values) == 0 {
+		buf, err = proto.Marshal(message)
+		if err != nil {
+			errMsg := fmt.Sprintf("Marshal message %s error:%s", table, err)
+			logger.ERR(errMsg)
+			return nil, &terror.ErrorCode{Code: terror.API_ERR_PACK_MESSAGE, Message: errMsg}
+		}
+	} else {
+		if r.PBFieldMap == nil {
+			errMsg := fmt.Sprintf("request not field operation")
+			logger.ERR(errMsg)
+			return nil, &terror.ErrorCode{Code: terror.API_ERR_PARAMETER_INVALID, Message: errMsg}
+		}
+		fieldMap, err := r.CheckValues(values)
+		if err != nil {
+			errMsg := fmt.Sprintf("CheckValues error:%s", err)
+			logger.ERR(errMsg)
+			return nil, &terror.ErrorCode{Code: terror.API_ERR_PARAMETER_INVALID, Message: errMsg}
+		}
+		r.setPBValues(message, fieldMap)
+	}
+
+	data := &idl.Tbl_Idl{Key: keybuf, Klen: int32(len(keybuf)), Value: buf, Vlen: int32(len(buf))}
+	return keybuf, r.SetData(data)
+}
+
+// 获取 shardingkey
+func (r *Record) GetTableShardingKey(message proto.Message) []byte {
+	zoneTable := fmt.Sprintf("%d|%d|%s", r.AppId, r.ZoneId, r.TableName)
+	msgGrp := metadata.GetMetaManager().GetTableDesGrp(zoneTable)
+	if msgGrp == nil {
+		return nil
+	}
+	keys := strings.Split(msgGrp.ShardingKey, ",")
+	shardingKey, _ := metadata.GetMetaManager().ExtractMsgPartKey(message, keys)
+	return shardingKey
+}
+
+/**
+    @brief  基于 PB Message 读取record数据
+    @param [IN] data   PB Message
+    @retval []byte 记录的keybuf，用来唯一确定一条记录，多用于请求与响应记录相对应
+    @retval error      错误码
+**/
+func (r *Record) GetPBData(message proto.Message) error {
+	return r.GetPBDataWithValues(message, nil)
+}
+
+// 专用于 field 方法
+/**
+    @brief 专用于 field 方法，获取响应
+    @param [IN] msg proto.Message 由proto文件生成的记录结构体
+    @retval error 错误码
+**/
+func (r *Record) GetPBFieldValues(message proto.Message) error {
+	if r.PBValueSet == nil {
+		errMsg := fmt.Sprintf("PBValueSet is nil")
+		logger.ERR(errMsg)
+		return &terror.ErrorCode{Code: terror.API_ERR_PARAMETER_INVALID, Message: errMsg}
+	}
+
+	zoneTable := fmt.Sprintf("%d|%d|%s", r.AppId, r.ZoneId, r.TableName)
+	msgDesGrp := metadata.GetMetaManager().GetTableDesGrp(zoneTable)
+	if msgDesGrp == nil {
+		errMsg := fmt.Sprintf("zone %d table %s is not in table map", r.ZoneId, r.TableName)
+		logger.ERR(errMsg)
+		return &terror.ErrorCode{Code: terror.TableNotExist, Message: errMsg}
+	}
+
+	buf, err := r.GetKeyBlob("key")
+	if err != nil {
+		return err
+	}
+	err = proto.Unmarshal(buf[2:], message)
+	if err != nil {
+		logger.ERR(err.Error())
+		return &terror.ErrorCode{Code: terror.API_ERR_UNPACK_MESSAGE}
+	}
+	for numPath, v := range r.ValueMap {
+		tmp := message
+		nums := msgDesGrp.NumberMap[numPath]
+		for i, num := range nums {
+			f := tmp.ProtoReflect().Descriptor().Fields().ByNumber(num)
+			if i == len(nums)-1 {
+				err := proto.UnmarshalOptions{Merge: true}.Unmarshal(v, tmp)
+				if err != nil {
+					logger.ERR(err.Error())
+					return &terror.ErrorCode{Code: terror.API_ERR_UNPACK_MESSAGE}
+				}
+			} else {
+				tmp = tmp.ProtoReflect().Mutable(f).Message().Interface()
+			}
+		}
+	}
+
+	return nil
+}
+
+// 获取指定value， values不为空时，将 values 以外的字段置空
+func (r *Record) GetPBDataWithValues(message proto.Message, values []string) error {
+	data := &idl.Tbl_Idl{}
+	err := r.GetData(data)
+	if err != nil {
+		value, exist := r.ValueMap["value"]
+		if !exist {
+			return err
+		}
+		_, exist = r.ValueMap["vlen"]
+		if !exist {
+			data.Value = value
+		} else {
+			data.Value = value[2:]
+		}
+	}
+	err = proto.Unmarshal(data.Value, message)
+	if err != nil {
+		logger.ERR(err.Error())
+		return &terror.ErrorCode{Code: terror.API_ERR_UNPACK_MESSAGE}
+	}
+
+	if len(values) == 0 {
+		return nil
+	}
+
+	fmap, err := r.CheckValues(values)
+	if err != nil {
+		errMsg := fmt.Sprintf("CheckValues error:%s", err)
+		logger.ERR(errMsg)
+		return &terror.ErrorCode{Code: terror.API_ERR_PARAMETER_INVALID, Message: errMsg}
+	}
+
+	r.cleanField(message.ProtoReflect(), fmap, "")
+
+	return nil
+}
+
+// 检查values是否都在message中
+func (r *Record) CheckValues(values []string) (map[string][]protowire.Number, error) {
+	fmap := make(map[string][]protowire.Number)
+
+	zoneTable := fmt.Sprintf("%d|%d|%s", r.AppId, r.ZoneId, r.TableName)
+	msgDesGrp := metadata.GetMetaManager().GetTableDesGrp(zoneTable)
+	if msgDesGrp == nil {
+		logger.ERR("zone %d table %s is not in table map", r.ZoneId, r.TableName)
+		return nil, fmt.Errorf("zone %d table %s is not in table map", r.ZoneId, r.TableName)
+	}
+
+	for _, v := range values {
+		nums, exist := msgDesGrp.FieldMap[v]
+		if !exist {
+			logger.ERR("field %s not in table %s", v, r.TableName)
+			return nil, fmt.Errorf("field %s not in table %s", v, r.TableName)
+		}
+		fmap[v] = nums
+	}
+	return fmap, nil
+}
+
+// 设置需要的字段
+func (r *Record) setPBValues(message proto.Message, fieldMap map[string][]protowire.Number) {
+	for _, nums := range fieldMap {
+		tmp := message.ProtoReflect()
+		var keybuf []byte
+		numPath := ""
+		for i, num := range nums {
+			f := tmp.Descriptor().Fields().ByNumber(num)
+			if numPath == "" {
+				numPath = fmt.Sprint(num)
+			} else {
+				numPath += "." + fmt.Sprint(num)
+			}
+			if i == len(nums)-1 {
+				keybuf, _ = tcapdbproto.MarshalOptions{}.MarshalField(keybuf, f, tmp.Get(f))
+			} else {
+				tmp = tmp.Get(f).Message()
+			}
+		}
+		r.ValueMap[numPath] = keybuf
+		r.PBFieldMap[numPath] = true
+	}
+}
+
+// 清除不需要的字段
+func (r *Record) cleanField(pro protoreflect.Message, fmap map[string][]protowire.Number, prefixName string) {
+	fields := pro.Descriptor().Fields()
+	for i := 0; i < fields.Len(); i++ {
+		f := fields.Get(i)
+		fname := prefixName
+		if prefixName == "" {
+			fname = string(f.Name())
+		} else {
+			fname += "." + string(f.Name())
+		}
+		if _, exist := fmap[fname]; exist {
+			continue
+		}
+		if f.Message() != nil {
+			r.cleanField(pro.Get(f).Message(), fmap, fname)
+		} else {
+			pro.Clear(f)
+		}
+	}
+}
+
+/**
+    @brief 获取记录key编码值
+    @retval []byte 由记录key字段编码生成，由于多条记录的响应记录是无序的，可以用这个值来匹配记录
+    @retval error 错误码
+**/
+func (r *Record) GetPBKey(msg proto.Message) ([]byte, error) {
+	buf, err := r.GetKeyBlob("key")
+	if err != nil {
+		logger.ERR(err.Error())
+		return nil, err
+	}
+	if msg != nil {
+		err = proto.Unmarshal(buf[2:], msg)
+		if err != nil {
+			logger.ERR(err.Error())
+			return nil, &terror.ErrorCode{Code: terror.API_ERR_UNPACK_MESSAGE}
+		}
+	}
+	return buf[2:], nil
 }

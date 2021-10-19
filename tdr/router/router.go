@@ -2,6 +2,8 @@ package router
 
 import (
 	"container/list"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/common"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/traverser"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -14,22 +16,33 @@ import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/terror"
 )
 
+// 同步请求结构体
 type SyncRequest struct {
 	//sync response msg chan
 	syncMsgPipe chan *tcaplus_protocol_cs.TCaplusPkg
 
 	//request package
 	requestPkg request.TcaplusRequest
+
+	delFromMap bool
+	syncId     int32
+}
+
+func (S *SyncRequest) InitTraverseChan(seq, num int32) {
+	S.syncMsgPipe = make(chan *tcaplus_protocol_cs.TCaplusPkg, num)
+	S.syncId = seq
 }
 
 func (S *SyncRequest) InitMoreChan(reqpkg request.TcaplusRequest, num int32) {
 	S.syncMsgPipe = make(chan *tcaplus_protocol_cs.TCaplusPkg, num)
 	S.requestPkg = reqpkg
+	S.syncId = reqpkg.GetSeq()
 }
 
 func (S *SyncRequest) Init(reqpkg request.TcaplusRequest) {
 	S.syncMsgPipe = make(chan *tcaplus_protocol_cs.TCaplusPkg, 1)
 	S.requestPkg = reqpkg
+	S.syncId = reqpkg.GetSeq()
 }
 
 func (S *SyncRequest) GetSyncChan() chan *tcaplus_protocol_cs.TCaplusPkg {
@@ -40,6 +53,7 @@ func (S *SyncRequest) SyncChanClose() {
 	close(S.syncMsgPipe)
 }
 
+// 用户请求路由结构体
 type Router struct {
 	appId     uint64
 	zoneList  []uint32
@@ -59,7 +73,62 @@ type Router struct {
 
 	//req chan map
 	reqChanMutex   sync.RWMutex
-	requestChanMap map[int32]SyncRequest
+	requestChanMap []map[int32]*SyncRequest
+
+	// 同步操作公用管道，防止出现响应回来请求还没加到map
+	syncOperateChan      []chan interface{}
+	syncOperateChanClose chan struct{}
+
+	TM *traverser.TraverserManager
+}
+
+func (r *Router) processSyncOperate() {
+	if len(r.syncOperateChan) > 0 {
+		return
+	}
+	r.requestChanMap = make([]map[int32]*SyncRequest, common.ConfigProcRouterRoutineNum)
+	r.syncOperateChan = make([]chan interface{}, common.ConfigProcRouterRoutineNum)
+	r.syncOperateChanClose = make(chan struct{})
+	for i := 0; i < common.ConfigProcRouterRoutineNum; i++ {
+		r.requestChanMap[i] = make(map[int32]*SyncRequest)
+		r.syncOperateChan[i] = make(chan interface{}, common.ConfigProcRouterDepth)
+		go func(id int) {
+			ch := r.syncOperateChan[id]
+			rmap := r.requestChanMap[id]
+			proc := func(p interface{}) {
+				if req, ok := p.(*SyncRequest); ok {
+					if req.delFromMap {
+						delete(rmap, req.syncId)
+					} else {
+						rmap[req.syncId] = req
+					}
+				} else {
+					msg := p.(*tcaplus_protocol_cs.TCaplusPkg)
+					if v, exist := rmap[msg.Head.Seq]; exist {
+						v.syncMsgPipe <- msg
+					} else {
+						logger.ERR("Can not find request chan %d", msg.Head.Seq)
+					}
+				}
+			}
+
+			for {
+				select {
+				case <-r.syncOperateChanClose:
+					// 退出前处理完管道中的包
+					for len(ch) > 0 {
+						for i := 0; i < len(ch); i++ {
+							proc(<-ch)
+						}
+					}
+					logger.INFO("processSyncOperate exit")
+					return
+				case p := <-ch:
+					proc(p)
+				}
+			}
+		}(i)
+	}
 }
 
 //此处的是用户pkg，非用户pkg已在func (s *server)processRsp回调中处理
@@ -72,13 +141,12 @@ func (r *Router) processRouterMsg(msg *tcaplus_protocol_cs.TCaplusPkg) {
 		logger.DEBUG("add one msg to queue, %d", r.respCount)
 		return
 	}
-	r.reqChanMutex.RLock()
-	if v, exist := r.requestChanMap[msg.Head.Seq]; exist {
-		v.syncMsgPipe <- msg
-	} else {
-		logger.ERR("Can not find request chan %d", msg.Head.Seq)
+
+	select {
+	case <-r.syncOperateChanClose:
+		logger.INFO("processSyncOperate exit")
+	case r.syncOperateChan[msg.Head.Seq%common.ConfigProcRouterRoutineNum] <- msg:
 	}
-	r.reqChanMutex.RUnlock()
 }
 
 func (r *Router) RecvResponse() (response.TcaplusResponse, error) {
@@ -86,6 +154,7 @@ func (r *Router) RecvResponse() (response.TcaplusResponse, error) {
 		return nil, nil
 	}
 	logger.DEBUG("pop one msg from queue, %d", r.respCount)
+
 	r.respMsgMutex.Lock()
 	defer r.respMsgMutex.Unlock()
 	ele := r.respMsgQueue.Front()
@@ -108,20 +177,31 @@ func (r *Router) Init(appId uint64, zoneList []uint32, signature string) error {
 	r.heartbeatInterval = 1
 	r.lastHeartbeatTime = time.Now()
 	r.respMsgQueue = list.New()
-	r.requestChanMap = make(map[int32]SyncRequest)
+	r.processSyncOperate()
 	return nil
 }
 
-func (r *Router) RequestChanMapAdd(reqseq int32, syncrequest SyncRequest) {
-	r.reqChanMutex.Lock()
-	defer r.reqChanMutex.Unlock()
-	r.requestChanMap[reqseq] = syncrequest
+func (r *Router) RequestChanMapAdd(syncrequest *SyncRequest) int {
+	syncId := syncrequest.syncId % common.ConfigProcRouterRoutineNum
+	select {
+	case <-r.syncOperateChanClose:
+		logger.INFO("processSyncOperate exit")
+		return -1
+	case r.syncOperateChan[syncId] <- syncrequest:
+	}
+	return 0
 }
 
-func (r *Router) RequestChanMapClean(reqsq int32) {
-	r.reqChanMutex.Lock()
-	defer r.reqChanMutex.Unlock()
-	delete(r.requestChanMap, reqsq)
+func (r *Router) RequestChanMapClean(syncrequest *SyncRequest) int {
+	syncId := syncrequest.syncId % common.ConfigProcRouterRoutineNum
+	syncrequest.delFromMap = true
+	select {
+	case <-r.syncOperateChanClose:
+		logger.INFO("processSyncOperate exit")
+		return -1
+	case r.syncOperateChan[syncId] <- syncrequest:
+	}
+	return 0
 }
 
 func (r *Router) SetHeartbeatInterval(heartbeatInterval time.Duration) {
@@ -142,9 +222,23 @@ func (r *Router) CheckTable(zoneId uint32, tableName string) error {
 	return nil
 }
 
+func (r *Router) GetZoneTables(zoneId uint32) []string {
+	var tables []string
+	proxy, exist := r.proxyMap[zoneId]
+	if exist {
+		tables = make([]string, 0, len(proxy.tableNameList))
+		proxy.tbMutex.RLock()
+		for table := range proxy.tableNameList {
+			tables = append(tables, table)
+		}
+		proxy.tbMutex.RUnlock()
+	}
+	return tables
+}
+
 //0 所有认证成功， 1 有proxy全部认证中， 2 所有proxy部分认证成功，可以启动， -1 有认证失败,启动失败
 func (r *Router) CanStartUp() (int, error) {
-	if 0 == len(r.proxyMap) {
+	if len(r.zoneList) != len(r.proxyMap) {
 		return 1, nil
 	}
 
@@ -186,7 +280,6 @@ func (r *Router) Update() {
 		}
 		r.lastHeartbeatTime = time.Now()
 	}
-
 }
 
 func (r *Router) ProcessTablesAndAccessMsg(msg *tcapdir_protocol_cs.ResGetTablesAndAccess) {
@@ -215,5 +308,69 @@ func (r *Router) ProcessTablesAndAccessMsg(msg *tcapdir_protocol_cs.ResGetTables
 }
 
 func (r *Router) Send(hashCode uint32, zoneId uint32, data []byte) error {
-	return r.proxyMap[zoneId].send(hashCode, data)
+	if p, exist := r.proxyMap[zoneId]; exist {
+		return p.send(hashCode, data)
+	}
+	logger.ERR("zone %d not connect", zoneId)
+	return &terror.ErrorCode{Code: terror.SendRequestFail, Message: "zone proxy not connect"}
+}
+
+func (r *Router) GetProxyUrl(hashCode, zoneId uint32) string {
+	p, exist := r.proxyMap[zoneId]
+	if !exist {
+		return ""
+	}
+	p.hashMutex.RLock()
+	defer p.hashMutex.RUnlock()
+	id := hashCode % uint32(len(p.hashList))
+	preId := id
+	for {
+		svr := p.hashList[id]
+		if svr.isAvailable() {
+			return svr.proxyUrl
+		}
+
+		//选择下个节点
+		hashCode++
+		id = hashCode % uint32(len(p.hashList))
+		//一轮之后
+		if id == preId {
+			return ""
+		}
+	}
+}
+
+func (r *Router) Close() {
+	for _, v := range r.proxyMap {
+		if v == nil{
+			continue
+		}
+		for _, svr := range v.prepareServerList {
+			if svr == nil{
+				continue
+			}
+			svr.disConnect()
+		}
+		for _, svr := range v.usingServerList {
+			if svr == nil{
+				continue
+			}
+			svr.disConnect()
+		}
+		for _, svr := range v.removeServerList {
+			if svr == nil{
+				continue
+			}
+			svr.disConnect()
+		}
+	}
+	close(r.syncOperateChanClose)
+	r.syncOperateChan = nil
+	r.requestChanMap = nil
+}
+
+func (r *Router) UpdateHashList() {
+	for _, p := range r.proxyMap {
+		p.updateHashList()
+	}
 }

@@ -17,10 +17,11 @@ type getRequest struct {
 	record       *record.Record
 	pkg          *tcaplus_protocol_cs.TCaplusPkg
 	valueNameMap map[string]bool
+	isPB         bool
 }
 
 func newGetRequest(appId uint64, zoneId uint32, tableName string, cmd int,
-	seq uint32, pkg *tcaplus_protocol_cs.TCaplusPkg) (*getRequest, error) {
+	seq uint32, pkg *tcaplus_protocol_cs.TCaplusPkg, isPB bool) (*getRequest, error) {
 	if pkg == nil || pkg.Body == nil || pkg.Body.GetReq == nil {
 		return nil, &terror.ErrorCode{Code: terror.API_ERR_PARAMETER_INVALID, Message: "pkg init fail"}
 	}
@@ -35,6 +36,7 @@ func newGetRequest(appId uint64, zoneId uint32, tableName string, cmd int,
 		record:       nil,
 		pkg:          pkg,
 		valueNameMap: make(map[string]bool),
+		isPB:         isPB,
 	}
 	return req, nil
 }
@@ -55,9 +57,12 @@ func (req *getRequest) AddRecord(index int32) (*record.Record, error) {
 		KeySet:      nil,
 		ValueSet:    nil,
 		UpdFieldSet: nil,
+		IsPB:        req.isPB,
 	}
 
 	//key value set
+	rec.ShardingKey = &req.pkg.Head.SplitTableKeyBuff
+	rec.ShardingKeyLen = &req.pkg.Head.SplitTableKeyBuffLen
 	rec.KeySet = req.pkg.Head.KeyInfo
 	rec.ValueSet = req.pkg.Body.GetReq.ValueInfo
 	req.record = rec
@@ -97,7 +102,9 @@ func (req *getRequest) Pack() ([]byte, error) {
 		return nil, err
 	}
 
-	logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+	if logger.GetLogLevel() == "DEBUG" {
+		logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+	}
 	data, err := req.pkg.Pack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion)
 	if err != nil {
 		logger.ERR("getRequest pack failed, %s", err.Error())
@@ -141,18 +148,40 @@ func (req *getRequest) SetResultLimit(limit int32, offset int32) int32 {
 	return int32(terror.API_ERR_OPERATION_TYPE_NOT_MATCH)
 }
 
-func (req *getRequest) SetAddableIncreaseFlag(increase_flag byte) int32 {
-	return int32(terror.GEN_ERR_SUC)
-}
-
 func (req *getRequest) SetMultiResponseFlag(multi_flag byte) int32 {
-	return int32(terror.GEN_ERR_SUC)
+	return int32(terror.API_ERR_OPERATION_TYPE_NOT_MATCH)
 }
 
 func (req *getRequest) SetResultFlagForSuccess(result_flag byte) int {
-	return terror.GEN_ERR_SUC
+	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
 }
 
 func (req *getRequest) SetResultFlagForFail(result_flag byte) int {
+	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
+}
+
+func (req *getRequest) SetPerfTest(sendTime uint64) int {
+	perf := tcaplus_protocol_cs.NewPerfTest()
+	perf.ApiSendTime = sendTime
+	perf.Version = tcaplus_protocol_cs.PerfTestCurrentVersion
+	p, err := perf.Pack(tcaplus_protocol_cs.PerfTestCurrentVersion)
+	if err != nil {
+		logger.ERR("pack perf error: %s", err)
+		return terror.API_ERR_PARAMETER_INVALID
+	}
+	req.pkg.Head.PerfTest = p
+	req.pkg.Head.PerfTestLen = uint32(len(p))
 	return terror.GEN_ERR_SUC
+}
+
+func (req *getRequest) SetFlags(flag int32) int {
+	return setFlags(req.pkg, flag)
+}
+
+func (req *getRequest) ClearFlags(flag int32) int {
+	return clearFlags(req.pkg, flag)
+}
+
+func (req *getRequest) GetFlags() int32 {
+	return req.pkg.Head.Flags
 }

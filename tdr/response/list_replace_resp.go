@@ -28,7 +28,7 @@ func (res *listReplaceResponse) GetResult() int {
 }
 
 func (res *listReplaceResponse) GetTableName() string {
-	tableName := string(res.pkg.Head.RouterInfo.TableName[0:res.pkg.Head.RouterInfo.TableNameLen])
+	tableName := string(res.pkg.Head.RouterInfo.TableName[0 : res.pkg.Head.RouterInfo.TableNameLen-1])
 	return tableName
 }
 
@@ -75,21 +75,21 @@ func (res *listReplaceResponse) GetRecordCount() int {
 			if tcaplus_protocol_cs.TCaplusValueFlag_SAMEWITHREQUEST == iResultFlagForSuccess ||
 				tcaplus_protocol_cs.TCaplusValueFlag_ALLVALUE == iResultFlagForSuccess ||
 				tcaplus_protocol_cs.TCaplusValueFlag_ALLOLDVALUE == iResultFlagForSuccess {
-				return 1
+				return int(res.pkg.Body.ListReplaceRes.ResultInfo.ElementNum)
 			}
 		} else {
 			iResultFlagForFail = GetResultFlagByBit(res.pkg.Body.ListReplaceRes.Flag, false)
 			if tcaplus_protocol_cs.TCaplusValueFlag_SAMEWITHREQUEST == iResultFlagForFail ||
 				(tcaplus_protocol_cs.TCaplusValueFlag_ALLOLDVALUE == iResultFlagForFail &&
 					res.pkg.Body.ListReplaceRes.ResultInfo.ElementNum > 0) {
-				return 1
+				return int(res.pkg.Body.ListReplaceRes.ResultInfo.ElementNum)
 			}
 		}
 	} else {
 		//老版本的result flag 通过ResultFlag判断
 		if 0 == res.pkg.Body.ListReplaceRes.Result ||
 			terror.SVR_ERR_FAIL_INVALID_VERSION == int(res.pkg.Body.ListReplaceRes.Result) {
-			return 1
+			return int(res.pkg.Body.ListReplaceRes.ResultInfo.ElementNum)
 		}
 	}
 	return 0
@@ -110,7 +110,7 @@ func (res *listReplaceResponse) FetchRecord() (*record.Record, error) {
 	rec := &record.Record{
 		AppId:       uint64(res.pkg.Head.RouterInfo.AppID),
 		ZoneId:      uint32(res.pkg.Head.RouterInfo.ZoneID),
-		TableName:   string(res.pkg.Head.RouterInfo.TableName[0:res.pkg.Head.RouterInfo.TableNameLen]),
+		TableName:   string(res.pkg.Head.RouterInfo.TableName[0 : res.pkg.Head.RouterInfo.TableNameLen-1]),
 		Cmd:         int(res.pkg.Head.Cmd),
 		KeyMap:      make(map[string][]byte),
 		ValueMap:    make(map[string][]byte),
@@ -127,11 +127,11 @@ func (res *listReplaceResponse) FetchRecord() (*record.Record, error) {
 		return nil, err
 	}
 
-	read_bytes := uint32(0)
-	err := unpack_element_buff(data.ElementsBuff, uint32(res.offset), data.ElementsBuffLen, &rec.Index,
-		&read_bytes, rec.ValueMap)
+	readBytes := uint32(0)
+	err := unpackElementBuff(data.ElementsBuff, uint32(res.offset), data.ElementsBuffLen, &rec.Index,
+		&readBytes, rec.ValueMap)
 	res.idx += 1
-	res.offset += int32(read_bytes)
+	res.offset += int32(readBytes)
 	res.record = rec
 	return rec, err
 }
@@ -150,4 +150,18 @@ func (res *listReplaceResponse) HaveMoreResPkgs() int {
 
 func (res *listReplaceResponse) GetRecordMatchCount() int {
 	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
+}
+
+func (res *listReplaceResponse) GetPerfTest(recvTime uint64) *tcaplus_protocol_cs.PerfTest {
+	if res.pkg.Head.PerfTestLen == 0 {
+		return nil
+	}
+	perf := tcaplus_protocol_cs.NewPerfTest()
+	err := perf.Unpack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion, res.pkg.Head.PerfTest)
+	if err != nil {
+		logger.ERR("unpack perf error: %s", err)
+		return nil
+	}
+	perf.ApiRecvTime = recvTime
+	return perf
 }

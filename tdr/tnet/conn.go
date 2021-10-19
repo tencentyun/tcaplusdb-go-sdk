@@ -2,15 +2,31 @@ package tnet
 
 import (
 	"bytes"
+	"fmt"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/common"
 	log "github.com/tencentyun/tcaplusdb-go-sdk/tdr/logger"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/terror"
+	"io"
 	"net"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 )
 
-type RecvCallBackFunc func(url *string, buf []byte, cbPara interface{}) error
+/**
+	@brief 回调函数
+	@param [IN] url 连接地址
+	@param [IN] pkg 未反序列化的传输包
+	@param [IN] cbPara	回调参数
+**/
+type RecvCallBackFunc func(url *string, pkg *common.PKGBuffer, cbPara interface{}) error
+
+/**
+	@brief 解析包长度，用于切分
+	@param [IN] buf
+	@retval [IN] int 长度
+**/
 type ParseFunc func(buf []byte) int
 
 const (
@@ -21,6 +37,14 @@ const (
 	WriteErr     = 4
 )
 
+/**
+	@brief tcaplus api客户端
+	@param [IN] appId 业务id
+	@param [IN] zoneList 区列表
+	@param [IN] dirUrl	dir地址
+	@param [IN] initFlag 是否初始化
+	@param [IN] netServer 服务管理
+**/
 type Conn struct {
 	netConn   net.Conn
 	network   string
@@ -35,6 +59,8 @@ type Conn struct {
 	cbPara     interface{}      //回调参数
 	timeout    time.Duration    //connect 超时时间
 	createTime time.Time
+
+	sendChan chan *sendBuf
 }
 
 //url 格式为tcp://127.0.0.1:80
@@ -76,6 +102,7 @@ func NewConn(url string, timeout time.Duration,
 		cbPara:     cbPara,
 		createTime: time.Now(),
 		timeout:    timeout,
+		sendChan:   make(chan *sendBuf, common.ConfigProcReqDepth-1),
 	}
 	go cn.connect()
 	return cn, nil
@@ -93,15 +120,96 @@ func (c *Conn) connect() {
 	c.netConn = Conn
 	atomic.StoreInt32(&c.stat, Connected)
 	go c.process()
+	go c.mergeSend()
 }
 
-func (c *Conn) Send(buf []byte) (size int, err error) {
-	n, err := c.netConn.Write(buf)
-	if err != nil {
-		atomic.StoreInt32(&c.stat, WriteErr)
-		log.ERR("Send data failed %v, conn url %v", err.Error(), c.url)
+type sendBuf struct {
+	err error
+	buf []byte
+	sync.WaitGroup
+}
+
+func (c *Conn) send(buf []byte, ret []*sendBuf) {
+	var err error
+	if c.GetStat() != Connected || c.netConn == nil {
+		log.ERR("api connect proxy stat not connected")
+		err = fmt.Errorf("api connect proxy stat not connected")
+	} else {
+		// 设置30秒的发送超时，防止一直卡住
+		c.netConn.SetWriteDeadline(common.TimeNow.Add(common.ConfigReadWriteTimeOut * time.Second))
+		_, err = c.netConn.Write(buf)
+		if err != nil {
+			atomic.StoreInt32(&c.stat, WriteErr)
+			log.ERR("Send data failed %v, conn url %v", err.Error(), c.url)
+		}
 	}
-	return n, err
+	for _, v := range ret {
+		v.err = err
+		v.Done()
+	}
+}
+
+func (c *Conn) Send(buf []byte) (int, error) {
+	b := &sendBuf{buf: buf}
+	b.Add(1)
+	select {
+	case <-c.closeFlag:
+		log.INFO("close flag, %s", c.url)
+		return 0, fmt.Errorf("close flag, %s", c.url)
+	case c.sendChan <- b:
+	}
+	b.Wait()
+	return 0, b.err
+}
+
+func (c *Conn) mergeSend() {
+	var index int
+	var length int
+	sendBuffer := bytes.NewBuffer(make([]byte, 0, 20<<20))
+	depth := common.ConfigProcReqDepth
+
+	bufs := make([]*sendBuf, 0, depth)
+
+	proc := func(buf *sendBuf) {
+		bufs = append(bufs, buf)
+		sendBuffer.Write(buf.buf)
+		length = len(c.sendChan)
+		index = 0
+		for ; index < length && len(bufs) < depth; index++ {
+			buf = <-c.sendChan
+			bufs = append(bufs, buf)
+			sendBuffer.Write(buf.buf)
+			// 当数据大小大于10M时直接发送
+			if sendBuffer.Len() > 10<<20 {
+				break
+			}
+		}
+		c.send(sendBuffer.Bytes(), bufs)
+		if sendBuffer.Cap() > 20<<20 {
+			sendBuffer = bytes.NewBuffer(make([]byte, 0, 20<<20))
+		} else {
+			sendBuffer.Reset()
+		}
+
+		if cap(bufs) > common.ConfigProcReqDepth {
+			bufs = make([]*sendBuf, 0, common.ConfigProcReqDepth)
+		}else {
+			bufs = bufs[:0]
+		}
+	}
+
+	for {
+		select {
+		case <-c.closeFlag:
+			for len(c.sendChan) > 0 {
+				proc(<-c.sendChan)
+			}
+			log.INFO("close flag, %s", c.url)
+			return
+		case buf := <-c.sendChan:
+			proc(buf)
+		}
+	}
 }
 
 func (c *Conn) GetStat() int32 {
@@ -117,37 +225,57 @@ func (c *Conn) Close() {
 	}
 }
 
-func (c *Conn) process() {
-	buf := make([]byte, 1024)
-	recvBuffer := bytes.NewBuffer(make([]byte, 0, 1024*1024))
+/*
+	需求：复用内存，防止频繁gc，减少内存拷贝次数
+	当前流程：复用20M缓冲区从网络里拷贝获取响应，切分响应拷贝，为每个响应分配内存并拷贝。再次分配响应内存，对响应反序列化，可能发生两次拷贝
+	分析必要的分配与拷贝：1、分配内存用于从网络中读取（拷贝必要，分配内存分配几次？）
+					 2、分配内存生成响应（拷贝还是复用？复用的化每次需要在从网络读取时分配内存。
+							拷贝需要在解包的地方分配内存但从网络中读取的内存可以做到复用）共同问题：什么时候释放内存引发gc均不可控
 
+	暂定方案：使用对象池分配内存，长时间运行可以减少一次内存分配，减少2次内存拷贝。
+
+	接口调用点：从网络中读，切分出请求，对象池操作
+*/
+
+func (c *Conn) process() {
+	pkgManager := common.GetPKGManager(nil)
 	for {
 		select {
 		case <-c.closeFlag:
 			log.INFO("close flag, %s", c.url)
 			return
 		default:
-			n, err := c.netConn.Read(buf)
+			if c.GetStat() != Connected || c.netConn == nil {
+				log.ERR("api connect proxy stat not connected")
+				return
+			}
+			// 满了需要重新申请一段buffer，并将这次未处理完的buffer拷贝
+			if pkgManager.BufferIsFull() {
+				pkgManager = common.GetPKGManager(pkgManager)
+			}
+			// 读取网络报文
+			n, err := pkgManager.Read(c.netConn)
 			if err != nil {
 				atomic.StoreInt32(&c.stat, ReadErr)
-				log.ERR("read err:%s, %s", err.Error(), c.url)
+				if err == io.EOF {
+					log.INFO("read close:%s, %s", err.Error(), c.url)
+				} else {
+					log.ERR("read err:%s, %s", err.Error(), c.url)
+				}
 				return
 			}
 
 			if n > 0 {
 				//fmt.Println("recv:", string(buf[0:n]), "len:", n)
-				recvBuffer.Write(buf[0:n])
 				for {
 					//判断是否收到完整包
-					pkgSize := c.parseFunc(recvBuffer.Bytes())
-					if pkgSize <= recvBuffer.Len() && pkgSize > 0 {
+					// 判断buffer是否可以切分出一个完整包
+					pkgSize := c.parseFunc(pkgManager.ValidBuffer())
+					if pkgSize <= pkgManager.ValidLength() && pkgSize > 0 {
+						// 将包从buffer中取出
+						pkg := pkgManager.GetPkgBuffer(pkgSize)
 						//收到完整包
-						//log.DEBUG("url %s %d pkgSize %d finish recvBuffer.Len %d", c.url, n, pkgSize, recvBuffer.Len())
-						pkg := make([]byte, pkgSize)
-						_, err := recvBuffer.Read(pkg)
-						if err != nil {
-							log.ERR("recvBuffer.Read err:%s, %s", err.Error(), c.url)
-						}
+						//log.DEBUG("url %s %d pkgSize %d finish recvBuffer.Len %d", c.url, n, pkgSize, len(pkg.GetData()))
 
 						//回调处理包
 						err = c.cbFunc(&c.url, pkg, c.cbPara)

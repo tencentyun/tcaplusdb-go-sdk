@@ -3,7 +3,7 @@
 //     go code compiler
 //     author: cowhuang@tencent.com
 //
-// create time: 2020-11-12 20:09:54
+// create time: 2021-05-27 15:40:56
 package tcapdir_protocol_cs
 
 const MAX_STR_LEN_SS int64 = 32

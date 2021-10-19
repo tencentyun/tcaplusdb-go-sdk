@@ -31,7 +31,7 @@ func (res *indexQueryResponse) GetResult() int {
 }
 
 func (res *indexQueryResponse) GetTableName() string {
-	tableName := string(res.pkg.Head.RouterInfo.TableName[0:res.pkg.Head.RouterInfo.TableNameLen])
+	tableName := string(res.pkg.Head.RouterInfo.TableName[0 : res.pkg.Head.RouterInfo.TableNameLen-1])
 	return tableName
 }
 
@@ -88,19 +88,19 @@ func (res *indexQueryResponse) FetchRecord() (*record.Record, error) {
 	rec := &record.Record{
 		AppId:       uint64(res.pkg.Head.RouterInfo.AppID),
 		ZoneId:      uint32(res.pkg.Head.RouterInfo.ZoneID),
-		TableName:   string(res.pkg.Head.RouterInfo.TableName[0:res.pkg.Head.RouterInfo.TableNameLen]),
+		TableName:   string(res.pkg.Head.RouterInfo.TableName[0 : res.pkg.Head.RouterInfo.TableNameLen-1]),
 		Cmd:         int(res.pkg.Head.Cmd),
 		KeyMap:      make(map[string][]byte),
 		ValueMap:    make(map[string][]byte),
 		Version:     -1,
 		KeySet:      res.pkg.Head.KeyInfo,
-		ValueSet:    nil, //res.pkg.Body.BatchGetRes,
+		ValueSet:    nil,
 		UpdFieldSet: nil,
 	}
 
 	//unpack
-	read_bytes, err := unpack_record_k_v(data.Value[res.offset:data.ValueLen],
-		data.ValueLen-res.offset, rec.KeyMap, rec.ValueMap)
+	readBytes, err := unpackRecordKV(data.Value[res.offset:data.ValueLen],
+		data.ValueLen-res.offset, rec.KeyMap, rec.ValueMap, &rec.Version)
 	if err != nil {
 		logger.ERR("record unpack failed, app %d zone %d table %s ,err %s",
 			rec.AppId, rec.ZoneId, rec.TableName, err.Error())
@@ -108,7 +108,7 @@ func (res *indexQueryResponse) FetchRecord() (*record.Record, error) {
 	}
 	logger.DEBUG("record unpack success, key: %+v, value: %+v", rec.KeyMap, rec.ValueMap)
 	res.idx += 1
-	res.offset += read_bytes
+	res.offset += readBytes
 
 	logger.DEBUG("record unpack success, app %d zone %d table %s", rec.AppId, rec.ZoneId, rec.TableName)
 	res.record = rec
@@ -132,6 +132,20 @@ func (res *indexQueryResponse) HaveMoreResPkgs() int {
 
 func (res *indexQueryResponse) GetRecordMatchCount() int {
 	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
+}
+
+func (res *indexQueryResponse) GetPerfTest(recvTime uint64) *tcaplus_protocol_cs.PerfTest {
+	if res.pkg.Head.PerfTestLen == 0 {
+		return nil
+	}
+	perf := tcaplus_protocol_cs.NewPerfTest()
+	err := perf.Unpack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion, res.pkg.Head.PerfTest)
+	if err != nil {
+		logger.ERR("unpack perf error: %s", err)
+		return nil
+	}
+	perf.ApiRecvTime = recvTime
+	return perf
 }
 
 func (res *indexQueryResponse) GetSqlType() int {
