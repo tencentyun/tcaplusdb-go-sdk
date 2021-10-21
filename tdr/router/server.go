@@ -130,7 +130,7 @@ func (s *server) disConnect() {
 func (s *server) send(data []byte) error {
 	logger.DEBUG("send to proxy %s", s.proxyUrl)
 	if s.conn != nil {
-		_, err := s.conn.Send(data)
+		err := s.conn.Send(data)
 		return err
 	}
 	logger.ERR("proxy svr %s conn is empty", s.proxyUrl)

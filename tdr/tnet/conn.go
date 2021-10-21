@@ -1,7 +1,6 @@
 package tnet
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/common"
 	log "github.com/tencentyun/tcaplusdb-go-sdk/tdr/logger"
@@ -51,16 +50,20 @@ type Conn struct {
 	url       string
 	ip        string
 	port      string
-	closeFlag chan bool
 	stat      int32
 
+	//回调控制
 	parseFunc  ParseFunc        //通过parse判断是否收到完整包
 	cbFunc     RecvCallBackFunc //收到响应后会调用回调
 	cbPara     interface{}      //回调参数
 	timeout    time.Duration    //connect 超时时间
 	createTime time.Time
 
-	sendChan chan *sendBuf
+	sendChan chan *Buf
+
+	//协程控制
+	closeFlag chan bool
+	sync.WaitGroup
 }
 
 //url 格式为tcp://127.0.0.1:80
@@ -102,7 +105,7 @@ func NewConn(url string, timeout time.Duration,
 		cbPara:     cbPara,
 		createTime: time.Now(),
 		timeout:    timeout,
-		sendChan:   make(chan *sendBuf, common.ConfigProcReqDepth-1),
+		sendChan:   make(chan *Buf, common.ConfigProcReqDepth-1),
 	}
 	go cn.connect()
 	return cn, nil
@@ -119,17 +122,13 @@ func (c *Conn) connect() {
 	log.INFO("connect addr %s success", addr)
 	c.netConn = Conn
 	atomic.StoreInt32(&c.stat, Connected)
-	go c.process()
-	go c.mergeSend()
+	go c.recvRoutine()
+	go c.SendRoutine()
 }
 
-type sendBuf struct {
-	err error
-	buf []byte
-	sync.WaitGroup
-}
+type Buf []byte
 
-func (c *Conn) send(buf []byte, ret []*sendBuf) {
+func (c *Conn) sendPkg(buf *Buf) {
 	var err error
 	if c.GetStat() != Connected || c.netConn == nil {
 		log.ERR("api connect proxy stat not connected")
@@ -137,64 +136,35 @@ func (c *Conn) send(buf []byte, ret []*sendBuf) {
 	} else {
 		// 设置30秒的发送超时，防止一直卡住
 		c.netConn.SetWriteDeadline(common.TimeNow.Add(common.ConfigReadWriteTimeOut * time.Second))
-		_, err = c.netConn.Write(buf)
+		_, err = c.netConn.Write([]byte(*buf))
 		if err != nil {
 			atomic.StoreInt32(&c.stat, WriteErr)
 			log.ERR("Send data failed %v, conn url %v", err.Error(), c.url)
 		}
 	}
-	for _, v := range ret {
-		v.err = err
-		v.Done()
-	}
 }
 
-func (c *Conn) Send(buf []byte) (int, error) {
-	b := &sendBuf{buf: buf}
-	b.Add(1)
+func (c *Conn) Send(buf []byte) error{
+	pkg := Buf(buf)
 	select {
 	case <-c.closeFlag:
 		log.INFO("close flag, %s", c.url)
-		return 0, fmt.Errorf("close flag, %s", c.url)
-	case c.sendChan <- b:
+		return fmt.Errorf("close flag, %s", c.url)
+	case c.sendChan <- &pkg:
 	}
-	b.Wait()
-	return 0, b.err
+	return nil
 }
 
-func (c *Conn) mergeSend() {
-	var index int
-	var length int
-	sendBuffer := bytes.NewBuffer(make([]byte, 0, 20<<20))
-	depth := common.ConfigProcReqDepth
+func (c *Conn) SendRoutine() {
+	c.Add(1)
+	defer c.Done()
 
-	bufs := make([]*sendBuf, 0, depth)
-
-	proc := func(buf *sendBuf) {
-		bufs = append(bufs, buf)
-		sendBuffer.Write(buf.buf)
-		length = len(c.sendChan)
-		index = 0
-		for ; index < length && len(bufs) < depth; index++ {
+	proc := func(buf *Buf) {
+		var length = len(c.sendChan)
+		c.sendPkg(buf)
+		for index := 0; index < length ; index++ {
 			buf = <-c.sendChan
-			bufs = append(bufs, buf)
-			sendBuffer.Write(buf.buf)
-			// 当数据大小大于10M时直接发送
-			if sendBuffer.Len() > 10<<20 {
-				break
-			}
-		}
-		c.send(sendBuffer.Bytes(), bufs)
-		if sendBuffer.Cap() > 20<<20 {
-			sendBuffer = bytes.NewBuffer(make([]byte, 0, 20<<20))
-		} else {
-			sendBuffer.Reset()
-		}
-
-		if cap(bufs) > common.ConfigProcReqDepth {
-			bufs = make([]*sendBuf, 0, common.ConfigProcReqDepth)
-		}else {
-			bufs = bufs[:0]
+			c.sendPkg(buf)
 		}
 	}
 
@@ -237,7 +207,9 @@ func (c *Conn) Close() {
 	接口调用点：从网络中读，切分出请求，对象池操作
 */
 
-func (c *Conn) process() {
+func (c *Conn) recvRoutine() {
+	c.Add(1)
+	defer c.Done()
 	pkgManager := common.GetPKGManager(nil)
 	for {
 		select {
