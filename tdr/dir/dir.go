@@ -71,12 +71,12 @@ func (dir *DirServer) Init(appId uint64, zoneList []uint32, dirUrl string, signa
 	return nil
 }
 
-func (dir *DirServer) SendRequest(buf []byte) (int, error) {
+func (dir *DirServer) SendRequest(buf []byte)  error {
 	if dir.conn != nil {
 		return dir.conn.Send(buf)
 	}
 	log.ERR("dir.conn is nil")
-	return 0, &terror.ErrorCode{Code: terror.SendRequestFail, Message: "dir not connected"}
+	return &terror.ErrorCode{Code: terror.SendRequestFail, Message: "dir not connected"}
 }
 
 func (dir *DirServer) Update() {
