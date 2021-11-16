@@ -661,9 +661,3 @@ GetUserBuffer() []byte
 **/
 GetSeq() int32
 ```
-
-# NOTE
-v0.1.3：修复同步接口加锁慢，导致响应消息未收到的问题
-v0.1.4: 增加partkey接口，increase，batchget接口
-v0.1.5: 增加listgetAll接口
-v0.1.6: 优化反射
