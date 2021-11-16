@@ -3,6 +3,7 @@ package request
 import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/common"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/logger"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/cs_pool"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/policy"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/tcaplus_protocol_cs"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/record"
@@ -87,6 +88,11 @@ func (req *listDeleteAllRequest) SetResultFlag(flag int) error {
 }
 
 func (req *listDeleteAllRequest) Pack() ([]byte, error) {
+	if req.pkg == nil {
+		logger.ERR("Request can not second use")
+		return nil, &terror.ErrorCode{Code: terror.RequestHasHasNoPkg, Message: "Request can not second use"}
+	}
+
 	if req.record == nil {
 		return nil, &terror.ErrorCode{Code: terror.RequestHasNoRecord}
 	}
@@ -111,6 +117,15 @@ func (req *listDeleteAllRequest) GetZoneId() uint32 {
 }
 
 func (req *listDeleteAllRequest) GetKeyHash() (uint32, error) {
+	if req.pkg == nil {
+		logger.ERR("Request can not second use")
+		return uint32(terror.RequestHasHasNoPkg), &terror.ErrorCode{Code: terror.RequestHasHasNoPkg,
+			Message: "Request can not second use"}
+	}
+	defer func() {
+		cs_pool.PutTcaplusCSPkg(req.pkg)
+		req.pkg = nil
+	}()
 	if req.record == nil {
 		return 0, &terror.ErrorCode{Code: terror.RequestHasNoRecord}
 	}

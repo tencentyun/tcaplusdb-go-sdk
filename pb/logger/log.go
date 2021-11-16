@@ -11,6 +11,7 @@ import (
 	"time"
 )
 
+// 日志句柄接口需要实现 debug warn info error 四种级别的打印
 type LogInterface interface {
 	Debugf(template string, args ...interface{})
 	Infof(template string, args ...interface{})
@@ -18,6 +19,7 @@ type LogInterface interface {
 	Errorf(template string, args ...interface{})
 }
 
+// 日志句柄接口，除上面四个接口外还需加上获取日志配置级别接口用于性能优化
 type logInterfaceWithLogLevel interface {
 	LogInterface
 	LogLevel() string
@@ -112,7 +114,7 @@ func Init() {
 		LogConf = &logCfg{
 			LogPath:       "",
 			LogName:       "TcaplusApi",
-			LogLevel:      "ERROR",
+			LogLevel:      "DEBUG",
 			LogType:       "console",
 			LogMaxSize:    100,
 			LogMaxBackups: 100,

@@ -5,41 +5,12 @@ import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/autotest/unittest/cfg"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/autotest/unittest/table/tcaplus_tb"
-	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/logger"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/cmd"
-	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/request"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/terror"
 	"testing"
 	"time"
 )
 
-func BenchmarkPack(b *testing.B) {
-	logger.SetLogCfg("../cfg/logconf.xml")
-	logger.Init()
-
-	//count :=0
-	req, _ := request.NewRequest(1, 3, "test", cmd.TcaplusApiReplaceReq, false)
-	rec,_ := req.AddRecord(0)
-	data := newGenericTableRec()
-	//data.Binary_Count =10240
-	//data.Max_Binary =  make([]int8, 10240, 10241)
-	rec.SetData(data)
-	buf,_ := data.Pack(0)
-	//for ;count < 10000; count++ {
-		req, _ = request.NewRequest(1, 3, "test", cmd.TcaplusApiReplaceReq, false)
-		rec,_ = req.AddRecord(0)
-
-
-		data.Binary_Count =10240
-		data.Max_Binary =  make([]int8, 10240, 10241)
-		rec.SetData(data)
-		//req.Pack()
-		//buf,_ = data.Pack(0)
-	//}
-	fmt.Println(rec)
-	fmt.Println(buf)
-
-}
 //case 1记录不存在时Get fail
 func TestGetFail(t *testing.T) {
 	if err := cfg.ReadApiCfg("../cfg/api_cfg.xml"); err != nil {

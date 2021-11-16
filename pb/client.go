@@ -2,6 +2,7 @@ package tcaplus
 
 import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/common"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/config"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/logger"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/tcaplus_protocol_cs"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/version"
@@ -10,6 +11,8 @@ import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/router"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/terror"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/traverser"
+	"hash/crc32"
+	"sort"
 	"sync/atomic"
 	"time"
 )
@@ -20,27 +23,52 @@ const (
 	InitFail    = 2
 )
 
-var reqSeq = uint32(1)
-
+/**
+	@brief tcaplus api客户端
+	@param [IN] appId 业务id
+	@param [IN] zoneList 区列表
+	@param [IN] dirUrl	dir地址
+	@param [IN] initFlag 是否初始化
+	@param [IN] netServer 服务管理
+**/
 type client struct {
-	appId     uint64
-	zoneList  []uint32
-	dirUrl    string
-	initFlag  int
-	netServer netServer
-	tm		  *traverser.TraverserManager
+	appId      uint64
+	zoneList   []uint32
+	dirUrl     string
+	initFlag   int
+	netServer  netServer
+	tm         *traverser.TraverserManager
+	isPB       bool
+	reqSeq     uint32
+	ctrl       *config.ClientCtrl
+	defZone    int32
+	defTimeout time.Duration
 }
 
 /**
    @brief 创建一个tcaplus api客户端
    @retval 返回客户端指针
 **/
-func newClient() *client {
+func newClient(isPB bool) *client {
 	c := new(client)
 	c.tm = traverser.NewTraverserManager(c)
 	c.netServer.router.TM = c.tm
 	c.initFlag = NotInit
+	c.isPB = isPB
+	c.reqSeq = 1
+	c.ctrl = &config.ClientCtrl{
+		Option: config.NewDefaultClientOption(),
+	}
+	c.defZone = -1
 	return c
+}
+
+/**
+   @brief                   设置客户端可选参数，请在client.Dial之前调用
+   @param [IN] opt      	客户端可选参数
+**/
+func (c *client) SetOpt(opt *config.ClientOption) {
+	*c.ctrl.Option = *opt
 }
 
 /**
@@ -77,9 +105,12 @@ func (c *client) Dial(appId uint64, zoneList []uint32, dirUrl string, signature 
 	c.zoneList = make([]uint32, len(zoneList))
 	copy(c.zoneList, zoneList)
 	c.dirUrl = dirUrl
+	if len(c.zoneList) == 1 {
+		c.defZone = int32(c.zoneList[0])
+	}
 	//log init
 	logger.Init()
-	if err := c.netServer.init(appId, zoneList, dirUrl, signature, timeout); err != nil {
+	if err := c.netServer.init(appId, zoneList, dirUrl, signature, timeout, c.ctrl); err != nil {
 		logger.ERR("net start failed %s", err.Error())
 		c.initFlag = InitFail
 		return err
@@ -122,6 +153,26 @@ func (c *client) Dial(appId uint64, zoneList []uint32, dirUrl string, signature 
 }
 
 /**
+    @brief 设置默认zoneId
+	@param [IN] zoneId zoneID
+    @retval error 错误码，如果未dial调用此接口将会返错 ClientNotDial
+**/
+func (c *client) SetDefaultZoneId(zoneId uint32) error {
+	if c.initFlag != InitSuccess {
+		return &terror.ErrorCode{Code: terror.ClientNotInit}
+	}
+	c.defZone = int32(zoneId)
+	return nil
+}
+
+/**
+    @brief 设置请求默认超时时间
+**/
+func (c *client) SetDefaultReqTimeout(timeout time.Duration) {
+	c.defTimeout = timeout
+}
+
+/**
 @brief 创建指定分区指定表的请求
 @param [IN] zoneId              分区ID
 @param [IN] tableName           表名
@@ -144,7 +195,7 @@ func (c *client) NewRequest(zoneId uint32, tableName string, cmd int) (request.T
 
 	for _, z := range c.zoneList {
 		if z == zoneId {
-			if req, err := request.NewRequest(c.appId, zoneId, tableName, cmd); err != nil {
+			if req, err := request.NewRequest(c.appId, zoneId, tableName, cmd, c.isPB); err != nil {
 				logger.ERR("new request failed, %s", err.Error())
 				return nil, err
 			} else {
@@ -195,30 +246,29 @@ func (c *client) RecvResponse() (response.TcaplusResponse, error) {
             error 非nil，接收响应出错
 **/
 func (c *client) Do(req request.TcaplusRequest, timeout time.Duration) (response.TcaplusResponse, error) {
-	requestSeq := int32(atomic.AddUint32(&reqSeq, 1))
+	if c.initFlag != InitSuccess {
+		return nil, &terror.ErrorCode{Code: terror.ClientNotInit}
+	}
+
+	requestSeq := int32(atomic.AddUint32(&c.reqSeq, 1))
 	if requestSeq == 0 {
-		requestSeq = int32(atomic.AddUint32(&reqSeq, 1))
+		requestSeq = int32(atomic.AddUint32(&c.reqSeq, 1))
 	}
 	req.SetSeq(requestSeq)
-	timeOutChan := time.After(timeout)
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
 
 	var synrequestPkg router.SyncRequest
 	synrequestPkg.Init(req)
-
 	if c.netServer.router.RequestChanMapAdd(&synrequestPkg) == -1 {
 		return nil, &terror.ErrorCode{Code: terror.RouterIsClosed}
-	}
-	defer c.netServer.router.RequestChanMapClean(&synrequestPkg)
-
-	if err := c.SendRequest(req); err != nil {
-		logger.ERR("requestSeq %d :SendRequest failed %v\n", requestSeq, err.Error())
-		return nil, &terror.ErrorCode{Code: terror.SendRequestFail, Message: err.Error()}
 	}
 
 	for {
 		select {
-		case <-timeOutChan:
+		case <-timer.C:
 			logger.ERR("requestSeq %d :%s, timeout", requestSeq, timeout.String())
+			c.netServer.router.RequestChanMapClean(&synrequestPkg)
 			return nil, &terror.ErrorCode{Code: terror.TimeOut, Message: timeout.String() + ", timeout"}
 		case routerPkg := <-synrequestPkg.GetSyncChan():
 			return response.NewResponse(routerPkg)
@@ -237,12 +287,13 @@ func (c *client) Do(req request.TcaplusRequest, timeout time.Duration) (response
             error 非nil，response 非nil 接收部分回包正确，但是收到了错误包或者超时退出
 **/
 func (c *client) DoMore(req request.TcaplusRequest, timeout time.Duration) ([]response.TcaplusResponse, error) {
-	requestSeq := int32(atomic.AddUint32(&reqSeq, 1))
+	requestSeq := int32(atomic.AddUint32(&c.reqSeq, 1))
 	if requestSeq == 0 {
-		requestSeq = int32(atomic.AddUint32(&reqSeq, 1))
+		requestSeq = int32(atomic.AddUint32(&c.reqSeq, 1))
 	}
 	req.SetSeq(requestSeq)
-	timeOutChan := time.After(timeout)
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
 
 	var synrequestPkg router.SyncRequest
 	synrequestPkg.InitMoreChan(req, 1024)
@@ -252,29 +303,24 @@ func (c *client) DoMore(req request.TcaplusRequest, timeout time.Duration) ([]re
 	}
 	defer c.netServer.router.RequestChanMapClean(&synrequestPkg)
 
-	if err := c.SendRequest(req); err != nil {
-		logger.ERR("requestSeq %d :SendRequest failed %v\n", requestSeq, err.Error())
-		return nil, &terror.ErrorCode{Code: terror.SendRequestFail, Message: err.Error()}
-	}
-
 	var resp_list []response.TcaplusResponse
 	var idx int = 0
 	for {
 		select {
-		case <-timeOutChan:
+		case <-timer.C:
 			logger.ERR("requestSeq %d :%s, timeout, current pkg num %d", requestSeq, timeout.String(), idx)
 			return resp_list, &terror.ErrorCode{Code: terror.TimeOut, Message: timeout.String() + ", timeout"}
 		case routerPkg := <-synrequestPkg.GetSyncChan():
 			resp, err := response.NewResponse(routerPkg)
 			idx += 1
-			if err == nil{
+			if err == nil {
 				resp_list = append(resp_list, resp)
 				if 1 == resp.HaveMoreResPkgs() {
 					continue
-				}else{
+				} else {
 					return resp_list, nil
 				}
-			}else{
+			} else {
 				logger.ERR("requestSeq %d, current pkg num: %d,  %s", requestSeq, idx, err.Error())
 				return resp_list, err
 			}
@@ -293,18 +339,19 @@ func (c *client) DoMore(req request.TcaplusRequest, timeout time.Duration) ([]re
             error 非nil，response 非nil 接收部分回包正确，但是收到了错误包或者超时退出
 **/
 func (c *client) DoTraverse(tra *traverser.Traverser, timeout time.Duration) ([]response.TcaplusResponse, error) {
-	requestSeq := int32(atomic.AddUint32(&reqSeq, 1))
+	requestSeq := int32(atomic.AddUint32(&c.reqSeq, 1))
 	if requestSeq == 0 {
-		requestSeq = int32(atomic.AddUint32(&reqSeq, 1))
+		requestSeq = int32(atomic.AddUint32(&c.reqSeq, 1))
 	}
 	err := tra.SetSeq(requestSeq)
 	if err != nil {
 		return nil, err
 	}
-	timeOutChan := time.After(timeout)
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
 
 	var synrequestPkg router.SyncRequest
-	synrequestPkg.InitTraverseChan(requestSeq,1024)
+	synrequestPkg.InitTraverseChan(requestSeq, 1024)
 
 	if c.netServer.router.RequestChanMapAdd(&synrequestPkg) == -1 {
 		return nil, &terror.ErrorCode{Code: terror.RouterIsClosed}
@@ -320,7 +367,7 @@ func (c *client) DoTraverse(tra *traverser.Traverser, timeout time.Duration) ([]
 	var idx int = 0
 	for {
 		select {
-		case <-timeOutChan:
+		case <-timer.C:
 			logger.ERR("requestSeq %d :%s, timeout, current pkg num %d", requestSeq, timeout.String(), idx)
 			return resp_list, &terror.ErrorCode{Code: terror.TimeOut, Message: timeout.String() + ", timeout"}
 		case routerPkg := <-synrequestPkg.GetSyncChan():
@@ -330,11 +377,11 @@ func (c *client) DoTraverse(tra *traverser.Traverser, timeout time.Duration) ([]
 				resp_list = append(resp_list, resp)
 				if traverser.TraverseStateNormal == tra.State() {
 					continue
-				}else{
+				} else {
 					logger.INFO("traverse state is %d", tra.State())
 					return resp_list, nil
 				}
-			}else{
+			} else {
 				logger.ERR("requestSeq %d, current pkg num: %d,  %s", requestSeq, idx, err.Error())
 				return resp_list, err
 			}
@@ -360,13 +407,38 @@ func (c *client) GetAppId() uint64 {
 	return c.appId
 }
 
+func (c *client) GetProxyUrl(keySet *tcaplus_protocol_cs.TCaplusKeySet, zoneId uint32) string {
+	if keySet.FieldNum <= 0 {
+		return ""
+	}
+
+	field := keySet.Fields[0:keySet.FieldNum]
+	sort.Slice(field, func(i, j int) bool {
+		if field[i].FieldName < field[j].FieldName {
+			return true
+		}
+		return false
+	})
+
+	var buf []byte
+	for _, v := range field {
+		buf = append(buf, v.FieldBuff[0:v.FieldLen]...)
+	}
+	if len(buf) <= 0 {
+		return ""
+	}
+	return c.netServer.router.GetProxyUrl(crc32.ChecksumIEEE(buf), zoneId)
+}
+
 /*
-	@brief 关闭client，释放资源
+	@brief 关闭client，释放资源。
+	注：关闭接口，关闭各协程的操作是异步的，并不保证在调用之后的下一刻就关闭了所有打开的协程
+		不要复用同一个Client以免触发未知bug
 */
 func (c *client) Close() {
 	c.netServer.stopNetWork <- true
-	c.netServer.dirServer.DisConnect()
-	c.netServer.router.Close()
+	c.initFlag = NotInit
+	c.ctrl.Wait()
 }
 
 /*

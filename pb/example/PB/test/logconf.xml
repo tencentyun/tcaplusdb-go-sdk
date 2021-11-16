@@ -1,0 +1,14 @@
+<LogConfig>
+    <!--   日志文件存放路径  -->
+    <LogPath>../log</LogPath>
+    <!--   日志文件名称  -->
+    <LogName>TcaplusApi</LogName>
+    <!--   日志级别DEBUG|INFO|WARN|ERROR  -->
+    <LogLevel>ERROR</LogLevel>
+    <!--   日志格式console|json  -->
+    <LogType>console</LogType>
+    <!--   日志文件大小MB  -->
+    <LogMaxSize>100</LogMaxSize>
+    <!--   日志文件个数  -->
+    <LogMaxBackups>100</LogMaxBackups>
+</LogConfig>

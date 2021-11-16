@@ -3,6 +3,7 @@ package request
 import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/common"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/logger"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/cs_pool"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/policy"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/tcaplus_protocol_cs"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/record"
@@ -26,9 +27,17 @@ func newListAddAfterRequest(appId uint64, zoneId uint32, tableName string, cmd i
 		return nil, &terror.ErrorCode{Code: terror.API_ERR_PARAMETER_INVALID, Message: "pkg init fail"}
 	}
 	pkg.Body.ListAddAfterReq.ElementValueInfo.EncodeType = 1
+	pkg.Body.ListAddAfterReq.ElementValueInfo.Version_ = 0
+	pkg.Body.ListAddAfterReq.ElementValueInfo.Fields_ = nil
+	pkg.Body.ListAddAfterReq.ElementValueInfo.FieldNum_ = 0
+	pkg.Body.ListAddAfterReq.ElementValueInfo.CompactValueSet.FieldIndexNum = 0
+	pkg.Body.ListAddAfterReq.ElementValueInfo.CompactValueSet.FieldIndexs = nil
+	pkg.Body.ListAddAfterReq.ElementValueInfo.CompactValueSet.ValueBufLen = 0
+	pkg.Body.ListAddAfterReq.ElementValueInfo.CompactValueSet.ValueBuf = nil
 	pkg.Body.ListAddAfterReq.ShiftFlag = byte(tcaplus_protocol_cs.TCAPLUS_LIST_SHIFT_HEAD)
 	pkg.Body.ListAddAfterReq.ElementIndex = -1
 	pkg.Body.ListAddAfterReq.CheckVersiontType = policy.CheckDataVersionAutoIncrease
+	pkg.Body.ListAddAfterReq.Flag = 0
 	req := &listAddAfterRequest{
 		appId:     appId,
 		zoneId:    zoneId,
@@ -95,6 +104,11 @@ func (req *listAddAfterRequest) SetResultFlag(flag int) error {
 }
 
 func (req *listAddAfterRequest) Pack() ([]byte, error) {
+	if req.pkg == nil {
+		logger.ERR("Request can not second use")
+		return nil, &terror.ErrorCode{Code: terror.RequestHasHasNoPkg, Message: "Request can not second use"}
+	}
+
 	if req.record == nil {
 		return nil, &terror.ErrorCode{Code: terror.RequestHasNoRecord}
 	}
@@ -124,6 +138,15 @@ func (req *listAddAfterRequest) GetZoneId() uint32 {
 }
 
 func (req *listAddAfterRequest) GetKeyHash() (uint32, error) {
+	if req.pkg == nil {
+		logger.ERR("Request can not second use")
+		return uint32(terror.RequestHasHasNoPkg), &terror.ErrorCode{Code: terror.RequestHasHasNoPkg,
+			Message: "Request can not second use"}
+	}
+	defer func() {
+		cs_pool.PutTcaplusCSPkg(req.pkg)
+		req.pkg = nil
+	}()
 	if req.record == nil {
 		return 0, &terror.ErrorCode{Code: terror.RequestHasNoRecord}
 	}

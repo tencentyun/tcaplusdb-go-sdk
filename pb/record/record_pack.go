@@ -48,24 +48,39 @@ func (r *Record) PackValue(valueNameMap map[string]bool) error {
 }
 
 func (r *Record) packCompactValueSet(compactValueSet *tcaplus_protocol_cs.CompactValueSet,
-					valueNameMap map[string]bool) error {
+	valueNameMap map[string]bool) error {
 	if nil == compactValueSet {
 		errMsg := "record valueSet compactValueSet is nil"
 		logger.ERR(errMsg)
 		return &terror.ErrorCode{Code: terror.ParameterInvalid, Message: errMsg}
 	}
 
-	valueBuf := new(bytes.Buffer)
-	compactValueSet.ValueBufLen = 8 //field_num(4B) + version(4B)
-	//set fieldNum
-	if err := binary.Write(valueBuf, binary.LittleEndian, int32(0)); err != nil {
-		return err
+	// 先计算出总的buffer长度,然后再赋值,data一定全0(这样只分配一次)
+	buffLen := 8
+	for name, v := range r.ValueMap {
+		//部分value字段查询和更新
+		if valueNameMap != nil && len(valueNameMap) > 0 {
+			if _, exist := valueNameMap[name]; !exist {
+				continue
+			}
+		}
+		totalLen := 2 + len(name) + 1 + 4 + len(v)
+		buffLen += totalLen
 	}
-	//set version
 
-	if err := binary.Write(valueBuf, binary.LittleEndian, r.Version); err != nil {
-		return err
-	}
+	valueBuf := new(bytes.Buffer)
+	valueBuf.Grow(buffLen)
+	valueBuf.Reset()
+
+	compactValueSet.ValueBufLen = 8 //field_num(4B) + version(4B)
+
+	tmpBuff := make([]byte, 4, 4)
+	//set fieldNum
+	binary.LittleEndian.PutUint32(tmpBuff, 0)
+	valueBuf.Write(tmpBuff)
+	//set version
+	binary.LittleEndian.PutUint32(tmpBuff, uint32(r.Version))
+	valueBuf.Write(tmpBuff)
 
 	//set name + data + index
 	compactValueSet.FieldIndexs = make([]*tcaplus_protocol_cs.FieldIndex, len(r.ValueMap))
@@ -87,18 +102,17 @@ func (r *Record) packCompactValueSet(compactValueSet *tcaplus_protocol_cs.Compac
 
 		//write name len
 		nameLen := int16(len(name) + 1)
-		if err := binary.Write(valueBuf, binary.LittleEndian, nameLen); err != nil {
-			return err
-		}
+		binary.LittleEndian.PutUint16(tmpBuff, uint16(nameLen))
+		valueBuf.Write(tmpBuff[0:2])
 
 		//write name + "\0"
-		valueBuf.Write(common.StringToCByte(name))
+		valueBuf.Write(common.Str2bytes(name))
+		valueBuf.WriteByte(0)
 
 		//write data len
 		vLen := int32(len(v))
-		if err := binary.Write(valueBuf, binary.LittleEndian, vLen); err != nil {
-			return err
-		}
+		binary.LittleEndian.PutUint32(tmpBuff, uint32(vLen))
+		valueBuf.Write(tmpBuff)
 
 		//write data
 		valueBuf.Write(v)
@@ -115,11 +129,7 @@ func (r *Record) packCompactValueSet(compactValueSet *tcaplus_protocol_cs.Compac
 	compactValueSet.ValueBuf = valueBuf.Bytes()
 
 	//reset fieldNum
-	fieldNumBuf := new(bytes.Buffer)
-	if err := binary.Write(fieldNumBuf, binary.LittleEndian, compactValueSet.FieldIndexNum); err != nil {
-		return err
-	}
-	copy(compactValueSet.ValueBuf[0:], fieldNumBuf.Bytes())
+	binary.LittleEndian.PutUint32(compactValueSet.ValueBuf, uint32(compactValueSet.FieldIndexNum))
 	return nil
 }
 

@@ -11,10 +11,10 @@ import (
 )
 
 type listGetAllResponse struct {
-	record *record.Record
-	pkg    *tcaplus_protocol_cs.TCaplusPkg
-	offset int32
-	idx    int32
+	record  *record.Record
+	pkg     *tcaplus_protocol_cs.TCaplusPkg
+	offset  int32
+	idx     int32
 	listidx int32
 }
 
@@ -31,7 +31,7 @@ func (res *listGetAllResponse) GetResult() int {
 }
 
 func (res *listGetAllResponse) GetTableName() string {
-	tableName := string(res.pkg.Head.RouterInfo.TableName[0:res.pkg.Head.RouterInfo.TableNameLen-1])
+	tableName := string(res.pkg.Head.RouterInfo.TableName[0 : res.pkg.Head.RouterInfo.TableNameLen-1])
 	return tableName
 }
 
@@ -52,7 +52,7 @@ func (res *listGetAllResponse) GetAsyncId() uint64 {
 }
 
 func (res *listGetAllResponse) GetRecordCount() int {
-	if res.pkg.Body.ListGetAllRes.Result == 0  {
+	if res.pkg.Body.ListGetAllRes.Result == 0 {
 		Result := res.pkg.Body.ListGetAllRes.ResultInfo
 		return int(Result.ElementNum)
 	}
@@ -66,20 +66,20 @@ func (res *listGetAllResponse) FetchRecord() (*record.Record, error) {
 		return nil, &terror.ErrorCode{Code: terror.API_ERR_NO_MORE_RECORD}
 	}
 	if res.idx >= int32(data.ElementNum) {
-		logger.ERR("resp fetch record over, current idx: %d, ",res.idx)
-		return nil , &terror.ErrorCode{Code: terror.API_ERR_NO_MORE_RECORD}
+		logger.ERR("resp fetch record over, current idx: %d, ", res.idx)
+		return nil, &terror.ErrorCode{Code: terror.API_ERR_NO_MORE_RECORD}
 	}
 
 	rec := &record.Record{
 		AppId:       uint64(res.pkg.Head.RouterInfo.AppID),
 		ZoneId:      uint32(res.pkg.Head.RouterInfo.ZoneID),
-		TableName:   string(res.pkg.Head.RouterInfo.TableName[0:res.pkg.Head.RouterInfo.TableNameLen-1]),
+		TableName:   string(res.pkg.Head.RouterInfo.TableName[0 : res.pkg.Head.RouterInfo.TableNameLen-1]),
 		Cmd:         int(res.pkg.Head.Cmd),
 		KeyMap:      make(map[string][]byte),
 		ValueMap:    make(map[string][]byte),
 		Version:     -1,
 		KeySet:      res.pkg.Head.KeyInfo,
-		ValueSet: nil,
+		ValueSet:    nil,
 		UpdFieldSet: nil,
 	}
 
@@ -90,11 +90,11 @@ func (res *listGetAllResponse) FetchRecord() (*record.Record, error) {
 		return nil, err
 	}
 
-	read_bytes := uint32(0)
-	err := unpack_element_buff(data.ElementsBuff, uint32(res.offset), data.ElementsBuffLen, &rec.Index,
-		&read_bytes, rec.ValueMap)
+	readBytes := uint32(0)
+	err := unpackElementBuff(data.ElementsBuff, uint32(res.offset), data.ElementsBuffLen, &rec.Index,
+		&readBytes, rec.ValueMap)
 	res.idx += 1
-	res.offset += int32(read_bytes)
+	res.offset += int32(readBytes)
 	res.record = rec
 	return rec, err
 }
@@ -108,9 +108,9 @@ func (res *listGetAllResponse) GetSeq() int32 {
 }
 
 func (res *listGetAllResponse) HaveMoreResPkgs() int {
-	if 1 == res.pkg.Body.ListGetAllRes.IsCompleteFlag  {
+	if 1 == res.pkg.Body.ListGetAllRes.IsCompleteFlag {
 		return 0
-	} else{
+	} else {
 		return 1
 	}
 }
@@ -124,12 +124,26 @@ func (res *listGetAllResponse) GetFailedNum() int {
 }
 
 func (res *listGetAllResponse) FetchErrorRecord() (*record.Record, error) {
-	return nil,nil
+	return nil, nil
 }
 
-func (res *listGetAllResponse) GetRecordMatchCount() int{
-	if 0 == res.pkg.Body.ListGetAllRes.Result{
+func (res *listGetAllResponse) GetRecordMatchCount() int {
+	if 0 == res.pkg.Body.ListGetAllRes.Result {
 		return int(res.pkg.Body.ListGetAllRes.TotalElementNumOnServer)
 	}
 	return terror.GEN_ERR_ERR
+}
+
+func (res *listGetAllResponse) GetPerfTest(recvTime uint64) *tcaplus_protocol_cs.PerfTest {
+	if res.pkg.Head.PerfTestLen == 0 {
+		return nil
+	}
+	perf := tcaplus_protocol_cs.NewPerfTest()
+	err := perf.Unpack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion, res.pkg.Head.PerfTest)
+	if err != nil {
+		logger.ERR("unpack perf error: %s", err)
+		return nil
+	}
+	perf.ApiRecvTime = recvTime
+	return perf
 }

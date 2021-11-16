@@ -30,7 +30,7 @@ var once sync.Once
 // 元数据管理
 type metaManager struct {
 	// 读写锁，由于map非线程安全的，操作时上锁防止panic
-	lock   sync.RWMutex
+	lock sync.RWMutex
 
 	// protobuf表元数据 map key 为  zoneID|tableName
 	tables map[string]*msgDescGroup
@@ -39,25 +39,25 @@ type metaManager struct {
 // 元数据结构体
 type msgDescGroup struct {
 	// table 元数据
-	Desc        protoreflect.MessageDescriptor
+	Desc protoreflect.MessageDescriptor
 
 	// primary key 列表
-	Keys        []string
+	Keys []string
 
 	// shardingKey 用户指定，或者计算索引交集得到
 	ShardingKey string
 
 	// 必填字段列表
-	Required    []string
+	Required []string
 
 	// 全字段  key为字段路径 a.b.c
-	FieldMap	map[string][]protowire.Number
+	FieldMap map[string][]protowire.Number
 
 	// key  为字段number路径 1.1.1
-	NumberMap	map[string][]protowire.Number
+	NumberMap map[string][]protowire.Number
 
 	// 检查元数据，仅检查一次，所以不要多个版本同时用
-	Checked		bool
+	Checked bool
 }
 
 // 获取元数据管理（单例）
@@ -79,7 +79,7 @@ func GetMetaManager() *metaManager {
 // @return    error  错误信息
 func (m *metaManager) AddTableDesGrp(appId uint64, zoneId uint32, tableName string, metaData []byte) error {
 	group := &msgDescGroup{
-		FieldMap: make(map[string][]protowire.Number),
+		FieldMap:  make(map[string][]protowire.Number),
 		NumberMap: make(map[string][]protowire.Number),
 	}
 
@@ -187,8 +187,8 @@ func (m *metaManager) GetTableDesGrp(zoneTable string) *msgDescGroup {
 }
 
 func (m *metaManager) getAllRequiredFields(desc protoreflect.MessageDescriptor, prefixName, prefixNum string,
-		prefixNumArr []protowire.Number, requird map[string]struct{},
-		fieldMap map[string][]protowire.Number, NumberMap map[string][]protowire.Number) error {
+	prefixNumArr []protowire.Number, requird map[string]struct{},
+	fieldMap map[string][]protowire.Number, NumberMap map[string][]protowire.Number) error {
 	if desc == nil {
 		return fmt.Errorf("DescriptorProto is nil")
 	}
@@ -303,7 +303,7 @@ func (m *metaManager) CompareMessageMeta(svr, cli protoreflect.MessageDescriptor
 
 	for i := 0; i < svr.Fields().Len(); i++ {
 		svrField := svr.Fields().Get(i)
-		if svrField == nil{
+		if svrField == nil {
 			errMsg := fmt.Sprintf("svr message meta field is nil")
 			logger.ERR(errMsg)
 			return fmt.Errorf(errMsg)

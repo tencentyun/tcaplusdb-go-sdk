@@ -2,6 +2,7 @@ package record
 
 import (
 	"encoding/binary"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/common"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/logger"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/tcaplus_protocol_cs"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/terror"
@@ -93,8 +94,7 @@ func (r *Record) setKey(name string, data interface{}) error {
 			logger.ERR("key type not string")
 			return &terror.ErrorCode{Code: terror.RecordKeyTypeInvalid}
 		} else {
-			value = []byte(str)
-			value = append(value, 0)
+			value = common.StringToCByte(str)
 		}
 		break
 	default:
@@ -272,8 +272,7 @@ func (r *Record) setValue(name string, data interface{}) error {
 			logger.ERR("value type not string")
 			return &terror.ErrorCode{Code: terror.RecordKeyTypeInvalid}
 		} else {
-			value = []byte(str)
-			value = append(value, 0)
+			value = common.StringToCByte(str)
 		}
 		break
 	default:

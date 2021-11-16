@@ -8,10 +8,10 @@ import (
 )
 
 type listAddAfterResponse struct {
-	record *record.Record
-	pkg    *tcaplus_protocol_cs.TCaplusPkg
-	offset int32
-	idx    int32
+	record  *record.Record
+	pkg     *tcaplus_protocol_cs.TCaplusPkg
+	offset  int32
+	idx     int32
 	listidx int32
 }
 
@@ -28,7 +28,7 @@ func (res *listAddAfterResponse) GetResult() int {
 }
 
 func (res *listAddAfterResponse) GetTableName() string {
-	tableName := string(res.pkg.Head.RouterInfo.TableName[0:res.pkg.Head.RouterInfo.TableNameLen-1])
+	tableName := string(res.pkg.Head.RouterInfo.TableName[0 : res.pkg.Head.RouterInfo.TableNameLen-1])
 	return tableName
 }
 
@@ -92,20 +92,23 @@ func (res *listAddAfterResponse) FetchRecord() (*record.Record, error) {
 	}
 
 	if res.idx >= int32(data.ElementNum) {
-		logger.ERR("resp fetch record over, current idx: %d, ",res.idx)
-		return nil , &terror.ErrorCode{Code: terror.API_ERR_NO_MORE_RECORD}
+		logger.ERR("resp fetch record over, current idx: %d,%d,%d ", res.idx, data.ElementNum,
+			res.pkg.Body.ListAddAfterRes.ResultInfo.ElementNum)
+		return nil, &terror.ErrorCode{Code: terror.API_ERR_NO_MORE_RECORD}
 	}
+	logger.DEBUG("resp fetch record over, current idx: %d,%d,%d ", res.idx, data.ElementNum,
+		res.pkg.Body.ListAddAfterRes.ResultInfo.ElementNum)
 
 	rec := &record.Record{
 		AppId:       uint64(res.pkg.Head.RouterInfo.AppID),
 		ZoneId:      uint32(res.pkg.Head.RouterInfo.ZoneID),
-		TableName:   string(res.pkg.Head.RouterInfo.TableName[0:res.pkg.Head.RouterInfo.TableNameLen-1]),
+		TableName:   string(res.pkg.Head.RouterInfo.TableName[0 : res.pkg.Head.RouterInfo.TableNameLen-1]),
 		Cmd:         int(res.pkg.Head.Cmd),
 		KeyMap:      make(map[string][]byte),
 		ValueMap:    make(map[string][]byte),
 		Version:     -1,
 		KeySet:      res.pkg.Head.KeyInfo,
-		ValueSet: nil,
+		ValueSet:    nil,
 		UpdFieldSet: nil,
 	}
 
@@ -116,11 +119,11 @@ func (res *listAddAfterResponse) FetchRecord() (*record.Record, error) {
 		return nil, err
 	}
 
-	read_bytes := uint32(0)
-	err := unpack_element_buff(data.ElementsBuff, uint32(res.offset), data.ElementsBuffLen, &rec.Index,
-		&read_bytes, rec.ValueMap)
+	readBytes := uint32(0)
+	err := unpackElementBuff(data.ElementsBuff, uint32(res.offset), data.ElementsBuffLen, &rec.Index,
+		&readBytes, rec.ValueMap)
 	res.idx += 1
-	res.offset += int32(read_bytes)
+	res.offset += int32(readBytes)
 	res.record = rec
 	return rec, err
 }
@@ -137,6 +140,20 @@ func (res *listAddAfterResponse) HaveMoreResPkgs() int {
 	return 0
 }
 
-func (res *listAddAfterResponse) GetRecordMatchCount() int{
+func (res *listAddAfterResponse) GetRecordMatchCount() int {
 	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
+}
+
+func (res *listAddAfterResponse) GetPerfTest(recvTime uint64) *tcaplus_protocol_cs.PerfTest {
+	if res.pkg.Head.PerfTestLen == 0 {
+		return nil
+	}
+	perf := tcaplus_protocol_cs.NewPerfTest()
+	err := perf.Unpack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion, res.pkg.Head.PerfTest)
+	if err != nil {
+		logger.ERR("unpack perf error: %s", err)
+		return nil
+	}
+	perf.ApiRecvTime = recvTime
+	return perf
 }

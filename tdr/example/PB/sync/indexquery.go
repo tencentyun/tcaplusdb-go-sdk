@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/example/table/tcaplusservice"
-	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/example/tools"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/example/PB/table/tcaplusservice"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/example/PB/tools"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/logger"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/cmd"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/terror"

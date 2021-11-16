@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr"
-	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/example/cfg"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/example/PB/cfg"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/response"
 	"strings"
 	"sync"

@@ -9,7 +9,8 @@ package main
 import (
 	"fmt"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr"
-	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/example/table/tcaplusservice"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/example/PB/table/tcaplusservice"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/option"
 	"google.golang.org/protobuf/proto"
 	"time"
 )
@@ -118,7 +119,14 @@ func replaceRecord() {
 			Method: 2,
 		},
 	}
-	err := client.Replace(record)
+
+	//乐观锁设置
+	opt := &option.PBOpt{
+		VersionPolicy: option.CheckDataVersionAutoIncrease,
+		Version:       1,
+	}
+
+	err := client.DoReplace(record, opt)
 	if err != nil {
 		fmt.Println(err.Error())
 		return

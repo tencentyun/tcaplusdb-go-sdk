@@ -15,14 +15,11 @@ import (
 
 type PBClient struct {
 	*client
-	defZone    int32
-	defTimeout time.Duration
 }
 
 func NewPBClient() *PBClient {
 	c := new(PBClient)
 	c.client = newClient(true)
-	c.defZone = -1
 	c.defTimeout = 5 * time.Second
 	return c
 }
@@ -89,21 +86,6 @@ func (c *PBClient) initTableMeta(zoneTables map[uint32][]string) error {
 			}
 		}
 	}
-	return nil
-}
-
-/**
-    @brief 设置默认zoneId
-	@param [IN] zoneId zoneID
-    @retval error 错误码，如果未dial调用此接口将会返错 ClientNotDial
-**/
-func (c *PBClient) SetDefaultZoneId(zoneId uint32) error {
-	// 等于 -1 说明未进行dial初始化
-	if c.defZone == -1 {
-		logger.ERR("client not dial init")
-		return &terror.ErrorCode{Code: terror.ClientNotDial}
-	}
-	c.defZone = int32(zoneId)
 	return nil
 }
 

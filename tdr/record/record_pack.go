@@ -106,7 +106,8 @@ func (r *Record) packCompactValueSet(compactValueSet *tcaplus_protocol_cs.Compac
 		valueBuf.Write(tmpBuff[0:2])
 
 		//write name + "\0"
-		valueBuf.Write(common.StringToCByte(name))
+		valueBuf.Write(common.Str2bytes(name))
+		valueBuf.WriteByte(0)
 
 		//write data len
 		vLen := int32(len(v))

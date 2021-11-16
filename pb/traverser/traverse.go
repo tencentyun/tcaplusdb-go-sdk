@@ -1,6 +1,7 @@
 package traverser
 
 import (
+	"fmt"
 	log "github.com/tencentyun/tcaplusdb-go-sdk/pb/logger"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/cmd"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/tcaplus_protocol_cs"
@@ -47,9 +48,10 @@ type Traverser struct {
 	traversedCnt int64
 	limit        int64
 
-	seqForSync   int32
+	seqForSync int32
 
 	client ClientInf
+	tm     *TraverserManager
 }
 
 func newTraverser(zoneId uint32, table string) *Traverser {
@@ -75,6 +77,10 @@ func (t *Traverser) Start() error {
 }
 
 func (t *Traverser) Stop() error {
+	zoneTable := fmt.Sprintf("%d|%s", t.zoneId, t.tableName)
+	t.tm.lock.Lock()
+	delete(t.tm.traverseMap, zoneTable)
+	t.tm.lock.Unlock()
 	t.state = TraverseStateStop
 	t.zoneId = 0
 	t.tableName = ""
@@ -142,6 +148,23 @@ func (t *Traverser) SetLimit(limit int64) error {
 	return nil
 }
 
+func (t *Traverser) SetFieldNames(valueNameList []string) error {
+	if TraverseStateReady != t.state {
+		log.ERR("Traverser state %d not ready", t.state)
+		return &terror.ErrorCode{Code: terror.API_ERR_INVALID_OBJ_STATUE}
+	}
+	if t.nameSet == nil {
+		t.nameSet = &tcaplus_protocol_cs.TCaplusNameSet{}
+	}
+	t.nameSet.FieldNum = 0
+	t.nameSet.FieldName = nil
+	for _, name := range valueNameList {
+		t.nameSet.FieldNum++
+		t.nameSet.FieldName = append(t.nameSet.FieldName, name)
+	}
+	return nil
+}
+
 func (t *Traverser) sendGetShardListRequest() error {
 	req, err := t.client.NewRequest(t.zoneId, t.tableName, cmd.TcaplusApiGetShardListReq)
 	if err != nil {
@@ -182,7 +205,7 @@ func (t *Traverser) sendTraverseRequest() error {
 	req.GetTcaplusPackagePtr().Head.RouterInfo.ShardID = t.shardList[t.shardCurId]
 
 	if 0 == t.asyncId {
-		req.GetTcaplusPackagePtr().Head.AsynID = uint64(t.traverseId) << 32 | uint64(t.requestId)
+		req.GetTcaplusPackagePtr().Head.AsynID = uint64(t.traverseId)<<32 | uint64(t.requestId)
 	} else {
 		req.GetTcaplusPackagePtr().Head.AsynID = t.asyncId
 	}
@@ -301,18 +324,18 @@ func (t *Traverser) onRecvResponse(msg *tcaplus_protocol_cs.TCaplusPkg, drop *bo
 					next = true
 				}
 			} else {
-				if msg.Body.TableTraverseRes.Sequence == t.seq + uint64(t.resNumPerReq) {
+				if msg.Body.TableTraverseRes.Sequence == t.seq+uint64(t.resNumPerReq) {
 					next = true
 				}
 			}
 
 			if 0 == msg.Body.TableTraverseRes.RecordNum {
 				*drop = true
-				log.DEBUG("zone %d, table %s traverse finished with dwRecordNum = 0 " +
+				log.DEBUG("zone %d, table %s traverse finished with dwRecordNum = 0 "+
 					"on shard(%d/%d) m_shard_completed %d, so this response will be dropped",
 					t.zoneId, t.tableName, t.shardCurId+1, t.shardCnt, t.shardCompleted)
 			} else {
-				log.DEBUG("saved traverse response state: offset %d, " +
+				log.DEBUG("saved traverse response state: offset %d, "+
 					"shard %d, completed %d, recnum %d, total %d, zone %d, table_name %s",
 					t.offset, t.shardList[t.shardCurId], t.shardCompleted,
 					msg.Body.TableTraverseRes.RecordNum, t.traversedCnt, t.zoneId, t.tableName)
@@ -325,7 +348,7 @@ func (t *Traverser) onRecvResponse(msg *tcaplus_protocol_cs.TCaplusPkg, drop *bo
 	}
 
 	finish := false
-	if t.shardCompleted > 0 && t.shardCurId >= t.shardCnt - 1 {
+	if t.shardCompleted > 0 && t.shardCurId >= t.shardCnt-1 {
 		finish = true
 	} else {
 		// generic 表

@@ -7,7 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr"
-	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/example/table/tcaplusservice"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/example/PB/table/tcaplusservice"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/cmd"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/record"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/request"

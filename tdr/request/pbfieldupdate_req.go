@@ -3,6 +3,7 @@ package request
 import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/common"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/logger"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/cs_pool"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/policy"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/tcaplus_protocol_cs"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/record"
@@ -27,6 +28,15 @@ func newPBFieldUpdateRequest(appId uint64, zoneId uint32, tableName string, cmd 
 	}
 
 	pkg.Body.TCaplusPbFieldUpdateReq.ValueInfo.EncodeType = 1
+	pkg.Body.TCaplusPbFieldUpdateReq.ValueInfo.Version_ = 0
+	pkg.Body.TCaplusPbFieldUpdateReq.ValueInfo.CompactValueSet.ValueBuf = nil
+	pkg.Body.TCaplusPbFieldUpdateReq.ValueInfo.CompactValueSet.ValueBufLen = 0
+	pkg.Body.TCaplusPbFieldUpdateReq.ValueInfo.CompactValueSet.FieldIndexs = nil
+	pkg.Body.TCaplusPbFieldUpdateReq.ValueInfo.CompactValueSet.FieldIndexNum = 0
+	pkg.Body.TCaplusPbFieldUpdateReq.ValueInfo.FieldNum_ = 0
+	pkg.Body.TCaplusPbFieldUpdateReq.ValueInfo.Fields_ = nil
+	pkg.Body.TCaplusPbFieldUpdateReq.CheckVersionType = 1
+
 	req := &pbFieldUpdateRequest{
 		appId:     appId,
 		zoneId:    zoneId,
@@ -85,6 +95,11 @@ func (req *pbFieldUpdateRequest) SetResultFlag(flag int) error {
 }
 
 func (req *pbFieldUpdateRequest) Pack() ([]byte, error) {
+	if req.pkg == nil {
+		logger.ERR("Request can not second use")
+		return nil, &terror.ErrorCode{Code: terror.RequestHasHasNoPkg, Message: "Request can not second use"}
+	}
+
 	if req.record == nil {
 		return nil, &terror.ErrorCode{Code: terror.RequestHasNoRecord}
 	}
@@ -116,6 +131,15 @@ func (req *pbFieldUpdateRequest) GetZoneId() uint32 {
 }
 
 func (req *pbFieldUpdateRequest) GetKeyHash() (uint32, error) {
+	if req.pkg == nil {
+		logger.ERR("Request can not second use")
+		return uint32(terror.RequestHasHasNoPkg), &terror.ErrorCode{Code: terror.RequestHasHasNoPkg,
+			Message: "Request can not second use"}
+	}
+	defer func() {
+		cs_pool.PutTcaplusCSPkg(req.pkg)
+		req.pkg = nil
+	}()
 	if req.record == nil {
 		return 0, &terror.ErrorCode{Code: terror.RequestHasNoRecord}
 	}

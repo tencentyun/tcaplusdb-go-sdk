@@ -3,6 +3,7 @@ package request
 import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/common"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/logger"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/cs_pool"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/policy"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/tcaplus_protocol_cs"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/record"
@@ -10,30 +11,41 @@ import (
 )
 
 type pbFieldUpdateRequest struct {
-	appId        uint64
-	zoneId       uint32
-	tableName    string
-	cmd          int
-	seq          uint32
-	record       *record.Record
-	pkg          *tcaplus_protocol_cs.TCaplusPkg
+	appId     uint64
+	zoneId    uint32
+	tableName string
+	cmd       int
+	seq       uint32
+	record    *record.Record
+	pkg       *tcaplus_protocol_cs.TCaplusPkg
+	isPB      bool
 }
 
 func newPBFieldUpdateRequest(appId uint64, zoneId uint32, tableName string, cmd int,
-	seq uint32, pkg *tcaplus_protocol_cs.TCaplusPkg) (*pbFieldUpdateRequest, error) {
+	seq uint32, pkg *tcaplus_protocol_cs.TCaplusPkg, isPB bool) (*pbFieldUpdateRequest, error) {
 	if pkg == nil || pkg.Body == nil || pkg.Body.TCaplusPbFieldUpdateReq == nil {
 		return nil, &terror.ErrorCode{Code: terror.API_ERR_PARAMETER_INVALID, Message: "pkg init fail"}
 	}
 
 	pkg.Body.TCaplusPbFieldUpdateReq.ValueInfo.EncodeType = 1
+	pkg.Body.TCaplusPbFieldUpdateReq.ValueInfo.Version_ = 0
+	pkg.Body.TCaplusPbFieldUpdateReq.ValueInfo.CompactValueSet.ValueBuf = nil
+	pkg.Body.TCaplusPbFieldUpdateReq.ValueInfo.CompactValueSet.ValueBufLen = 0
+	pkg.Body.TCaplusPbFieldUpdateReq.ValueInfo.CompactValueSet.FieldIndexs = nil
+	pkg.Body.TCaplusPbFieldUpdateReq.ValueInfo.CompactValueSet.FieldIndexNum = 0
+	pkg.Body.TCaplusPbFieldUpdateReq.ValueInfo.FieldNum_ = 0
+	pkg.Body.TCaplusPbFieldUpdateReq.ValueInfo.Fields_ = nil
+	pkg.Body.TCaplusPbFieldUpdateReq.CheckVersionType = 1
+
 	req := &pbFieldUpdateRequest{
-		appId:        appId,
-		zoneId:       zoneId,
-		tableName:    tableName,
-		cmd:          cmd,
-		seq:          seq,
-		record:       nil,
-		pkg:          pkg,
+		appId:     appId,
+		zoneId:    zoneId,
+		tableName: tableName,
+		cmd:       cmd,
+		seq:       seq,
+		record:    nil,
+		pkg:       pkg,
+		isPB:      isPB,
 	}
 	return req, nil
 }
@@ -44,14 +56,15 @@ func (req *pbFieldUpdateRequest) AddRecord(index int32) (*record.Record, error) 
 	}
 
 	rec := &record.Record{
-		AppId:       req.appId,
-		ZoneId:      req.zoneId,
-		TableName:   req.tableName,
-		Cmd:         req.cmd,
-		KeyMap:      make(map[string][]byte),
-		ValueMap:    make(map[string][]byte),
-		Version:     -1,
-		PBFieldMap:  make(map[string]bool),
+		AppId:      req.appId,
+		ZoneId:     req.zoneId,
+		TableName:  req.tableName,
+		Cmd:        req.cmd,
+		KeyMap:     make(map[string][]byte),
+		ValueMap:   make(map[string][]byte),
+		Version:    -1,
+		PBFieldMap: make(map[string]bool),
+		IsPB:       req.isPB,
 	}
 
 	//key value set
@@ -82,6 +95,11 @@ func (req *pbFieldUpdateRequest) SetResultFlag(flag int) error {
 }
 
 func (req *pbFieldUpdateRequest) Pack() ([]byte, error) {
+	if req.pkg == nil {
+		logger.ERR("Request can not second use")
+		return nil, &terror.ErrorCode{Code: terror.RequestHasHasNoPkg, Message: "Request can not second use"}
+	}
+
 	if req.record == nil {
 		return nil, &terror.ErrorCode{Code: terror.RequestHasNoRecord}
 	}
@@ -113,6 +131,15 @@ func (req *pbFieldUpdateRequest) GetZoneId() uint32 {
 }
 
 func (req *pbFieldUpdateRequest) GetKeyHash() (uint32, error) {
+	if req.pkg == nil {
+		logger.ERR("Request can not second use")
+		return uint32(terror.RequestHasHasNoPkg), &terror.ErrorCode{Code: terror.RequestHasHasNoPkg,
+			Message: "Request can not second use"}
+	}
+	defer func() {
+		cs_pool.PutTcaplusCSPkg(req.pkg)
+		req.pkg = nil
+	}()
 	if req.record == nil {
 		return 0, &terror.ErrorCode{Code: terror.RequestHasNoRecord}
 	}
@@ -135,19 +162,44 @@ func (req *pbFieldUpdateRequest) SetSeq(seq int32) {
 	req.pkg.Head.Seq = seq
 }
 
-func (req *pbFieldUpdateRequest)SetResultLimit(limit int32, offset int32) int32 {
+func (req *pbFieldUpdateRequest) SetResultLimit(limit int32, offset int32) int32 {
 	return int32(terror.API_ERR_OPERATION_TYPE_NOT_MATCH)
 }
 
-func (req *pbFieldUpdateRequest)SetMultiResponseFlag(multi_flag byte) int32{
+func (req *pbFieldUpdateRequest) SetMultiResponseFlag(multi_flag byte) int32 {
 	return int32(terror.API_ERR_OPERATION_TYPE_NOT_MATCH)
 }
 
-func (req *pbFieldUpdateRequest)SetResultFlagForSuccess(result_flag byte) int {
+func (req *pbFieldUpdateRequest) SetResultFlagForSuccess(result_flag byte) int {
 	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
 }
 
-func (req *pbFieldUpdateRequest)SetResultFlagForFail(result_flag byte) int {
+func (req *pbFieldUpdateRequest) SetResultFlagForFail(result_flag byte) int {
 	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
 }
 
+func (req *pbFieldUpdateRequest) SetPerfTest(sendTime uint64) int {
+	perf := tcaplus_protocol_cs.NewPerfTest()
+	perf.ApiSendTime = sendTime
+	perf.Version = tcaplus_protocol_cs.PerfTestCurrentVersion
+	p, err := perf.Pack(tcaplus_protocol_cs.PerfTestCurrentVersion)
+	if err != nil {
+		logger.ERR("pack perf error: %s", err)
+		return terror.API_ERR_PARAMETER_INVALID
+	}
+	req.pkg.Head.PerfTest = p
+	req.pkg.Head.PerfTestLen = uint32(len(p))
+	return terror.GEN_ERR_SUC
+}
+
+func (req *pbFieldUpdateRequest) SetFlags(flag int32) int {
+	return setFlags(req.pkg, flag)
+}
+
+func (req *pbFieldUpdateRequest) ClearFlags(flag int32) int {
+	return clearFlags(req.pkg, flag)
+}
+
+func (req *pbFieldUpdateRequest) GetFlags() int32 {
+	return req.pkg.Head.Flags
+}

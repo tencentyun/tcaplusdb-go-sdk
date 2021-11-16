@@ -2,6 +2,7 @@ package record
 
 import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/tcaplus_protocol_cs"
+	"sync"
 )
 
 /*
@@ -29,6 +30,41 @@ type Record struct {
 	ShardingKey       *[]byte
 	ShardingKeyLen    *uint32
 	IsPB              bool
+}
+
+//record缓存池
+var recordPool = sync.Pool{
+	New: func() interface{} {
+		return new(Record)
+	},
+}
+
+func GetPoolRecord() *Record {
+	r := recordPool.Get().(*Record)
+	r.AppId = 0
+	r.ZoneId = 0
+	r.TableName = ""
+	r.Cmd = 0
+	r.KeyMap = nil
+	r.ValueMap = nil
+	r.Version = -1
+	r.KeySet = nil
+	r.ValueSet = nil
+	r.UpdFieldSet = nil
+	r.SplitTableKeyBuff = nil
+	r.PBValueSet = nil
+	r.PBFieldMap = nil
+	r.ShardingKey = nil
+	r.ShardingKeyLen = nil
+	r.IsPB = false
+	return r
+}
+
+func PutPoolRecord(record *Record) {
+	if nil == record {
+		return
+	}
+	recordPool.Put(record)
 }
 
 /**

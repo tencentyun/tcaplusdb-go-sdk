@@ -108,4 +108,3 @@ func RangeEntries(es EntryRanger, less KeyOrder, fn VisitEntry) {
 		}
 	}
 }
-

@@ -31,14 +31,15 @@ var (
 	RecordUnpackFailed     = -0x0000181e /*-6174*/
 	RecordKeyNotExist      = -0x0000191e /*-6430*/
 	RecordValueNotExist    = -0x00001a1e /*-6686*/
-	ClientNotDial		   = -0x00001b1e /*-6942*/
-	RespNotMatchReq		   = -0x00001c1e /*-7198*/
-	MetadataNotProtobuf	   = -0x00001d1e /*-7454*/
-	SqlQueryFormatError	   = -0x00001e1e /*-7710*/
-	GetTraverserError	   = -0x00001f1e /*-7966*/
-	RouterIsClosed	   	   = -0x0000201e /*-8222*/
-	SendRequestFail		   = -0x0000211e /*-8478*/
-	TimeOut				   = -0x0000221e /*-8734*/
+	ClientNotDial          = -0x00001b1e /*-6942*/
+	RespNotMatchReq        = -0x00001c1e /*-7198*/
+	MetadataNotProtobuf    = -0x00001d1e /*-7454*/
+	SqlQueryFormatError    = -0x00001e1e /*-7710*/
+	GetTraverserError      = -0x00001f1e /*-7966*/
+	RouterIsClosed         = -0x0000201e /*-8222*/
+	SendRequestFail        = -0x0000211e /*-8478*/
+	TimeOut                = -0x0000221e /*-8734*/
+	RequestHasHasNoPkg     = -0x0000231e /*-8990*/
 
 	/*****************************************************************************************
 	 **********************************C版本错误码*********************************************
@@ -486,7 +487,7 @@ var (
 	PROXY_ERR_QUERY_FROM_INDEX_SERVER_TIMEOUT                               = -0x00003411 /*-13329*/
 	PROXY_ERR_QUERY_FOR_CONVERT_TCAPLUS_REQ_TO_INDEX_SERVER_REQ_FAILED      = -0x00003511 /*-13585*/
 	PROXY_ERR_QUERY_INDEX_FIELD_NOT_EXIST                                   = -0x00003611 /*-13841*/
-	PROXY_ERR_THIS_SQL_IS_NOT_SUPPORT                                       = -0x00003711;/*-14097*/
+	PROXY_ERR_THIS_SQL_IS_NOT_SUPPORT                                       = -0x00003711 /*-14097*/
 
 	//API SYSTEM (module id 0x13) Error Code defined below
 	API_ERR_OVER_MAX_KEY_FIELD_NUM                           = -0x00000113 /*-275*/
@@ -626,7 +627,7 @@ var (
 )
 
 var ErrorCodes = map[int]string{
-	ParameterInvalid:		"无效的参数",
+	ParameterInvalid:       "无效的参数",
 	DirSignUpFailed:        "dir 认证失败",
 	ClientInitTimeOut:      "client 初始化超时",
 	ProxySignUpFailed:      "proxy 认证失败",
@@ -653,89 +654,89 @@ var ErrorCodes = map[int]string{
 	RecordUnpackFailed:     "response record解包失败",
 	RecordKeyNotExist:      "record中请求的key不存在",
 	RecordValueNotExist:    "record中请求的value不存在",
-	ClientNotDial:			"client 未进行dial初始化",
-	RespNotMatchReq:		"响应未与请求对应",
-	MetadataNotProtobuf:	"元数据类型不是protobuf",
-	SqlQueryFormatError:	"sql语句格式错误",
-	GetTraverserError:		"获取遍历器失败",
-	RouterIsClosed:			"路由已关闭",
-	SendRequestFail:		"请求发送失败",
-	TimeOut:				"请求超时",
+	ClientNotDial:          "client 未进行dial初始化",
+	RespNotMatchReq:        "响应未与请求对应",
+	MetadataNotProtobuf:    "元数据类型不是protobuf",
+	SqlQueryFormatError:    "sql语句格式错误",
+	GetTraverserError:      "获取遍历器失败",
+	RouterIsClosed:         "路由已关闭",
+	SendRequestFail:        "请求发送失败",
+	TimeOut:                "请求超时",
 
 	/*****************************************************************************************
 	*****************************************C版本错误码*********************************************
 	*******************************************************************************************/
 
-	GEN_ERR_ECMGR_INVALID_MODULE_ID         :"GEN_ERR_ECMGR_INVALID_MODULE_ID",
-	GEN_ERR_ECMGR_INVALID_ERROR_CODE        :"GEN_ERR_ECMGR_INVALID_ERROR_CODE",
-	GEN_ERR_ECMGR_NULL_ERROR_STRING         :"GEN_ERR_ECMGR_NULL_ERROR_STRING",
-	GEN_ERR_ECMGR_DUPLICATED_ERROR_CODE     :"GEN_ERR_ECMGR_DUPLICATED_ERROR_CODE",
-	GEN_ERR_TXLOG_NULL_POINTER_FROM_TSD     :"GEN_ERR_TXLOG_NULL_POINTER_FROM_TSD",
-	GEN_ERR_TABLE_READONLY                  :"GEN_ERR_TABLE_READONLY",
-	GEN_ERR_TABLE_READ_DELETE               :"GEN_ERR_TABLE_READ_DELETE",
-	GEN_ERR_ACCESS_DENIED                   :"GEN_ERR_ACCESS_DENIED",
-	GEN_ERR_INVALID_ARGUMENTS               :"GEN_ERR_INVALID_ARGUMENTS",
-	GEN_ERR_UNSUPPORT_OPERATION             :"GEN_ERR_UNSUPPORT_OPERATION",
-	GEN_ERR_NOT_ENOUGH_MEMORY               :"GEN_ERR_NOT_ENOUGH_MEMORY",
-	GEN_ERR_NOT_SATISFY_INSERT_FOR_SORTLIST :"GEN_ERR_NOT_SATISFY_INSERT_FOR_SORTLIST",
-	GEN_ERR_BASE64_ENCODE_FAILED            :"GEN_ERR_BASE64_ENCODE_FAILED",
-	GEN_ERR_BASE64_DECODE_FAILED            :"GEN_ERR_BASE64_DECODE_FAILED",
+	GEN_ERR_ECMGR_INVALID_MODULE_ID:         "GEN_ERR_ECMGR_INVALID_MODULE_ID",
+	GEN_ERR_ECMGR_INVALID_ERROR_CODE:        "GEN_ERR_ECMGR_INVALID_ERROR_CODE",
+	GEN_ERR_ECMGR_NULL_ERROR_STRING:         "GEN_ERR_ECMGR_NULL_ERROR_STRING",
+	GEN_ERR_ECMGR_DUPLICATED_ERROR_CODE:     "GEN_ERR_ECMGR_DUPLICATED_ERROR_CODE",
+	GEN_ERR_TXLOG_NULL_POINTER_FROM_TSD:     "GEN_ERR_TXLOG_NULL_POINTER_FROM_TSD",
+	GEN_ERR_TABLE_READONLY:                  "GEN_ERR_TABLE_READONLY",
+	GEN_ERR_TABLE_READ_DELETE:               "GEN_ERR_TABLE_READ_DELETE",
+	GEN_ERR_ACCESS_DENIED:                   "GEN_ERR_ACCESS_DENIED",
+	GEN_ERR_INVALID_ARGUMENTS:               "GEN_ERR_INVALID_ARGUMENTS",
+	GEN_ERR_UNSUPPORT_OPERATION:             "GEN_ERR_UNSUPPORT_OPERATION",
+	GEN_ERR_NOT_ENOUGH_MEMORY:               "GEN_ERR_NOT_ENOUGH_MEMORY",
+	GEN_ERR_NOT_SATISFY_INSERT_FOR_SORTLIST: "GEN_ERR_NOT_SATISFY_INSERT_FOR_SORTLIST",
+	GEN_ERR_BASE64_ENCODE_FAILED:            "GEN_ERR_BASE64_ENCODE_FAILED",
+	GEN_ERR_BASE64_DECODE_FAILED:            "GEN_ERR_BASE64_DECODE_FAILED",
 
 	//LINELOC BUSINESS (module id 0x02) Error Code defined below
-	LOC_ERR__0x00000102 :"LOC_ERR__0x00000102",
-	LOC_ERR__0x00000202 :"LOC_ERR__0x00000202",
-	LOC_ERR__0x00000302 :"LOC_ERR__0x00000302",
-	LOC_ERR__0x00000402 :"LOC_ERR__0x00000402",
-	LOC_ERR__0x00000502 :"LOC_ERR__0x00000502",
-	LOC_ERR__0x00000602 :"LOC_ERR__0x00000602",
-	LOC_ERR__0x00000702 :"LOC_ERR__0x00000702",
-	LOC_ERR__0x00000802 :"LOC_ERR__0x00000802",
-	LOC_ERR__0x00000902 :"LOC_ERR__0x00000902",
-	LOC_ERR__0x00000A02 :"LOC_ERR__0x00000A02",
-	LOC_ERR__0x00000B02 :"LOC_ERR__0x00000B02",
-	LOC_ERR__0x00000C02 :"LOC_ERR__0x00000C02",
-	LOC_ERR__0x00000D02 :"LOC_ERR__0x00000D02",
-	LOC_ERR__0x00000E02 :"LOC_ERR__0x00000E02",
-	LOC_ERR__0x00000F02 :"LOC_ERR__0x00000F02",
-	LOC_ERR__0x00001002 :"LOC_ERR__0x00001002",
-	LOC_ERR__0x00001102 :"LOC_ERR__0x00001102",
-	LOC_ERR__0x00001202 :"LOC_ERR__0x00001202",
-	LOC_ERR__0x00001302 :"LOC_ERR__0x00001302",
-	LOC_ERR__0x00001402 :"LOC_ERR__0x00001402",
-	LOC_ERR__0x00001502 :"LOC_ERR__0x00001502",
-	LOC_ERR__0x00001602 :"LOC_ERR__0x00001602",
-	LOC_ERR__0x00001702 :"LOC_ERR__0x00001702",
-	LOC_ERR__0x00001802 :"LOC_ERR__0x00001802",
-	LOC_ERR__0x00001902 :"LOC_ERR__0x00001902",
-	LOC_ERR__0x00001A02 :"LOC_ERR__0x00001A02",
-	LOC_ERR__0x00001B02 :"LOC_ERR__0x00001B02",
-	LOC_ERR__0x00001C02 :"LOC_ERR__0x00001C02",
-	LOC_ERR__0x00001D02 :"LOC_ERR__0x00001D02",
-	LOC_ERR__0x00001E02 :"LOC_ERR__0x00001E02",
-	LOC_ERR__0x00001F02 :"LOC_ERR__0x00001F02",
-	LOC_ERR__0x00002002 :"LOC_ERR__0x00002002",
-	LOC_ERR__0x00002802 :"LOC_ERR__0x00002802",
-	LOC_ERR__0x00003002 :"LOC_ERR__0x00003002",
-	LOC_ERR__0x00003802 :"LOC_ERR__0x00003802",
-	LOC_ERR__0x00004002 :"LOC_ERR__0x00004002",
-	LOC_ERR__0x00004802 :"LOC_ERR__0x00004802",
-	LOC_ERR__0x00005002 :"LOC_ERR__0x00005002",
-	LOC_ERR__0x00005802 :"LOC_ERR__0x00005802",
-	LOC_ERR__0x00006002 :"LOC_ERR__0x00006002",
-	LOC_ERR__0x00006802 :"LOC_ERR__0x00006802",
-	LOC_ERR__0x00007002 :"LOC_ERR__0x00007002",
-	LOC_ERR__0x00007802 :"LOC_ERR__0x00007802",
-	LOC_ERR__0x00008002 :"LOC_ERR__0x00008002",
-	LOC_ERR__0x00008802 :"LOC_ERR__0x00008802",
-	LOC_ERR__0x00009002 :"LOC_ERR__0x00009002",
-	LOC_ERR__0x00009802 :"LOC_ERR__0x00009802",
-	LOC_ERR__0x0000A002 :"LOC_ERR__0x0000A002",
-	LOC_ERR__0x0000A802 :"LOC_ERR__0x0000A802",
-	LOC_ERR__0x0000B002 :"LOC_ERR__0x0000B002",
-	LOC_ERR__0x0000B802 :"LOC_ERR__0x0000B802",
-	LOC_ERR__0x0000C002 :"LOC_ERR__0x0000C002",
-	LOC_ERR__0x0000C802 :"LOC_ERR__0x0000C802",
-	LOC_ERR__0x0000FF02 :"LOC_ERR__0x0000FF02",
+	LOC_ERR__0x00000102: "LOC_ERR__0x00000102",
+	LOC_ERR__0x00000202: "LOC_ERR__0x00000202",
+	LOC_ERR__0x00000302: "LOC_ERR__0x00000302",
+	LOC_ERR__0x00000402: "LOC_ERR__0x00000402",
+	LOC_ERR__0x00000502: "LOC_ERR__0x00000502",
+	LOC_ERR__0x00000602: "LOC_ERR__0x00000602",
+	LOC_ERR__0x00000702: "LOC_ERR__0x00000702",
+	LOC_ERR__0x00000802: "LOC_ERR__0x00000802",
+	LOC_ERR__0x00000902: "LOC_ERR__0x00000902",
+	LOC_ERR__0x00000A02: "LOC_ERR__0x00000A02",
+	LOC_ERR__0x00000B02: "LOC_ERR__0x00000B02",
+	LOC_ERR__0x00000C02: "LOC_ERR__0x00000C02",
+	LOC_ERR__0x00000D02: "LOC_ERR__0x00000D02",
+	LOC_ERR__0x00000E02: "LOC_ERR__0x00000E02",
+	LOC_ERR__0x00000F02: "LOC_ERR__0x00000F02",
+	LOC_ERR__0x00001002: "LOC_ERR__0x00001002",
+	LOC_ERR__0x00001102: "LOC_ERR__0x00001102",
+	LOC_ERR__0x00001202: "LOC_ERR__0x00001202",
+	LOC_ERR__0x00001302: "LOC_ERR__0x00001302",
+	LOC_ERR__0x00001402: "LOC_ERR__0x00001402",
+	LOC_ERR__0x00001502: "LOC_ERR__0x00001502",
+	LOC_ERR__0x00001602: "LOC_ERR__0x00001602",
+	LOC_ERR__0x00001702: "LOC_ERR__0x00001702",
+	LOC_ERR__0x00001802: "LOC_ERR__0x00001802",
+	LOC_ERR__0x00001902: "LOC_ERR__0x00001902",
+	LOC_ERR__0x00001A02: "LOC_ERR__0x00001A02",
+	LOC_ERR__0x00001B02: "LOC_ERR__0x00001B02",
+	LOC_ERR__0x00001C02: "LOC_ERR__0x00001C02",
+	LOC_ERR__0x00001D02: "LOC_ERR__0x00001D02",
+	LOC_ERR__0x00001E02: "LOC_ERR__0x00001E02",
+	LOC_ERR__0x00001F02: "LOC_ERR__0x00001F02",
+	LOC_ERR__0x00002002: "LOC_ERR__0x00002002",
+	LOC_ERR__0x00002802: "LOC_ERR__0x00002802",
+	LOC_ERR__0x00003002: "LOC_ERR__0x00003002",
+	LOC_ERR__0x00003802: "LOC_ERR__0x00003802",
+	LOC_ERR__0x00004002: "LOC_ERR__0x00004002",
+	LOC_ERR__0x00004802: "LOC_ERR__0x00004802",
+	LOC_ERR__0x00005002: "LOC_ERR__0x00005002",
+	LOC_ERR__0x00005802: "LOC_ERR__0x00005802",
+	LOC_ERR__0x00006002: "LOC_ERR__0x00006002",
+	LOC_ERR__0x00006802: "LOC_ERR__0x00006802",
+	LOC_ERR__0x00007002: "LOC_ERR__0x00007002",
+	LOC_ERR__0x00007802: "LOC_ERR__0x00007802",
+	LOC_ERR__0x00008002: "LOC_ERR__0x00008002",
+	LOC_ERR__0x00008802: "LOC_ERR__0x00008802",
+	LOC_ERR__0x00009002: "LOC_ERR__0x00009002",
+	LOC_ERR__0x00009802: "LOC_ERR__0x00009802",
+	LOC_ERR__0x0000A002: "LOC_ERR__0x0000A002",
+	LOC_ERR__0x0000A802: "LOC_ERR__0x0000A802",
+	LOC_ERR__0x0000B002: "LOC_ERR__0x0000B002",
+	LOC_ERR__0x0000B802: "LOC_ERR__0x0000B802",
+	LOC_ERR__0x0000C002: "LOC_ERR__0x0000C002",
+	LOC_ERR__0x0000C802: "LOC_ERR__0x0000C802",
+	LOC_ERR__0x0000FF02: "LOC_ERR__0x0000FF02",
 
 	//TXHDB (module id 0x05) Error String defined below
 	TXHDB_ERR_RECORD_NOT_EXIST:                                                     "txhdb_record_not_exist",
@@ -745,11 +746,9 @@ var ErrorCodes = map[int]string{
 	TXHDB_ERR_RWLOCK_TRYWRLOCK_BUSY:                                                "txhdb_rwlock_trywrlock_busy",
 	TXHDB_ERR_RWLOCK_TRYRDLOCK_BUSY:                                                "txhdb_rwlock_tryrdlock_busy",
 	TXHDB_ERR_SPIN_TRYLOCK_BUSY:                                                    "txhdb_spin_trylock_busy",
-	TXHDB_ERR_ITERATION_EXCEED_MAX_ALLOWED_TIME_OF_ONE_ITER:
-		"txhdb_err_iteration_exceed_max_allowed_time_of_one_iter",
+	TXHDB_ERR_ITERATION_EXCEED_MAX_ALLOWED_TIME_OF_ONE_ITER:                        "txhdb_err_iteration_exceed_max_allowed_time_of_one_iter",
 	TXHDB_ERR_INVALID_ARGUMENTS:                                                    "txhdb_invalid_arguments",
-	TXHDB_ERR_INVALID_MEMBER_VARIABLE_VALUE:
-		"txhdb_invalid_member_variable_value",
+	TXHDB_ERR_INVALID_MEMBER_VARIABLE_VALUE:                                        "txhdb_invalid_member_variable_value",
 	TXHDB_ERR_ALREADY_OPEN:                                                         "txhdb_already_opened",
 	TXHDB_ERR_MUTEX_LOCK_FAIL:                                                      "txhdb_mutex_lock_fail",
 	TXHDB_ERR_MUTEX_TRYLOCK_FAIL:                                                   "txhdb_mutex_trylock_fail",
@@ -771,188 +770,130 @@ var ErrorCodes = map[int]string{
 	TXHDB_ERR_FILE_MMAP_FAIL:                                                       "Txhdb_file_mmap_fail",
 	TXHDB_ERR_FILE_MUNMAP_FAIL:                                                     "Txhdb_file_munmap_fail",
 	TXHDB_ERR_FILE_CLOSE_FAIL:                                                      "Txhdb_file_close_fail",
-	TXHDB_ERR_FILE_SPACE_NOT_ENOUGH_IN_HEAD:
-		"Txhdb_file_space_not_enough_in_head",
+	TXHDB_ERR_FILE_SPACE_NOT_ENOUGH_IN_HEAD:                                        "Txhdb_file_space_not_enough_in_head",
 	TXHDB_ERR_FILE_FTRUNCATE_FAIL:                                                  "Txhdb_file_ftruncate_fail",
 	TXHDB_ERR_FILE_INCONSISTANT_FILE_SIZE:                                          "Txhdb_file_inconsistant_file_size",
-	TXHDB_ERR_FILE_MSIZ_LESSER_THAN_TXHDB_WHOLE_REC_OFFSET:
-		"Txhdb_file_msiz_lesser_than_txhdb_whole_rec_offset",
+	TXHDB_ERR_FILE_MSIZ_LESSER_THAN_TXHDB_WHOLE_REC_OFFSET:                         "Txhdb_file_msiz_lesser_than_txhdb_whole_rec_offset",
 	TXHDB_ERR_FILE_MSIZ_CHANGE_NOT_PERMIT:                                          "Txhdb_file_msiz_change_not_permit",
 	TXHDB_ERR_FILE_FSTAT_FAIL:                                                      "Txhdb_file_fstat_fail",
 	TXHDB_ERR_FILE_MSYNC_FAIL:                                                      "Txhdb_file_msync_fail",
 	TXHDB_ERR_FILE_FSYNC_FAIL:                                                      "Txhdb_file_fsync_fail",
 	TXHDB_ERR_FILE_FCNTL_LOCK_FILE_FAIL:                                            "Txhdb_file_fcntl_lock_file_fail",
 	TXHDB_ERR_FILE_FCNTL_UNLOCK_FILE_FAIL:                                          "Txhdb_file_fcntl_unlock_file_fail",
-	TXHDB_ERR_FILE_PREAD_FAIL_WITH_SPECIFIED_ERRNO:
-		"txhdb_file_pread_fail_with_specified_errno",
-	TXHDB_ERR_FILE_PREAD_FAIL_WITH_UNSPECIFIED_ERRNO:
-		"txhdb_file_pread_fail_with_unspecified_errno",
-	TXHDB_ERR_FILE_PWRITE_FAIL_WITH_SPECIFIED_ERRNO:
-		"txhdb_file_pwrite_fail_with_specified_errno",
-	TXHDB_ERR_FILE_PWRITE_FAIL_WITH_UNSPECIFIED_ERRNO:
-		"txhdb_file_pwrite_fail_with_unspecified_errno",
+	TXHDB_ERR_FILE_PREAD_FAIL_WITH_SPECIFIED_ERRNO:                                 "txhdb_file_pread_fail_with_specified_errno",
+	TXHDB_ERR_FILE_PREAD_FAIL_WITH_UNSPECIFIED_ERRNO:                               "txhdb_file_pread_fail_with_unspecified_errno",
+	TXHDB_ERR_FILE_PWRITE_FAIL_WITH_SPECIFIED_ERRNO:                                "txhdb_file_pwrite_fail_with_specified_errno",
+	TXHDB_ERR_FILE_PWRITE_FAIL_WITH_UNSPECIFIED_ERRNO:                              "txhdb_file_pwrite_fail_with_unspecified_errno",
 	TXHDB_ERR_FILE_READ_EXCEED_FILE_BOUNDARY:                                       "txhdb_read_exceed_file_boundary",
 	TXHDB_ERR_FILE_READ_FAIL_DURING_COPY:                                           "txhdb_file_read_fail_during_copy",
 	TXHDB_ERR_FILE_WRITE_FAIL_DURING_COPY:                                          "txhdb_file_write_fail_during_copy",
-	TXHDB_ERR_FILE_INVALID_FREE_BLOCK_POOL_METADATA:
-		"Txhdb_file_invalid_free_block_pool_metadata",
+	TXHDB_ERR_FILE_INVALID_FREE_BLOCK_POOL_METADATA:                                "Txhdb_file_invalid_free_block_pool_metadata",
 	TXHDB_ERR_FILE_INVALID_MAGIC:                                                   "Txhdb_file_invalid_magic",
 	TXHDB_ERR_FILE_INVALID_LIBRARY_VERSION:                                         "Txhdb_file_invalid_library_version",
 	TXHDB_ERR_FILE_INVALID_LIBRARY_REVISION:                                        "Txhdb_file_invalid_library_revision",
 	TXHDB_ERR_FILE_INVALID_FORMAT_VERSION:                                          "Txhdb_file_invalid_format_version",
-	TXHDB_ERR_FILE_INVALID_EXTDATA_FORMAT_VERSION:
-		"Txhdb_file_invalid_extdata_format_version",
+	TXHDB_ERR_FILE_INVALID_EXTDATA_FORMAT_VERSION:                                  "Txhdb_file_invalid_extdata_format_version",
 	TXHDB_ERR_FILE_INVALID_DBTYPE:                                                  "Txhdb_file_invalid_dbtype",
 	TXHDB_ERR_FILE_HEAD_CRC_UNMATCH:                                                "Txhdb_file_head_crc_unmatch",
-	TXHDB_ERR_FILE_INVALID_METADATA:
-		"Txhdb_txhdb_err_file_invalid_metadata",
+	TXHDB_ERR_FILE_INVALID_METADATA:                                                "Txhdb_txhdb_err_file_invalid_metadata",
 	TXHDB_ERR_FILE_INVALID_HEADLEN:                                                 "Txhdb_txhdb_err_file_invalid_headlen",
-	TXHDB_ERR_FILE_DESERIAL_HEAD_SPACE_NOT_ENOUGH:
-		"Txhdb_file_deserialhead_space_not_enough",
-	TXHDB_ERR_FILE_SERIAL_HEAD_SPACE_NOT_ENOUGH:
-		"Txhdb_file_serialhead_space_not_enough",
-	TXHDB_ERR_FILE_DESERIAL_STAT_SPACE_NOT_ENOUGH:
-		"Txhdb_file_deserialstat_space_not_enough",
-	TXHDB_ERR_FILE_SERIAL_STAT_SPACE_NOT_ENOUGH:
-		"Txhdb_file_serialstat_space_not_enough",
-	TXHDB_ERR_FILE_SERIAL_FREE_BLOCK_LIST_INFO_WRONG_BUFFLEN:
-		"txhdb_file_serial_free_block_list_info_wrong_bufflen",
+	TXHDB_ERR_FILE_DESERIAL_HEAD_SPACE_NOT_ENOUGH:                                  "Txhdb_file_deserialhead_space_not_enough",
+	TXHDB_ERR_FILE_SERIAL_HEAD_SPACE_NOT_ENOUGH:                                    "Txhdb_file_serialhead_space_not_enough",
+	TXHDB_ERR_FILE_DESERIAL_STAT_SPACE_NOT_ENOUGH:                                  "Txhdb_file_deserialstat_space_not_enough",
+	TXHDB_ERR_FILE_SERIAL_STAT_SPACE_NOT_ENOUGH:                                    "Txhdb_file_serialstat_space_not_enough",
+	TXHDB_ERR_FILE_SERIAL_FREE_BLOCK_LIST_INFO_WRONG_BUFFLEN:                       "txhdb_file_serial_free_block_list_info_wrong_bufflen",
 	TXHDB_ERR_FILE_IN_EXCEPTIONAL_STATUS:                                           "txhdb_file_in_exceptional_status",
 	TXHDB_ERR_DB_NOT_OPENED:                                                        "Txhdb_not_opened",
 	TXHDB_ERR_DB_WRITE_NOT_PERMIT:                                                  "Txhdb_db_write_not_permit",
 	TXHDB_ERR_INVALID_OFFSET_FROM_BUCKET:                                           "Txhdb_invalid_offset_from_bucket",
-	TXHDB_ERR_READ_EXTDATA_EXCEED_BUFF_LENGTH:
-		"Txhdb_read_extdata_exceed_buff_length",
-	TXHDB_ERR_WRITE_EXTDATA_EXCEED_BUFF_LENGTH:
-		"Txhdb_write_extdata_exceed_buff_length",
-	TXHDB_ERR_FREE_BLOCK_IS_READ_WHEN_GETTING_RECORD:
-		"Txhdb_free_block_is_read_when_getting_record",
+	TXHDB_ERR_READ_EXTDATA_EXCEED_BUFF_LENGTH:                                      "Txhdb_read_extdata_exceed_buff_length",
+	TXHDB_ERR_WRITE_EXTDATA_EXCEED_BUFF_LENGTH:                                     "Txhdb_write_extdata_exceed_buff_length",
+	TXHDB_ERR_FREE_BLOCK_IS_READ_WHEN_GETTING_RECORD:                               "Txhdb_free_block_is_read_when_getting_record",
 	TXHDB_ERR_INVALID_KEY_DATABLOCK_NUM:                                            "Txhdb_invalid_key_datablock_num",
 	TXHDB_ERR_INVALID_VALUE_DATABLOCK_NUM:                                          "Txhdb_invalid_value_datablock_num",
 	TXHDB_ERR_GET_RECORD_EXCEED_BUFF_LENGTH:                                        "Txhdb_get_record_exceed_buff_length",
 	TXHDB_ERR_COMPRESSION_FAIL:                                                     "Txhdb_compession_fail",
 	TXHDB_ERR_DECOMPRESSION_FAIL:                                                   "Txhdb_decompression_fail",
-	TXHDB_ERR_INVALID_OFFSETINEXTDATA_AND_SIZE_WHEN_UPDATING_EXTDATA:
-		"Txhdb_invalid_offsetInExtdata_and_size_when_updating_extdata",
+	TXHDB_ERR_INVALID_OFFSETINEXTDATA_AND_SIZE_WHEN_UPDATING_EXTDATA:               "Txhdb_invalid_offsetInExtdata_and_size_when_updating_extdata",
 	TXHDB_ERR_UNEXPECTED_FREEBLOCK:                                                 "Txhdb_unexpected_freeblock",
-	TXHDB_ERR_VALUE_APOW_LESSER_THAN_KEY_APOW:
-		"Txhdb_value_apow_lesser_than_key_apow__value_apow_should_be_equal_to_or_greater_than_key_apow",
+	TXHDB_ERR_VALUE_APOW_LESSER_THAN_KEY_APOW:                                      "Txhdb_value_apow_lesser_than_key_apow__value_apow_should_be_equal_to_or_greater_than_key_apow",
 	TXHDB_ERR_DUPLICATED_FILE_PATH:                                                 "Txhdb_duplicated_file_path",
-	TXHDB_ERR_INVALID_KEY_HEAD_SIZE_IN_TXHDB_META:
-		"Txhdb_invalid_key_head_size_in_txhdb_meta",
+	TXHDB_ERR_INVALID_KEY_HEAD_SIZE_IN_TXHDB_META:                                  "Txhdb_invalid_key_head_size_in_txhdb_meta",
 	TXHDB_ERR_INVALID_FILE_SIZE:                                                    "Txhdb_invalid_file_size",
 	TXHDB_ERR_INVALID_FREE_BLOCK_SIZE:                                              "Txhdb_invalid_free_block_size",
-	TXHDB_ERR_MMAP_MEMSIZE_CHANGE_NOT_PERMITTED:
-		"Txhdb_mmap_memsize_change_not_permitted",
+	TXHDB_ERR_MMAP_MEMSIZE_CHANGE_NOT_PERMITTED:                                    "Txhdb_mmap_memsize_change_not_permitted",
 	TXHDB_ERR_NEW_FILE_OBJ_FAIL:                                                    "Txhdb_new_file_obj_fail",
-	TXHDB_ERR_RECORD_KEY_OFFSET_LESSER_THAN_TXHDB_WHOLE_REC_OFFSET:
-		"txhdb_record_key_offset_lesser_than_txhdb_whole_rec_offset",
-	TXHDB_ERR_RECORD_VALUE_OFFSET_LESSER_THAN_TXHDB_WHOLE_REC_OFFSET:
-		"txhdb_record_value_offset_lesser_than_txhdb_whole_rec_offset",
-	TXHDB_ERR_RECORD_OFFSET_LESSER_THAN_TXHDB_WHOLE_REC_OFFSET:
-		"txhdb_record_offset_lesser_than_txhdb_whole_rec_offset",
-	TXHDB_ERR_KEY_BUFFSIZE_LESSER_THAN_KEY_HEADSIZE:
-		"txhdb_key_buffsize_lesser_than_key_headsize",
-	TXHDB_ERR_VALUE_BUFFSIZE_LESSER_THAN_VALUE_HEADSIZE:
-		"txhdb_value_buffsize_lesser_than_value_headsize",
-	TXHDB_ERR_RECORD_SIZE_LESSER_THAN_KEY_HEADSIZE:
-		"txhdb_record_size_lesser_than_key_headsize",
+	TXHDB_ERR_RECORD_KEY_OFFSET_LESSER_THAN_TXHDB_WHOLE_REC_OFFSET:                 "txhdb_record_key_offset_lesser_than_txhdb_whole_rec_offset",
+	TXHDB_ERR_RECORD_VALUE_OFFSET_LESSER_THAN_TXHDB_WHOLE_REC_OFFSET:               "txhdb_record_value_offset_lesser_than_txhdb_whole_rec_offset",
+	TXHDB_ERR_RECORD_OFFSET_LESSER_THAN_TXHDB_WHOLE_REC_OFFSET:                     "txhdb_record_offset_lesser_than_txhdb_whole_rec_offset",
+	TXHDB_ERR_KEY_BUFFSIZE_LESSER_THAN_KEY_HEADSIZE:                                "txhdb_key_buffsize_lesser_than_key_headsize",
+	TXHDB_ERR_VALUE_BUFFSIZE_LESSER_THAN_VALUE_HEADSIZE:                            "txhdb_value_buffsize_lesser_than_value_headsize",
+	TXHDB_ERR_RECORD_SIZE_LESSER_THAN_KEY_HEADSIZE:                                 "txhdb_record_size_lesser_than_key_headsize",
 	TXHDB_ERR_INVALID_BLOCK_MAGIC:                                                  "txhdb_invalid_block_magic",
 	TXHDB_ERR_INVALID_FREE_BLOCK_MAGIC:                                             "txhdb_invalid_free_block_magic",
-	TXHDB_ERR_INVALID_KEYMAGIC:
-		"txhdb_invalid_KEYMAGIC_it_should_be_KEYMAGIC",
-	TXHDB_ERR_INVALID_KEYSPLMAGIC:
-		"txhdb_invalid_KEYSPLMAGIC_it_should_be_KEYSPLMAGIC",
-	TXHDB_ERR_INVALID_VALMAGIC:
-		"txhdb_invalid_VALMAGIC_it_should_be_VALMAGIC",
-	TXHDB_ERR_INVALID_VALSPLMAGIC:
-		"txhdb_invalid_VALSPLMAGIC_it_should_be_VALSPLMAGIC",
-	TXHDB_ERR_UNSUPPORTED_KEY_FORMAT_VERSION:
-		"txhdb_unsupported_key_format_version",
-	TXHDB_ERR_UNSUPPORTED_KEY_SPLBLOCK_FORMAT_VERSION:
-		"txhdb_unsupported_key_splblock_format_version",
-	TXHDB_ERR_UNSUPPORTED_VALUE_FORMAT_VERSION:
-		"txhdb_unsupported_value_format_version",
-	TXHDB_ERR_UNSUPPORTED_VALUE_SPLBLOCK_FORMAT_VERSION:
-		"txhdb_unsupported_value_splblock_format_version",
-	TXHDB_ERR_UNSUPPORTED_FREE_BLOCK_FORMAT_VERSION:
-		"txhdb_unsupported_value_splblock_format_version",
+	TXHDB_ERR_INVALID_KEYMAGIC:                                                     "txhdb_invalid_KEYMAGIC_it_should_be_KEYMAGIC",
+	TXHDB_ERR_INVALID_KEYSPLMAGIC:                                                  "txhdb_invalid_KEYSPLMAGIC_it_should_be_KEYSPLMAGIC",
+	TXHDB_ERR_INVALID_VALMAGIC:                                                     "txhdb_invalid_VALMAGIC_it_should_be_VALMAGIC",
+	TXHDB_ERR_INVALID_VALSPLMAGIC:                                                  "txhdb_invalid_VALSPLMAGIC_it_should_be_VALSPLMAGIC",
+	TXHDB_ERR_UNSUPPORTED_KEY_FORMAT_VERSION:                                       "txhdb_unsupported_key_format_version",
+	TXHDB_ERR_UNSUPPORTED_KEY_SPLBLOCK_FORMAT_VERSION:                              "txhdb_unsupported_key_splblock_format_version",
+	TXHDB_ERR_UNSUPPORTED_VALUE_FORMAT_VERSION:                                     "txhdb_unsupported_value_format_version",
+	TXHDB_ERR_UNSUPPORTED_VALUE_SPLBLOCK_FORMAT_VERSION:                            "txhdb_unsupported_value_splblock_format_version",
+	TXHDB_ERR_UNSUPPORTED_FREE_BLOCK_FORMAT_VERSION:                                "txhdb_unsupported_value_splblock_format_version",
 	TXHDB_ERR_KEY_HEAD_CRC_UNMATCH:                                                 "txhdb_key_head_crc_unmatch",
-	TXHDB_ERR_KEY_SPLBLOCK_HEAD_CRC_UNMATCH:
-		"txhdb_key_splblock_head_crc_unmatch",
+	TXHDB_ERR_KEY_SPLBLOCK_HEAD_CRC_UNMATCH:                                        "txhdb_key_splblock_head_crc_unmatch",
 	TXHDB_ERR_VALUE_HEAD_CRC_UNMATCH:                                               "txhdb_value_head_crc_unmatch",
-	TXHDB_ERR_VALUE_SPLBLOCK_HEAD_CRC_UNMATCH:
-		"txhdb_value_splblock_head_crc_unmatch",
+	TXHDB_ERR_VALUE_SPLBLOCK_HEAD_CRC_UNMATCH:                                      "txhdb_value_splblock_head_crc_unmatch",
 	TXHDB_ERR_FREE_BLOCK_HEAD_CRC_UNMATCH:                                          "txhdb_free_block_head_crc_unmatch",
-	TXHDB_ERR_FREE_BLOCK_LIST_INFO_CRC_UNMATCH:
-		"txhdb_free_block_list_info_crc_unmatch",
+	TXHDB_ERR_FREE_BLOCK_LIST_INFO_CRC_UNMATCH:                                     "txhdb_free_block_list_info_crc_unmatch",
 	TXHDB_ERR_GET_KEY_READ_BUFFER_FAIL:                                             "txhdb_get_key_read_buffer_fail",
 	TXHDB_ERR_GET_VALUE_READ_BUFFER_FAIL:                                           "txhdb_get_value_read_buffer_fail",
 	TXHDB_ERR_GET_LRU_VALUE_BUFFER_FAIL:                                            "txhdb_get_lru_value_buffer_fail",
 	TXHDB_ERR_GET_EXTDATA_READ_BUFFER_FAIL:                                         "txhdb_get_extdata_read_buffer_fail",
-	TXHDB_ERR_KEY_BLOCK_BODYSIZE_GREATER_THAN_KEY_BODYSIZE:
-		"txhdb_key_block_bodysize_greater_than_key_bodysize",
-	TXHDB_ERR_VALUE_BLOCK_BODYSIZE_GREATER_THAN_VALUE_BODYSIZE:
-		"txhdb_value_block_bodysize_greater_than_value_bodysize",
+	TXHDB_ERR_KEY_BLOCK_BODYSIZE_GREATER_THAN_KEY_BODYSIZE:                         "txhdb_key_block_bodysize_greater_than_key_bodysize",
+	TXHDB_ERR_VALUE_BLOCK_BODYSIZE_GREATER_THAN_VALUE_BODYSIZE:                     "txhdb_value_block_bodysize_greater_than_value_bodysize",
 	TXHDB_ERR_NULL_RECORD_POINTER:                                                  "txhdb_null_record_pointer",
 	TXHDB_ERR_NULL_RECORD_WRITE_BUFF:                                               "txhdb_null_record_write_buff",
 	TXHDB_ERR_SERIALIZE_RECORD_KEY_HEAD:                                            "txhdb_serialize_record_key_head",
-	TXHDB_ERR_INVALID_IDX_IN_STAT_NUMS_ARRAY:
-		"txhdb_invalid_idx_in_stat_nums_array",
-	TXHDB_ERR_INVALID_ELEMNUM_OF_STAT_KEYNUMS:
-		"txhdb_invalid_elemnum_of_stat_keynums",
-	TXHDB_ERR_INVALID_ELEMNUM_OF_STAT_VALNUMS:
-		"txhdb_invalid_elemnum_of_stat_valnums",
+	TXHDB_ERR_INVALID_IDX_IN_STAT_NUMS_ARRAY:                                       "txhdb_invalid_idx_in_stat_nums_array",
+	TXHDB_ERR_INVALID_ELEMNUM_OF_STAT_KEYNUMS:                                      "txhdb_invalid_elemnum_of_stat_keynums",
+	TXHDB_ERR_INVALID_ELEMNUM_OF_STAT_VALNUMS:                                      "txhdb_invalid_elemnum_of_stat_valnums",
 	TXHDB_ERR_PRINT_SPACE_NOT_ENOUGH:                                               "txhdb_print_space_not_enough",
 	TXHDB_ERR_LRU_SHIFTIN_NOT_ENOUGH_MEMORY:                                        "txhdb_lru_shiftin_not_enough_memory",
 	TXHDB_ERR_LRU_SHIFTIN_NO_MORE_LRU_NODE:                                         "txhdb_lru_shiftin_no_more_lru_node",
 	TXHDB_ERR_LRU_ADJUST_NO_MORE_LRU_NODE:                                          "txhdb_lru_adjust_no_more_lru_node",
-	TXHDB_ERR_LRU_SHIFTOUT_RECORD_ALREADY_OUTSIDE_OF_MEMORY:
-		"txhdb_lru_shiftout_record_already_outside_of_memory",
-	TXHDB_ERR_FILE_EXTDATA_LENGTH_CRC_UNMATCH:
-		"txhdb_file_extdata_length_crc_unmatch",
+	TXHDB_ERR_LRU_SHIFTOUT_RECORD_ALREADY_OUTSIDE_OF_MEMORY:                        "txhdb_lru_shiftout_record_already_outside_of_memory",
+	TXHDB_ERR_FILE_EXTDATA_LENGTH_CRC_UNMATCH:                                      "txhdb_file_extdata_length_crc_unmatch",
 	TXHDB_ERR_FILE_EXTDATA_INVALID_LENGTH:                                          "txhdb_file_extdata_invalid_length",
-	TXHDB_ERR_INVALID_VALUE_HEAD_SIZE_IN_TXHDB_META:
-		"Txhdb_invalid_value_head_size_in_txhdb_meta",
-	TXHDB_ERR_INVALID_SPLITDATABLOCK_HEAD_SIZE_IN_TXHDB_META:
-		"Txhdb_invalid_splitdatablock_head_size_in_txhdb_meta",
+	TXHDB_ERR_INVALID_VALUE_HEAD_SIZE_IN_TXHDB_META:                                "Txhdb_invalid_value_head_size_in_txhdb_meta",
+	TXHDB_ERR_INVALID_SPLITDATABLOCK_HEAD_SIZE_IN_TXHDB_META:                       "Txhdb_invalid_splitdatablock_head_size_in_txhdb_meta",
 	TXHDB_ERR_KEY_BUCKETIDX_UNMATCH:                                                "txhdb_key_bucketidx_unmatch",
 	TXHDB_ERR_FILE_WRITE_SIZE_INVALID:                                              "Txhdb_file_write_size_invalid",
-	TXHDB_ERR_MODIFY_STAT_UNSUPPORTED_OPERATION_TYPE:
-		"Txhdb_modify_stat_unsupported_operation_type",
-	TXHDB_ERR_INVALID_EXTDATAMAGIC:
-		"txhdb_invalid_EXTDATAMAGIC_it_should_be_EXTDATAMAGIC",
-	TXHDB_ERR_INVALID_INTERNAL_LIST_TAIL_DURING_POP_LRU_NODELIST:
-		"txhdb_invalid_internal_list_tail_during_pop_lru_nodelist",
+	TXHDB_ERR_MODIFY_STAT_UNSUPPORTED_OPERATION_TYPE:                               "Txhdb_modify_stat_unsupported_operation_type",
+	TXHDB_ERR_INVALID_EXTDATAMAGIC:                                                 "txhdb_invalid_EXTDATAMAGIC_it_should_be_EXTDATAMAGIC",
+	TXHDB_ERR_INVALID_INTERNAL_LIST_TAIL_DURING_POP_LRU_NODELIST:                   "txhdb_invalid_internal_list_tail_during_pop_lru_nodelist",
 	TXHDB_ERR_GET_LRUNODE_FAIL:                                                     "txhdb_get_lrunode_fail",
 	TXHDB_ERR_LRUNODE_INVALID_FLAG:                                                 "txhdb_lrunode_invalid_flag",
-	TXHDB_ERR_INVALID_FREE_BLOCK_NUM_TOO_MANY_FREE_BLOCKS:
-		"txhdb_invalid_free_block_num_too_many_free_blocks",
-	TXHDB_ERR_INVALID_ELEMNUM_OF_STAT_NOPADDING_SIZE_KEYNUMS:
-		"txhdb_invalid_elemnum_of_stat_nopadding_size_keynums",
-	TXHDB_ERR_INVALID_ELEMNUM_OF_STAT_NOPADDING_SIZE_VALNUMS:
-		"txhdb_invalid_elemnum_of_stat_nopadding_size_valnums",
-	TXHDB_ERR_ADD_LSIZE_EXCEEDS_MAX_TSD_VALUE_BUFF_SIZE:
-		"txhdb_add_lsize_exceeds_max_tsd_value_buff_size",
+	TXHDB_ERR_INVALID_FREE_BLOCK_NUM_TOO_MANY_FREE_BLOCKS:                          "txhdb_invalid_free_block_num_too_many_free_blocks",
+	TXHDB_ERR_INVALID_ELEMNUM_OF_STAT_NOPADDING_SIZE_KEYNUMS:                       "txhdb_invalid_elemnum_of_stat_nopadding_size_keynums",
+	TXHDB_ERR_INVALID_ELEMNUM_OF_STAT_NOPADDING_SIZE_VALNUMS:                       "txhdb_invalid_elemnum_of_stat_nopadding_size_valnums",
+	TXHDB_ERR_ADD_LSIZE_EXCEEDS_MAX_TSD_VALUE_BUFF_SIZE:                            "txhdb_add_lsize_exceeds_max_tsd_value_buff_size",
 	TXHDB_ERR_INTERNAL_CONSTANTS_ILLEGAL:                                           "txhdb_internal_constants_illegal",
 	TXHDB_ERR_TOO_BIG_KEY_BIZ_SIZE:                                                 "txhdb_too_big_key_biz_size",
 	TXHDB_ERR_TOO_BIG_VALUE_BIZ_SIZE:                                               "txhdb_too_big_value_biz_size",
 	TXHDB_ERR_INDEX_NO_EXIST:                                                       "txhdb_index_no_exist",
 	TXHDB_ERR_INVALID_FREE_BLOCK_BASESIZE:                                          "txhdb_invalid_free_block_basesize",
-	TXHDB_ERR_CANNOT_CREATE_MMAPSHM_BECAUSE_SHM_ALREADY_EXISTED:
-		"txhdb_cannot_create_mmapshm_because_shm_already_existed",
+	TXHDB_ERR_CANNOT_CREATE_MMAPSHM_BECAUSE_SHM_ALREADY_EXISTED:                    "txhdb_cannot_create_mmapshm_because_shm_already_existed",
 	TXHDB_ERR_INVALID_GENSHM_KEY:                                                   "txhdb_invalid_gen_shm_key",
 	TXHDB_ERR_GENSHM_GET_FAIL:                                                      "txhdb_invalid_gen_shm_get_fail",
 	TXHDB_ERR_GENSHM_CREATE_FAIL:                                                   "txhdb_invalid_gen_shm_create_fail",
 	TXHDB_ERR_GENSHM_STAT_FAIL:                                                     "txhdb_invalid_gen_shm_stat_fail",
 	TXHDB_ERR_GENSHM_DOES_NOT_EXIST:                                                "txhdb_genshm_does_not_exist",
-	TXHDB_ERR_GENSHM_ATTACH_FAIL_BECAUSE_IT_IS_ALREADY_ATTACHED_BY_OTHER_PROCESSES:
-		"txhdb_genshm_attach_fail_because_it_is_already_attached_by_other_processes",
+	TXHDB_ERR_GENSHM_ATTACH_FAIL_BECAUSE_IT_IS_ALREADY_ATTACHED_BY_OTHER_PROCESSES: "txhdb_genshm_attach_fail_because_it_is_already_attached_by_other_processes",
 	TXHDB_ERR_GENSHM_ATTACH_FAIL:                                                   "txhdb_genshm_attach_fail",
 	TXHDB_ERR_FILE_INCONSISTANT_MSIZE:                                              "txhdb_inconsistant_msize",
 	TXHDB_ERR_INVALID_TCAP_GENSHM_MAGIC:                                            "txhdb_invalid_tcap_genshm_magic",
-	TXHDB_ERR_GENSHM_FIXED_HEAD_BUFFLEN_UNMATCH:
-		"txhdb_genshm_fixed_head_bufflen_unmatch",
+	TXHDB_ERR_GENSHM_FIXED_HEAD_BUFFLEN_UNMATCH:                                    "txhdb_genshm_fixed_head_bufflen_unmatch",
 	TXHDB_ERR_GENSHM_INVALID_HEADLEN:                                               "txhdb_genshm_invalid_headlen",
 	TXHDB_ERR_GENSHM_HEAD_CRC_UNMATCH:                                              "txhdb_genshm_head_crc_unmatch",
 	TXHDB_ERR_GENSHM_HEAD_INVALID_VERSION:                                          "txhdb_genshm_head_invalid_version",
@@ -967,16 +908,13 @@ var ErrorCodes = map[int]string{
 	TXHDB_ERR_TXHDB_SHM_COREINFO_UNMATCH:                                           "txhdb_shm_coreinfo_unmatch",
 	TXHDB_ERR_TXHDB_SHM_EXTDATA_UNMATCH:                                            "txhdb_shm_extdata_unmatch",
 	TXHDB_ERR_TXHDB_EXTDATA_CHECK_ERROR:                                            "txhdb_extdata_check_error",
-	TXHDB_ERR_CHUNK_BUFFS_CANNOT_BE_ALLOCED_IF_THEY_ARE_NOT_RELEASED:
-		"txhdb_chunk_buffs_cannot_be_alloced_if_they_are_not_released",
+	TXHDB_ERR_CHUNK_BUFFS_CANNOT_BE_ALLOCED_IF_THEY_ARE_NOT_RELEASED:               "txhdb_chunk_buffs_cannot_be_alloced_if_they_are_not_released",
 	TXHDB_ERR_ALLOCATE_MEMORY_FAIL:                                                 "txhdb_allocate_memory_fail",
 	TXHDB_ERR_INVALID_CHUNK_RW_MANNER:                                              "txhdb_invalid_chunk_rw_manner",
 	TXHDB_ERR_FILE_PREAD_NOT_COMPLETE:                                              "txhdb_file_pread_not_complete",
 	TXHDB_ERR_FILE_PWRITE_NOT_COMPLETE:                                             "txhdb_file_pwrite_not_complete",
-	TXHDB_ERR_KEY_ONEBLOCK_BUT_NEXT_NOTNULL:
-		"TXHDB_ERR_KEY_ONEBLOCK_BUT_NEXT_NOTNULL",
-	TXHDB_ERR_VALUE_ONEBLOCK_BUT_NEXT_NOTNULL:
-		"TXHDB_ERR_VALUE_ONEBLOCK_BUT_NEXT_NOTNULL",
+	TXHDB_ERR_KEY_ONEBLOCK_BUT_NEXT_NOTNULL:                                        "TXHDB_ERR_KEY_ONEBLOCK_BUT_NEXT_NOTNULL",
+	TXHDB_ERR_VALUE_ONEBLOCK_BUT_NEXT_NOTNULL:                                      "TXHDB_ERR_VALUE_ONEBLOCK_BUT_NEXT_NOTNULL",
 	TXHDB_ERR_VARINT_FORMAT_ERROR:                                                  "TXHDB_ERR_VARINT_FORMAT_ERROR",
 	TXHDB_ERR_TXSTAT_ERROR:                                                         "TXHDB_ERR_TXSTAT_ERROR",
 	TXHDB_ERR_INVALID_VERSION:                                                      "invalid txhdb version",
@@ -1079,8 +1017,7 @@ var ErrorCodes = map[int]string{
 	SVR_ERR_FAIL_TO_GET_CURSOR:                            "tcapsvr_fail_to_get_cursor",
 	SVR_ERR_FAIL_OUT_OF_USER_DEF_RANGE:                    "field value gets out of the range specified by user",
 	SVR_ERR_INVALID_ARGUMENTS:                             "tcapsvr_invalid_arguments",
-	SVR_ERR_SLAVE_READ_INVALID:
-		"ProcGetDuringMoveFromSrcReq failed because the svr is slave: can't read",
+	SVR_ERR_SLAVE_READ_INVALID:                            "ProcGetDuringMoveFromSrcReq failed because the svr is slave: can't read",
 	SVR_ERR_NULL_CACHE:                                    "null cache object",
 	SVR_ERR_NULL_CURSOR:                                   "null cursor object",
 	SVR_ERR_METALIB_VERSION_LESS_THAN_ENTRY_VERSION:       "the metalib version in request is less than entry version",
@@ -1090,24 +1027,18 @@ var ErrorCodes = map[int]string{
 	SVR_ERR_TCAPSVR_PROCESS_NOT_NORMAL:                    "tcapsvr process in abnormal",
 	SVR_ERR_TBUSD_PROCESS_NOT_NORMAL:                      "tbusd process in abnormal",
 	SVR_ERR_INVALID_ARRAY_COUNT:                           "array count invalid",
-	SVR_ERR_REJECT_REQUEST_BECAUSE_ROUTE_IN_REJECT_STATUS:
-		"reject request because route in reject status: it appears generally during data move",
-	SVR_ERR_FAIL_GET_ROUTE_HASH_CODE:
-		"get route hash code failed. it perhaps unpack ProxyHeadForReqSendToSvr failed.",
+	SVR_ERR_REJECT_REQUEST_BECAUSE_ROUTE_IN_REJECT_STATUS: "reject request because route in reject status: it appears generally during data move",
+	SVR_ERR_FAIL_GET_ROUTE_HASH_CODE:                      "get route hash code failed. it perhaps unpack ProxyHeadForReqSendToSvr failed.",
 	SVR_ERR_FAIL_INVALID_FIELD_VALUE:                      "invalid field value",
 	SVR_ERR_FAIL_PROTOBUF_FIELD_GET:                       "protobuf fail to get field",
-	SVR_ERR_FAIL_PROTOBUF_VALUE_BUFF_EXCEED:
-		"protobuf value buff exceed TCAPLUS_BIG_RECORD_MAX_VALUE_BUF_LEN(10M)",
+	SVR_ERR_FAIL_PROTOBUF_VALUE_BUFF_EXCEED:               "protobuf value buff exceed TCAPLUS_BIG_RECORD_MAX_VALUE_BUF_LEN(10M)",
 	SVR_ERR_FAIL_PROTOBUF_FIELD_UPDATE:                    "protobuf fail to update field",
 	SVR_ERR_FAIL_PROTOBUF_FIELD_INCREASE:                  "protobuf fail to increase field",
 	SVR_ERR_FAIL_PROTOBUF_FIELD_TAG_MISMATCH:              "protobuf field tag mismatch",
-	SVR_ERR_FAIL_BINLOG_SEQUENCE_TOO_SMALL:
-		"binlog sequence too small for lossless move binlog sync: maybe the binlog file has already been deleted.",
-	SVR_ERR_FAIL_SVR_IS_NOT_MASTER:
-		"failed because svr is not master",
+	SVR_ERR_FAIL_BINLOG_SEQUENCE_TOO_SMALL:                "binlog sequence too small for lossless move binlog sync: maybe the binlog file has already been deleted.",
+	SVR_ERR_FAIL_SVR_IS_NOT_MASTER:                        "failed because svr is not master",
 	SVR_ERR_FAIL_BINLOG_INVALID_FILE_PATH:                 "invalid binlog path",
-	SVR_ERR_FAIL_BINLOG_SOCKET_SEND_BUFF_IS_FULL:
-		"socket send buff is full for lossless mov binlog sync",
+	SVR_ERR_FAIL_BINLOG_SOCKET_SEND_BUFF_IS_FULL:          "socket send buff is full for lossless mov binlog sync",
 	SVR_ERR_FAIL_DOCUMENT_NOT_SUPPORT:                     "not support docment operation.",
 	SVR_ERR_FAIL_PARTKEY_INSERT_NOT_SUPPORT:               "not support partkeyinsert operation.",
 	SVR_ERR_FAIL_SQL_FILTER_FAILED:                        "sql filter failed.",
@@ -1125,10 +1056,8 @@ var ErrorCodes = map[int]string{
 
 	//TCAPROXY SYSTEM (module id 0x11) Error String defined below
 	PROXY_ERR_INVALID_PARAMS: "tcaproxy_invalid_parameters",
-	PROXY_ERR_NO_NEED_ROUTE_BATCHGET_ACTION_MSG_WHEN_NODE_IS_IN_SYNC_STATUS:
-		"tcaproxy_error_no_need_routes batchget_action_msg_when_node_is_in_sync_status",
-	PROXY_ERR_NO_NEED_ROUTE_WHEN_NODE_IS_IN_REJECT_STATUS:
-		"tcaproxy_error_no_need_routes_when_node_is_in_reject_status",
+	PROXY_ERR_NO_NEED_ROUTE_BATCHGET_ACTION_MSG_WHEN_NODE_IS_IN_SYNC_STATUS: "tcaproxy_error_no_need_routes batchget_action_msg_when_node_is_in_sync_status",
+	PROXY_ERR_NO_NEED_ROUTE_WHEN_NODE_IS_IN_REJECT_STATUS:                   "tcaproxy_error_no_need_routes_when_node_is_in_reject_status",
 	PROXY_ERR_PROBE_TIMEOUT:         "tcaproxy_error_probe_timeout",
 	PROXY_ERR_SYSTEM_ERROR:          "tcaproxy_error_system_error",
 	PROXY_ERR_CONFIG_ERROR:          "tcaproxy_error_config_error",
@@ -1150,8 +1079,7 @@ var ErrorCodes = map[int]string{
 	PROXY_ERR_ALLOCATE_MEMORY:       "tcaproxy_error_allocate_memory",
 	PROXY_ERR_PARSE_MSG:             "tcaproxy_error_parse_msg",
 	PROXY_ERR_INVALID_MSG:           "tcaproxy_error_invalid_msg",
-	PROXY_ERR_FAILED_PROC_REQUEST_BECAUSE_NODE_IS_IN_SYNC_STASUS:
-		"tcaproxy_error_failed_proc_request_becuase_node_is_in_sync_status",
+	PROXY_ERR_FAILED_PROC_REQUEST_BECAUSE_NODE_IS_IN_SYNC_STASUS:       "tcaproxy_error_failed_proc_request_becuase_node_is_in_sync_status",
 	PROXY_ERR_KEY_FIELD_NUM_IS_ZERO:                                    "tcaproxy_error_key_field_num_is_zero",
 	PROXY_ERR_LACK_OF_SOME_KEY_FIELDS:                                  "tcaproxy_error_lack_of_some_key_fields",
 	PROXY_ERR_FAILED_TO_FIND_NODE:                                      "tcaproxy_error_failed_to_find_node",
@@ -1159,13 +1087,11 @@ var ErrorCodes = map[int]string{
 	PROXY_ERR_REQUEST_OVERSPEED:                                        "tcaproxy_error_request_overspeed",
 	PROXY_ERR_SWIFT_TIMEOUT:                                            "tcaproxy_error_swift_trans_timeout",
 	PROXY_ERR_SWIFT_ERROR:                                              "tcaproxy_error_swift_other_errors",
-	PROXY_ERR_DIRECT_RESPONSE:
-		"tcaproxy_error_reponse_direct_not_processed_by_svr ",
+	PROXY_ERR_DIRECT_RESPONSE:                                          "tcaproxy_error_reponse_direct_not_processed_by_svr ",
 	PROXY_ERR_INIT_TLOG:                                                "tcaproxy_error_init_tlog",
 	PROXY_ERR_ASSISTANT_THREAD_NOT_RUN:                                 "tcaproxy_error_assistant_thread_not_run",
 	PROXY_ERR_REQUEST_ACCESS_CTRL_REJECT:                               "tcaproxy_error_request_access_ctrl_reject",
-	PROXY_ERR_NOT_ALL_NODES_ARE_IN_NORMAL_OR_WAIT_STATUS:
-		"tcaproxy_error_routes_is_not_all_noraml_or_wait",
+	PROXY_ERR_NOT_ALL_NODES_ARE_IN_NORMAL_OR_WAIT_STATUS:               "tcaproxy_error_routes_is_not_all_noraml_or_wait",
 	PROXY_ERR_ALREADY_CACHED_REQUEST_TIMEOUT:                           "tcaproxy_error_already_cached_request_timeout",
 	PROXY_ERR_FAILED_TO_CACHE_REQUEST:                                  "tcaproxy_error_failed_to_cache_request",
 	PROXY_ERR_NOT_EXIST_CACHED_REQUEST:                                 "tcaproxy_error_not_exist_cached_request",
@@ -1181,10 +1107,9 @@ var ErrorCodes = map[int]string{
 	PROXY_ERR_ADD_TRANSACTION_FAILED:                                   "proxy_err_add_transaction_failed",
 	PROXY_ERR_QUERY_FROM_INDEX_SERVER_FAILED:                           "proxy_err_query_from_index_server_failed",
 	PROXY_ERR_QUERY_FROM_INDEX_SERVER_TIMEOUT:                          "proxy_err_query_from_index_server_timeout",
-	PROXY_ERR_QUERY_FOR_CONVERT_TCAPLUS_REQ_TO_INDEX_SERVER_REQ_FAILED:
-		"proxy_err_query_for_convert_tcaplus_req_to_index_server_req_failed",
+	PROXY_ERR_QUERY_FOR_CONVERT_TCAPLUS_REQ_TO_INDEX_SERVER_REQ_FAILED: "proxy_err_query_for_convert_tcaplus_req_to_index_server_req_failed",
 	PROXY_ERR_QUERY_INDEX_FIELD_NOT_EXIST:                              "proxy_err_query_index_field_not_exist",
-	PROXY_ERR_THIS_SQL_IS_NOT_SUPPORT:									"proxy_err_this_sql_is_not_support",
+	PROXY_ERR_THIS_SQL_IS_NOT_SUPPORT:                                  "proxy_err_this_sql_is_not_support",
 
 	//API SYSTEM (module id 0x13) Error Code defined below
 	API_ERR_OVER_MAX_KEY_FIELD_NUM:                           "api_over_max_key_field_num_error",
@@ -1240,11 +1165,9 @@ var ErrorCodes = map[int]string{
 	API_ERR_SHORT_BUFF:                                       "api_buffer_not_enough",
 	API_ERR_FLOW_CONTROL:                                     "api_flow_control",
 	API_ERR_COMPRESS_SWITCH_NOT_SUPPORTED_REGARDING_THIS_CMD: "api_compress_switch_not_supported_regarding_this_cmd",
-	API_ERR_FAILED_TO_FIND_ROUTE:
-		"api_failed_to_find_route: perhaps the table is not register or all proxies are not connected",
+	API_ERR_FAILED_TO_FIND_ROUTE:                             "api_failed_to_find_route: perhaps the table is not register or all proxies are not connected",
 	API_ERR_OVER_MAX_PKG_SIZE:                                "api_failed_over_max_pkg_size",
-	API_ERR_INVALID_VERSION_FOR_TLV:
-		"api_failed_invalid_version_for_tlv: the obj version is not equal to the lib version",
+	API_ERR_INVALID_VERSION_FOR_TLV:                          "api_failed_invalid_version_for_tlv: the obj version is not equal to the lib version",
 	API_ERR_BSON_SERIALIZE:                                   "cannot serailize the BSON object into a string",
 	API_ERR_BSON_DESERIALIZE:                                 "cannot build a BSON object from the string",
 	API_ERR_ADD_RECORD:                                       "failed to add a new record into request",
@@ -1279,17 +1202,13 @@ var ErrorCodes = map[int]string{
 	BSON_ERR_INVALID_VALUE:                              "the value of the bson element is invalid.",
 	BSON_ERR_BSON_TYPE_UNMATCH_TDR_TYPE:                 "the bson data type is not match tdr type.",
 	BSON_ERR_BSON_TYPE_IS_NOT_SUPPORT_BY_TCAPLUS:        "the bson data type is not support by tcaplus.",
-	BSON_ERR_BSON_ARRAY_COUNT_IS_INVALID:
-		"the bson array count is invalid: perhaps it is greater than max count.",
+	BSON_ERR_BSON_ARRAY_COUNT_IS_INVALID:                "the bson array count is invalid: perhaps it is greater than max count.",
 	BSON_ERR_FAILED_TO_PARSE:                            "parse the bson string failed.",
-	BSON_ERR_INVALID_FIELD_NAME_LENGTH:
-		"the field name length is invalid: perhaps it is greater than the max field name length.",
-	BSON_ERR_INDEX_FIELD_NAME_NOT_EXIST_WITH_ARRAY_TYPE:
-		"the index field name is not exist: but the array field name and index field name must be a pair.",
+	BSON_ERR_INVALID_FIELD_NAME_LENGTH:                  "the field name length is invalid: perhaps it is greater than the max field name length.",
+	BSON_ERR_INDEX_FIELD_NAME_NOT_EXIST_WITH_ARRAY_TYPE: "the index field name is not exist: but the array field name and index field name must be a pair.",
 	BSON_ERR_INVALID_ARRAY_INDEX:                        "the index of the array is invalid.",
 	BSON_ERR_TDR_META_LIB_IS_NULL:                       "the meta lib is null.",
-	BSON_ERR_MATCHED_COUNT_GREATER_THAN_ONE:
-		"the matched count is greater than one in elemMatch include \"$$uniq\" field name and primary key field name.",
+	BSON_ERR_MATCHED_COUNT_GREATER_THAN_ONE:             "the matched count is greater than one in elemMatch include \"$$uniq\" field name and primary key field name.",
 	BSON_ERR_NO_MATCHED:                                 "there is no matched element according to $elemMatch.",
 	BSON_ERR_GREATER_THAN_ARRAY_MAX_COUNT:               "the array real count is greater than the array max count.",
 	BSON_ERR_BSON_EXCEPTION:                             "An exception occurred in bson lib.",
@@ -1311,32 +1230,28 @@ var ErrorCodes = map[int]string{
 	COMMON_ERR_DECOMPRESS_FAIL:                  "decompress failed.",
 	COMMON_ERR_INVALID_SWITCH_VALUE:             "invalid_switch_value.",
 	COMMON_ERR_LINUX_SYSTEM_CALL_FAIL:           "linux system call failed: such as fopen: fget: sscanf and so on.",
-	COMMON_ERR_NOT_FIND_STAT_CACHE_VALUE:
-		"can not find old stat cache value: such as cpu:network old stat cache info.",
-	COMMON_ERR_LZO_CHECK_FAIL:
-		"when use lzo to compress file: it's header contains magic",
+	COMMON_ERR_NOT_FIND_STAT_CACHE_VALUE:        "can not find old stat cache value: such as cpu:network old stat cache info.",
+	COMMON_ERR_LZO_CHECK_FAIL:                   "when use lzo to compress file: it's header contains magic",
 
 	//tcaplus_index SYSTEM (module id 0x1a) Error Code defined below
 	TCAPLUS_INDEX_ERR_INVALID_PARAMS:                                         "tcaplus_index_invalid_parameters",
 	TCAPLUS_INDEX_ERR_ALLOCATE_MEMORY:                                        "tcaplus_index_allocate_memory_failed",
-	TCAPLUS_INDEX_ERR_CREATE_CONNECTOR_TO_INDEX_SERVER_FAILED:
-		"tcaplus_index_create_connector_to_index_server_failed",
-	TCAPLUS_INDEX_ERR_SEND_TO_INDEX_SERVER_FAILED_FOR_NO_CONNECTOR:
-		"tcaplus_index_send_to_index_server_failed_for_no_connector",
-	TCAPLUS_INDEX_ERR_SEND_TO_INDEX_SERVER_FAILED_FOR_NO_AVAILABLE_CONNECTOR:
-		"tcaplus_index_send_to_index_server_failed_for_no_available_connector",
-	TCAPLUS_INDEX_ERR_SEND_TO_INDEX_SERVER_FAILED_FOR_OTHER_REASON:
-		"tcaplus_index_send_to_index_server_failed_for_other_reason",
-	TCAPLUS_INDEX_ERR_PAUSE_SEND_FOR_CHANGIN_URL_STATUS:
-		"tcaplus_index_pause_send_for_changing_url_status",
-	TCAPLUS_INDEX_ERR_QUERY_INDEX_SERVER_OVERLOAD:
-		"tcaplus_index_err_query_index_server_overload",
+	TCAPLUS_INDEX_ERR_CREATE_CONNECTOR_TO_INDEX_SERVER_FAILED:                "tcaplus_index_create_connector_to_index_server_failed",
+	TCAPLUS_INDEX_ERR_SEND_TO_INDEX_SERVER_FAILED_FOR_NO_CONNECTOR:           "tcaplus_index_send_to_index_server_failed_for_no_connector",
+	TCAPLUS_INDEX_ERR_SEND_TO_INDEX_SERVER_FAILED_FOR_NO_AVAILABLE_CONNECTOR: "tcaplus_index_send_to_index_server_failed_for_no_available_connector",
+	TCAPLUS_INDEX_ERR_SEND_TO_INDEX_SERVER_FAILED_FOR_OTHER_REASON:           "tcaplus_index_send_to_index_server_failed_for_other_reason",
+	TCAPLUS_INDEX_ERR_PAUSE_SEND_FOR_CHANGIN_URL_STATUS:                      "tcaplus_index_pause_send_for_changing_url_status",
+	TCAPLUS_INDEX_ERR_QUERY_INDEX_SERVER_OVERLOAD:                            "tcaplus_index_err_query_index_server_overload",
 
 	// Non-error (for information purpose)
-	COMMON_INFO_DATA_NOT_MODIFIED:
-		"TCAPLUS_FLAG_FETCH_ONLY_IF_MODIFIED flag set and version equals: return early without real data",
+	COMMON_INFO_DATA_NOT_MODIFIED: "TCAPLUS_FLAG_FETCH_ONLY_IF_MODIFIED flag set and version equals: return early without real data",
 }
 
+/**
+	@brief 错误码结构体
+	@param [IN] Code 错误码
+	@param [IN] Message 错误信息
+**/
 type ErrorCode struct {
 	Code    int
 	Message string

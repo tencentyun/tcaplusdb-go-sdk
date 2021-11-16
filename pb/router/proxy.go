@@ -14,7 +14,7 @@ type proxy struct {
 	appId     uint64
 	zoneId    uint32
 	signature string
-	router    interface{}
+	router    *Router
 
 	//用户协程和网络协程会同时操作
 	tbMutex       sync.RWMutex
@@ -159,7 +159,7 @@ func (p *proxy) update() {
 func (p *proxy) sendHeartbeat() {
 	for _, v := range p.usingServerList {
 		if v.isAvailable() {
-			go v.sendHeartbeat()
+			v.sendHeartbeat()
 		}
 	}
 }
@@ -175,9 +175,10 @@ func (p *proxy) processTablesAndAccessMsg(msg *tcapdir_protocol_cs.ResGetTablesA
 	if msg.AccessCount <= 0 {
 		return
 	}
+
 	//唯一化,校验proxy地址
 	accessUrlMap := make(map[string]bool)
-	for i := 0; i < int(msg.AccessCount); i++ {
+	for i := 0; i < int(msg.AccessCount) && i < common.MaxProxyNumPerZone; i++ {
 		url := msg.AccessUrlList[i]
 		urlNet, _, urlPort, err := tnet.ParseUrl(&url)
 		if err != nil {

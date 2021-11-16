@@ -11,10 +11,10 @@ import (
 )
 
 type indexQueryResponse struct {
-	record *record.Record
-	pkg    *tcaplus_protocol_cs.TCaplusPkg
-	offset int32
-	idx    int32
+	record  *record.Record
+	pkg     *tcaplus_protocol_cs.TCaplusPkg
+	offset  int32
+	idx     int32
 	listidx int32
 }
 
@@ -31,7 +31,7 @@ func (res *indexQueryResponse) GetResult() int {
 }
 
 func (res *indexQueryResponse) GetTableName() string {
-	tableName := string(res.pkg.Head.RouterInfo.TableName[0:res.pkg.Head.RouterInfo.TableNameLen-1])
+	tableName := string(res.pkg.Head.RouterInfo.TableName[0 : res.pkg.Head.RouterInfo.TableNameLen-1])
 	return tableName
 }
 
@@ -80,35 +80,35 @@ func (res *indexQueryResponse) FetchRecord() (*record.Record, error) {
 		return nil, &terror.ErrorCode{Code: terror.API_ERR_NO_MORE_RECORD}
 	}
 	data := res.pkg.Body.TCaplusSqlRes
-	if res.idx >= int32(data.RecordNum) || res.offset >= data.ValueLen{
-		logger.ERR("resp fetch record over, current idx: %d, ",res.idx)
-		return nil , &terror.ErrorCode{Code: terror.API_ERR_NO_MORE_RECORD}
+	if res.idx >= int32(data.RecordNum) || res.offset >= data.ValueLen {
+		logger.ERR("resp fetch record over, current idx: %d, ", res.idx)
+		return nil, &terror.ErrorCode{Code: terror.API_ERR_NO_MORE_RECORD}
 	}
 	logger.DEBUG("read bytes: %d, total bytes: %d", res.offset, data.ValueLen)
 	rec := &record.Record{
 		AppId:       uint64(res.pkg.Head.RouterInfo.AppID),
 		ZoneId:      uint32(res.pkg.Head.RouterInfo.ZoneID),
-		TableName:   string(res.pkg.Head.RouterInfo.TableName[0:res.pkg.Head.RouterInfo.TableNameLen-1]),
+		TableName:   string(res.pkg.Head.RouterInfo.TableName[0 : res.pkg.Head.RouterInfo.TableNameLen-1]),
 		Cmd:         int(res.pkg.Head.Cmd),
 		KeyMap:      make(map[string][]byte),
 		ValueMap:    make(map[string][]byte),
 		Version:     -1,
 		KeySet:      res.pkg.Head.KeyInfo,
-		ValueSet:    nil,//res.pkg.Body.BatchGetRes,
+		ValueSet:    nil,
 		UpdFieldSet: nil,
 	}
 
 	//unpack
-	read_bytes, err := unpack_record_k_v(data.Value[res.offset: data.ValueLen],
-		data.ValueLen - res.offset,  rec.KeyMap, rec.ValueMap)
-	if err != nil{
+	readBytes, err := unpackRecordKV(data.Value[res.offset:data.ValueLen],
+		data.ValueLen-res.offset, rec.KeyMap, rec.ValueMap, &rec.Version)
+	if err != nil {
 		logger.ERR("record unpack failed, app %d zone %d table %s ,err %s",
 			rec.AppId, rec.ZoneId, rec.TableName, err.Error())
 		return nil, err
 	}
-	logger.DEBUG("record unpack success, key: %+v, value: %+v",  rec.KeyMap,  rec.ValueMap)
+	logger.DEBUG("record unpack success, key: %+v, value: %+v", rec.KeyMap, rec.ValueMap)
 	res.idx += 1
-	res.offset += read_bytes
+	res.offset += readBytes
 
 	logger.DEBUG("record unpack success, app %d zone %d table %s", rec.AppId, rec.ZoneId, rec.TableName)
 	res.record = rec
@@ -130,8 +130,22 @@ func (res *indexQueryResponse) HaveMoreResPkgs() int {
 	return 0
 }
 
-func (res *indexQueryResponse) GetRecordMatchCount() int{
+func (res *indexQueryResponse) GetRecordMatchCount() int {
 	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
+}
+
+func (res *indexQueryResponse) GetPerfTest(recvTime uint64) *tcaplus_protocol_cs.PerfTest {
+	if res.pkg.Head.PerfTestLen == 0 {
+		return nil
+	}
+	perf := tcaplus_protocol_cs.NewPerfTest()
+	err := perf.Unpack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion, res.pkg.Head.PerfTest)
+	if err != nil {
+		logger.ERR("unpack perf error: %s", err)
+		return nil
+	}
+	perf.ApiRecvTime = recvTime
+	return perf
 }
 
 func (res *indexQueryResponse) GetSqlType() int {
@@ -186,7 +200,7 @@ func (res *indexQueryResponse) ProcAggregationSqlQueryType() ([]string, error) {
 				str += fmt.Sprint(f.GetUInt64())
 			case policy.TYPE_FLOAT:
 				str += fmt.Sprint(f.GetFloat32())
-				case policy.TYPE_DOUBLE:
+			case policy.TYPE_DOUBLE:
 				str += fmt.Sprint(f.GetFloat64())
 			case policy.TYPE_STRING:
 				str += fmt.Sprint(f.GetString())
@@ -211,13 +225,13 @@ func (res *indexQueryResponse) FetchSqlResult() (*sqlResult, error) {
 }
 
 type sqlResult struct {
-	result int32
-	sqlType int32
-	version int32
-	rowsNum uint32
-	value []byte
+	result   int32
+	sqlType  int32
+	version  int32
+	rowsNum  uint32
+	value    []byte
 	valueLen int32
-	cursor int32
+	cursor   int32
 }
 
 func (s *sqlResult) Result() int32 {
@@ -244,7 +258,7 @@ func (s *sqlResult) Set(result, sqlType, version int32, rowsNum uint32, value []
 	return terror.GEN_ERR_SUC
 }
 
-func (s *sqlResult) FetchRow() (*row, error){
+func (s *sqlResult) FetchRow() (*row, error) {
 	if len(s.value) == 0 || s.valueLen == 0 || s.rowsNum == 0 {
 		return nil, &terror.ErrorCode{Code: terror.GEN_ERR_ERR, Message: "value is nil"}
 	}
@@ -253,7 +267,7 @@ func (s *sqlResult) FetchRow() (*row, error){
 		return nil, &terror.ErrorCode{Code: terror.GEN_ERR_ERR, Message: "no more row"}
 	}
 
-	if s.cursor + 8 > s.valueLen {
+	if s.cursor+8 > s.valueLen {
 		return nil, &terror.ErrorCode{Code: terror.GEN_ERR_ERR, Message: "value is not format"}
 	}
 
@@ -267,10 +281,10 @@ func (s *sqlResult) FetchRow() (*row, error){
 }
 
 type row struct {
-	value []byte
-	size int32
+	value    []byte
+	size     int32
 	fieldNum int32
-	cursor int32
+	cursor   int32
 }
 
 func (r *row) set(value []byte, size int32, fieldNum int32) int {
@@ -305,8 +319,8 @@ func (r *row) FieldsNum() int32 { return r.fieldNum }
 
 type field struct {
 	fieldType int32
-	value []byte
-	size int32
+	value     []byte
+	size      int32
 }
 
 func (f *field) set(fieldType int32, value []byte, size int32) {

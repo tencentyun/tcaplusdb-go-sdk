@@ -3,6 +3,7 @@ package request
 import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/common"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/logger"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/cs_pool"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/tcaplus_protocol_cs"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/record"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/terror"
@@ -26,6 +27,9 @@ func newGetShardListRequest(appId uint64, zoneId uint32, tableName string, cmd i
 		return nil, &terror.ErrorCode{Code: terror.API_ERR_PARAMETER_INVALID, Message: "pkg init fail"}
 	}
 
+	pkg.Body.GetShardListReq.Reserve = 0
+	pkg.Body.GetShardListReq.BeginIndex = -1
+	pkg.Body.GetShardListReq.EndIndex = -1
 	req := &getShardListRequest{
 		appId:     appId,
 		zoneId:    zoneId,
@@ -98,6 +102,10 @@ func (req *getShardListRequest) Pack() ([]byte, error) {
 	//	logger.ERR("record pack value failed, %s", err.Error())
 	//	return nil, err
 	//}
+	if req.pkg == nil {
+		logger.ERR("Request can not second use")
+		return nil, &terror.ErrorCode{Code: terror.RequestHasHasNoPkg, Message: "Request can not second use"}
+	}
 
 	if logger.GetLogLevel() == "DEBUG" {
 		logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
@@ -116,6 +124,15 @@ func (req *getShardListRequest) GetZoneId() uint32 {
 }
 
 func (req *getShardListRequest) GetKeyHash() (uint32, error) {
+	if req.pkg == nil {
+		logger.ERR("Request can not second use")
+		return uint32(terror.RequestHasHasNoPkg), &terror.ErrorCode{Code: terror.RequestHasHasNoPkg,
+			Message: "Request can not second use"}
+	}
+	defer func() {
+		cs_pool.PutTcaplusCSPkg(req.pkg)
+		req.pkg = nil
+	}()
 	return uint32(time.Now().UnixNano()), nil
 }
 

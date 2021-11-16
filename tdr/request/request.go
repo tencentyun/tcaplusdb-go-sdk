@@ -1,6 +1,7 @@
 package request
 
 import (
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/cs_pool"
 	"hash/crc32"
 	"sort"
 
@@ -400,7 +401,7 @@ type commonInterface interface {
 
 func NewRequest(appId uint64, zoneId uint32, tableName string, cmd int, isPB bool) (TcaplusRequest, error) {
 	innerSeq := uint32(0)
-	pkg := tcaplus_protocol_cs.NewTCaplusPkg()
+	pkg := cs_pool.GetTcaplusCSPkg(uint32(cmd))
 	pkg.Head.Magic = uint16(tcaplus_protocol_cs.TCAPLUS_PROTOCOL_MAGIC_CS)
 	pkg.Head.Version = uint16(tcaplus_protocol_cs.TCaplusPkgCurrentVersion)
 	pkg.Head.Cmd = uint32(cmd)
@@ -414,7 +415,7 @@ func NewRequest(appId uint64, zoneId uint32, tableName string, cmd int, isPB boo
 	pkg.Head.RouterInfo.TableNameLen = uint32(len(pkg.Head.RouterInfo.TableName))
 
 	pkg.Head.KeyInfo.Version = -1
-	pkg.Body.Init(int64(cmd))
+	//pkg.Body.Init(int64(cmd))
 
 	req := &tcapRequest{}
 	var err error
@@ -479,6 +480,10 @@ func NewRequest(appId uint64, zoneId uint32, tableName string, cmd int, isPB boo
 }
 
 func setUserBuffer(pkg *tcaplus_protocol_cs.TCaplusPkg, userBuffer []byte) error {
+	if pkg == nil {
+		logger.ERR("Request can not second use")
+		return &terror.ErrorCode{Code: terror.RequestHasHasNoPkg, Message: "Request can not second use"}
+	}
 	bufLen := len(userBuffer)
 	if bufLen <= 0 {
 		return nil
@@ -548,7 +553,7 @@ func manipulateFlags(pkg *tcaplus_protocol_cs.TCaplusPkg, flags int32, clear boo
 
 	// 针对每个flag检查合法
 	for i := 0; i < len(allowd_flag_cmd_map); i++ {
-		if ((1 << i) & flags) != 0 {
+		if ((1 << uint32(i)) & flags) != 0 {
 			continue
 		}
 
@@ -574,10 +579,18 @@ func manipulateFlags(pkg *tcaplus_protocol_cs.TCaplusPkg, flags int32, clear boo
 }
 
 func setFlags(pkg *tcaplus_protocol_cs.TCaplusPkg, flags int32) int {
+	if pkg == nil {
+		logger.ERR("Request can not second use")
+		return int(terror.RequestHasHasNoPkg)
+	}
 	return manipulateFlags(pkg, flags, false)
 }
 
 func clearFlags(pkg *tcaplus_protocol_cs.TCaplusPkg, flags int32) int {
+	if pkg == nil {
+		logger.ERR("Request can not second use")
+		return int(terror.RequestHasHasNoPkg)
+	}
 	return manipulateFlags(pkg, flags, true)
 }
 

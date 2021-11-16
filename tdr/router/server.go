@@ -29,62 +29,6 @@ type server struct {
 	signUpTime  time.Time
 	router      *Router
 	prepareStop bool //proxy准备stop
-
-	respMsgChanList []chan *common.PKGBuffer
-	closeFlag       chan struct{}
-}
-
-func (s *server) initRecv() {
-	if len(s.respMsgChanList) > 0 {
-		return
-	}
-	s.respMsgChanList = make([]chan *common.PKGBuffer, common.ConfigProcRespRoutineNum)
-	s.closeFlag = make(chan struct{})
-	for i := 0; i < common.ConfigProcRespRoutineNum; i++ {
-		s.respMsgChanList[i] = make(chan *common.PKGBuffer, common.ConfigProcRespDepth)
-		go func(ch chan *common.PKGBuffer, closeFlag chan struct{}) {
-			defer func() {
-				if r := recover(); r != nil {
-					logger.DEBUG("Recovered %v.", r)
-				}
-			}()
-
-			proc := func(pkg *common.PKGBuffer) {
-				buf := pkg.GetData()
-				logger.DEBUG("recv proxy response, unpack.")
-				start := time.Now()
-				resp := tcaplus_protocol_cs.NewTCaplusPkg()
-				err := resp.Unpack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion, buf)
-				// 之后这个pkg不会再被用到，回收到对象池中
-				pkg.Done()
-				if err != nil {
-					logger.ERR("Unpack proxy msg failed, url %s err %v", s.proxyUrl, err.Error())
-					return
-				}
-
-				if time.Now().Sub(start) > 10*time.Millisecond {
-					logger.WARN("unpack > 10ms data %v.", buf)
-				}
-
-				s.processRsp(resp)
-			}
-
-			for {
-				select {
-				case <-closeFlag:
-					for len(ch) > 0 {
-						for i := 0; i < len(ch); i++ {
-							proc(<-ch)
-						}
-					}
-					logger.INFO("exit recv routine.")
-					return
-				case buf := <-ch:
-					proc(buf)
-				}
-			}
-		}(s.respMsgChanList[i], s.closeFlag)
-	}
 }
 
 func (s *server) getSignUpStat() uint32 {
@@ -119,8 +63,6 @@ func (s *server) isAvailable() bool {
 func (s *server) disConnect() {
 	s.prepareStop = false
 	s.signUpFlag = NotSignUp
-	close(s.closeFlag)
-	s.respMsgChanList = nil
 	if s.conn != nil {
 		s.conn.Close()
 		s.conn = nil
@@ -141,10 +83,10 @@ func (s *server) connect() {
 	if s.prepareStop {
 		return
 	}
-	s.initRecv()
 	if s.conn == nil {
 		//连接proxy, 3s超时
-		conn, err := tnet.NewConn(s.proxyUrl, 3*time.Second, ParseProxyPkgLen, ProxyCallBackFunc, s)
+		conn, err := tnet.NewConn(s.proxyUrl, 3*time.Second, ParseProxyPkgLen, ProxyCallBackFunc, s,
+			s.router.ctrl.Option.ProxyConnOption.BufSizePerCon)
 		if err != nil {
 			logger.ERR("new conn failed %v", err)
 			return
@@ -176,7 +118,8 @@ func (s *server) connect() {
 			}
 			logger.ERR("connect proxy %v failed, conn stat %v, retry connect", s.proxyUrl, s.conn.GetStat())
 			s.disConnect()
-			conn, err := tnet.NewConn(s.proxyUrl, 3*time.Second, ParseProxyPkgLen, ProxyCallBackFunc, s)
+			conn, err := tnet.NewConn(s.proxyUrl, 3*time.Second, ParseProxyPkgLen, ProxyCallBackFunc, s,
+				s.router.ctrl.Option.ProxyConnOption.BufSizePerCon)
 			if err != nil {
 				logger.ERR("new conn failed %v", err)
 				return
@@ -284,21 +227,13 @@ func ParseProxyPkgLen(buf []byte) int {
 @param cbPara 回调参数，此处为ProxyServer
 @retVal error
 */
-func ProxyCallBackFunc(url *string, pkg *common.PKGBuffer, cbPara interface{}) error {
-	buf := pkg.GetData()
-	asyncId := binary.BigEndian.Uint64(buf[12:])
-	seq := binary.BigEndian.Uint32(buf[20:])
-	server, ok := cbPara.(*server)
+func ProxyCallBackFunc(url *string, pkg *tnet.PKG) error {
+	server, ok := pkg.GetCbPara().(*server)
 	if !ok {
-		logger.ERR("RecvCallBackFunc cbPara type invalid")
+		logger.ERR("url %s RecvCallBackFunc cbPara type invalid", *url)
 		return nil
 	}
-	id := (asyncId + uint64(seq)) % uint64(common.ConfigProcRespRoutineNum)
-	select {
-	case <-server.closeFlag:
-		logger.INFO("exit recv routine.")
-	case server.respMsgChanList[id] <- pkg:
-	}
+	server.router.ResponseChanAdd(pkg)
 	return nil
 }
 

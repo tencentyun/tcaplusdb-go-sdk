@@ -46,6 +46,7 @@ func TestCountSuccess(t *testing.T) {
 		}(i)
 	}
 
+	client, req = tools.InitPBClientAndReqWithTableName(cmd.TcaplusApiGetTableRecordCountReq, "game_players")
 	resp, err = client.Do(req, 5*time.Second)
 	if err != nil {
 		t.Errorf("client.Do error:%s", err)

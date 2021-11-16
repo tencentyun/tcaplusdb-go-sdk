@@ -25,7 +25,7 @@ func (res *pbFieldUpdateResponse) GetResult() int {
 }
 
 func (res *pbFieldUpdateResponse) GetTableName() string {
-	tableName := string(res.pkg.Head.RouterInfo.TableName[0:res.pkg.Head.RouterInfo.TableNameLen-1])
+	tableName := string(res.pkg.Head.RouterInfo.TableName[0 : res.pkg.Head.RouterInfo.TableNameLen-1])
 	return tableName
 }
 
@@ -100,19 +100,37 @@ func (res *pbFieldUpdateResponse) GetUserBuffer() []byte {
 func (res *pbFieldUpdateResponse) GetSeq() int32 {
 	return res.pkg.Head.Seq
 }
+
 func (res *pbFieldUpdateResponse) HaveMoreResPkgs() int {
 	return 0
 }
+
 func (res *pbFieldUpdateResponse) GetTotalNum() int {
 	return 0
 }
+
 func (res *pbFieldUpdateResponse) GetFailedNum() int {
 	return 0
 }
 
 func (res *pbFieldUpdateResponse) FetchErrorRecord() (*record.Record, error) {
-	return nil,nil
+	return nil, nil
 }
-func (res *pbFieldUpdateResponse) GetRecordMatchCount() int{
+
+func (res *pbFieldUpdateResponse) GetRecordMatchCount() int {
 	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
+}
+
+func (res *pbFieldUpdateResponse) GetPerfTest(recvTime uint64) *tcaplus_protocol_cs.PerfTest {
+	if res.pkg.Head.PerfTestLen == 0 {
+		return nil
+	}
+	perf := tcaplus_protocol_cs.NewPerfTest()
+	err := perf.Unpack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion, res.pkg.Head.PerfTest)
+	if err != nil {
+		logger.ERR("unpack perf error: %s", err)
+		return nil
+	}
+	perf.ApiRecvTime = recvTime
+	return perf
 }

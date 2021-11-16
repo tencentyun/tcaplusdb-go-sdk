@@ -2,6 +2,7 @@ package request
 
 import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/logger"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/cs_pool"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/policy"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/tcaplus_protocol_cs"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/record"
@@ -26,6 +27,12 @@ func newIncreaseRequest(appId uint64, zoneId uint32, tableName string, cmd int,
 		return nil, &terror.ErrorCode{Code: terror.API_ERR_PARAMETER_INVALID, Message: "pkg init fail"}
 	}
 
+	pkg.Body.IncreaseReq.AddableIncrease = 0
+	pkg.Body.IncreaseReq.CheckVersiontType = 1
+	pkg.Body.IncreaseReq.Flag = 0
+	pkg.Body.IncreaseReq.ValueInfo.FieldNum = 0
+	pkg.Body.IncreaseReq.ValueInfo.Fields = nil
+	pkg.Body.IncreaseReq.ValueInfo.Version = 0
 	req := &increaseRequest{
 		appId:        appId,
 		zoneId:       zoneId,
@@ -90,6 +97,11 @@ func (req *increaseRequest) SetResultFlag(flag int) error {
 }
 
 func (req *increaseRequest) Pack() ([]byte, error) {
+	if req.pkg == nil {
+		logger.ERR("Request can not second use")
+		return nil, &terror.ErrorCode{Code: terror.RequestHasHasNoPkg, Message: "Request can not second use"}
+	}
+
 	if req.record == nil {
 		return nil, &terror.ErrorCode{Code: terror.RequestHasNoRecord}
 	}
@@ -113,6 +125,15 @@ func (req *increaseRequest) GetZoneId() uint32 {
 }
 
 func (req *increaseRequest) GetKeyHash() (uint32, error) {
+	if req.pkg == nil {
+		logger.ERR("Request can not second use")
+		return uint32(terror.RequestHasHasNoPkg), &terror.ErrorCode{Code: terror.RequestHasHasNoPkg,
+			Message: "Request can not second use"}
+	}
+	defer func() {
+		cs_pool.PutTcaplusCSPkg(req.pkg)
+		req.pkg = nil
+	}()
 	if req.record == nil {
 		return 0, &terror.ErrorCode{Code: terror.RequestHasNoRecord}
 	}

@@ -19,7 +19,7 @@ type TcaplusResponse interface {
 	*  @retval >= 0               受影响的Records的条数.
 	*  @retval < 0                操作失败，具体错误参见 @link ErrorCode @endlink
 	*  注意，在当前版本中该函数仅对List类型的DeleteAll操作有效.
-	*/
+	 */
 	GetAffectedRecordNum() int32
 
 	/**
@@ -64,6 +64,10 @@ type TcaplusResponse interface {
 	GetTableRecordCount() int
 }
 
+/*
+	大多数响应都会用到的函数放到commonInterface接口中
+	个别或者极少数响应的特殊方法放到TcaplusResponse
+*/
 type commonInterface interface {
 	/*
 		@brief  获取响应结果
@@ -125,8 +129,8 @@ type commonInterface interface {
 	*/
 	GetSeq() int32
 	/*
-	    @判断是否有更多的回包
-	    @retval  1 有， 0 没有
+	   @判断是否有更多的回包
+	   @retval  1 有， 0 没有
 	*/
 	HaveMoreResPkgs() int
 
@@ -148,8 +152,10 @@ type commonInterface interface {
 	               即多个分包所有记录数的总和，
 	               而GetRecordCount()函数只能返回单个分包中的(本响应中的)记录数.
 	*/
-    GetRecordMatchCount() int
+	GetRecordMatchCount() int
 
+	// 获取perf用于定位各阶段耗时，recvTime 为接收时间戳，单位us
+	GetPerfTest(recvTime uint64) *tcaplus_protocol_cs.PerfTest
 }
 
 func NewResponse(pkg *tcaplus_protocol_cs.TCaplusPkg) (TcaplusResponse, error) {
@@ -315,7 +321,7 @@ func (res *tcapResponse) FetchErrorRecord() (*record.Record, error) {
 	}
 }
 
-func (res *tcapResponse) FetchSqlResult() (*sqlResult, error){
+func (res *tcapResponse) FetchSqlResult() (*sqlResult, error) {
 	switch res.commonInterface.(type) {
 	case *indexQueryResponse:
 		return res.commonInterface.(*indexQueryResponse).FetchSqlResult()
@@ -324,7 +330,7 @@ func (res *tcapResponse) FetchSqlResult() (*sqlResult, error){
 	}
 }
 
-func (res *tcapResponse) ProcAggregationSqlQueryType() ([]string, error){
+func (res *tcapResponse) ProcAggregationSqlQueryType() ([]string, error) {
 	switch res.commonInterface.(type) {
 	case *indexQueryResponse:
 		return res.commonInterface.(*indexQueryResponse).ProcAggregationSqlQueryType()

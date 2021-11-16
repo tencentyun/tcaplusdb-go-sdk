@@ -3,6 +3,7 @@ package request
 import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/common"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/logger"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/cs_pool"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/policy"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/tcaplus_protocol_cs"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/record"
@@ -28,6 +29,17 @@ func newUpdateByPartKeyRequest(appId uint64, zoneId uint32, tableName string, cm
 	}
 
 	pkg.Body.UpdateByPartkeyReq.ValueInfo.EncodeType = 1
+	pkg.Body.UpdateByPartkeyReq.ValueInfo.Version_ = 0
+	pkg.Body.UpdateByPartkeyReq.ValueInfo.CompactValueSet.ValueBuf = nil
+	pkg.Body.UpdateByPartkeyReq.ValueInfo.CompactValueSet.ValueBufLen = 0
+	pkg.Body.UpdateByPartkeyReq.ValueInfo.CompactValueSet.FieldIndexs = nil
+	pkg.Body.UpdateByPartkeyReq.ValueInfo.CompactValueSet.FieldIndexNum = 0
+	pkg.Body.UpdateByPartkeyReq.ValueInfo.FieldNum_ = 0
+	pkg.Body.UpdateByPartkeyReq.ValueInfo.Fields_ = nil
+	pkg.Body.UpdateByPartkeyReq.OffSet = 0
+	pkg.Body.UpdateByPartkeyReq.Limit = -1
+	pkg.Body.UpdateByPartkeyReq.CheckVersiontType = 1
+
 	req := &updateByPartKeyRequest{
 		appId:        appId,
 		zoneId:       zoneId,
@@ -86,6 +98,11 @@ func (req *updateByPartKeyRequest) SetResultFlag(flag int) error {
 }
 
 func (req *updateByPartKeyRequest) Pack() ([]byte, error) {
+	if req.pkg == nil {
+		logger.ERR("Request can not second use")
+		return nil, &terror.ErrorCode{Code: terror.RequestHasHasNoPkg, Message: "Request can not second use"}
+	}
+
 	if req.record == nil {
 		return nil, &terror.ErrorCode{Code: terror.RequestHasNoRecord}
 	}
@@ -122,6 +139,15 @@ func (req *updateByPartKeyRequest) GetZoneId() uint32 {
 }
 
 func (req *updateByPartKeyRequest) GetKeyHash() (uint32, error) {
+	if req.pkg == nil {
+		logger.ERR("Request can not second use")
+		return uint32(terror.RequestHasHasNoPkg), &terror.ErrorCode{Code: terror.RequestHasHasNoPkg,
+			Message: "Request can not second use"}
+	}
+	defer func() {
+		cs_pool.PutTcaplusCSPkg(req.pkg)
+		req.pkg = nil
+	}()
 	if req.record == nil {
 		return 0, &terror.ErrorCode{Code: terror.RequestHasNoRecord}
 	}

@@ -5,33 +5,43 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/tcaplus_protocol_cs"
+	"time"
+	"unsafe"
 )
 
 const (
-	// 每个server处理响应的协程数
-	ConfigProcRespRoutineNum = 4
-
-	// 管道深度大一些可以防止瞬间并发太多请求导致管道满了而阻塞住
-
 	// 处理响应的协程管道深度
 	ConfigProcRespDepth = 10000
-
-	// 处理写请求的协程管道深度，用于合并写请求
-	ConfigProcReqDepth = 10000
-
-	// 处理用户同步请求的协程数
-	ConfigProcRouterRoutineNum = 4
-
 	// 处理用户同步请求的协程管道深度
-	ConfigProcRouterDepth = 10000
+	ConfigProcReqDepth = 10000
+	// 处理写请求的协程管道深度，用于合并写请求
+	ConfigProcConBufDepth = 10000
+	// 处理用户同步响应的协程数
+	ConfigProcRespRoutineNum = 8
+	// 处理用户同步请求的协程数
+	ConfigProcReqRoutineNum = 8
+	//每个zone的最大proxy数量
+	MaxProxyNumPerZone = 200
 )
 
 var PublicIP string
 
+var TimeNow time.Time = time.Now()
+
 func StringToCByte(str string) []byte {
-	b := []byte(str)
+	b := Str2bytes(str)
 	b = append(b, 0)
 	return b
+}
+
+func Str2bytes(s string) []byte {
+	x := (*[2]uintptr)(unsafe.Pointer(&s))
+	h := [3]uintptr{x[0], x[1], x[1]}
+	return *(*[]byte)(unsafe.Pointer(&h))
+}
+
+func Bytes2str(b []byte) string {
+	return *(*string)(unsafe.Pointer(&b))
 }
 
 func CsHeadVisualize(head *tcaplus_protocol_cs.TCaplusPkgHead) string {
@@ -41,7 +51,7 @@ func CsHeadVisualize(head *tcaplus_protocol_cs.TCaplusPkgHead) string {
 		keyInfo += ":"
 		keyInfo += fmt.Sprintf("%v", head.KeyInfo.Fields[i].FieldBuff[0:head.KeyInfo.Fields[i].FieldLen])
 	}
-	return fmt.Sprintf("{ Result:%d Magic:%d Version:%d HeadLen:%d BodyLen:%d AsynID:%d Seq:%d Cmd:%d" +
+	return fmt.Sprintf("{ Result:%d Magic:%d Version:%d HeadLen:%d BodyLen:%d AsynID:%d Seq:%d Cmd:%d"+
 		" SubCmd:%d Flags:%d AppID:%d ZoneId:%d ShardID:%d Table:%s RecVersion:%d KeyFieldNum:%d KeyInfo:{%s} }",
 		head.Result, head.Magic, head.Version, head.HeadLen, head.BodyLen, head.AsynID, head.Seq, head.Cmd, head.SubCmd,
 		head.Flags, head.RouterInfo.AppID, head.RouterInfo.ZoneID, head.RouterInfo.ShardID,

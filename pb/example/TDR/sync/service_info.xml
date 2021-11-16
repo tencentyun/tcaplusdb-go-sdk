@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>        
+<metalib name="service_info" tagsetversion="1" version="1">
+  <struct name="service_info" version="1" primarykey="gameid,envdata,name,expansion" splittablekey="gameid" >
+    <entry name="gameid"           	type="string"     size="128" desc="gameapp id"/>
+    <entry name="envdata"         	type="string"     size="1024" desc="env环境信息" />
+    <entry name="name"             	type="string"     size="1024" desc="名字" />
+    <entry name="expansion"      	type="string"     size="1024" desc="扩展字段" />
+    <entry name="filterdata"        type="string"     size="1024" desc="过滤标签" />
+    <entry name="updatetime"        type="uint64"     desc="最近更新时间，单位ms" />
+    <entry name="inst_max_num"      type="uint64"     desc="最大实例个数" />
+    <entry name="inst_min_num"      type="uint64"     desc="最小实例个数" />
+    <entry name="routeinfo_len"     type="uint"   defaultvalue="0" desc="路由规则信息长度" />
+    <entry name="routeinfo"         type="char"   count="1024" refer="routeinfo_len" desc="路由规则信息" />
+    <index name="index_gameid_envdata_name" column="gameid,envdata,name" />
+    <index name="index_gameid_envdata" column="gameid,envdata" />
+    <index name="index_gameid_name" column="gameid,name" />	
+    <index name="index_gameid" column="gameid" />
+  </struct>
+</metalib>

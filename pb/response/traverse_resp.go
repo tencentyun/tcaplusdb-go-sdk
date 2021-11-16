@@ -27,7 +27,7 @@ func (res *traverseResponse) GetResult() int {
 }
 
 func (res *traverseResponse) GetTableName() string {
-	tableName := string(res.pkg.Head.RouterInfo.TableName[0:res.pkg.Head.RouterInfo.TableNameLen-1])
+	tableName := string(res.pkg.Head.RouterInfo.TableName[0 : res.pkg.Head.RouterInfo.TableNameLen-1])
 	return tableName
 }
 
@@ -62,35 +62,35 @@ func (res *traverseResponse) FetchRecord() (*record.Record, error) {
 		return nil, &terror.ErrorCode{Code: terror.API_ERR_NO_MORE_RECORD}
 	}
 	data := res.pkg.Body.TableTraverseRes
-	if res.idx >= int32(data.RecordNum) || res.offset >= data.BatchValueLen{
-		logger.ERR("resp fetch record over, current idx: %d, ",res.idx)
-		return nil , &terror.ErrorCode{Code: terror.API_ERR_NO_MORE_RECORD}
+	if res.idx >= int32(data.RecordNum) || res.offset >= data.BatchValueLen {
+		logger.ERR("resp fetch record over, current idx: %d, ", res.idx)
+		return nil, &terror.ErrorCode{Code: terror.API_ERR_NO_MORE_RECORD}
 	}
 	logger.DEBUG("read bytes: %d, total bytes: %d", res.offset, data.BatchValueLen)
 	rec := &record.Record{
 		AppId:       uint64(res.pkg.Head.RouterInfo.AppID),
 		ZoneId:      uint32(res.pkg.Head.RouterInfo.ZoneID),
-		TableName:   string(res.pkg.Head.RouterInfo.TableName[0:res.pkg.Head.RouterInfo.TableNameLen-1]),
+		TableName:   string(res.pkg.Head.RouterInfo.TableName[0 : res.pkg.Head.RouterInfo.TableNameLen-1]),
 		Cmd:         int(res.pkg.Head.Cmd),
 		KeyMap:      make(map[string][]byte),
 		ValueMap:    make(map[string][]byte),
 		Version:     -1,
 		KeySet:      res.pkg.Head.KeyInfo,
-		ValueSet:    nil,//res.pkg.Body.TableTraverseRes,
+		ValueSet:    nil, //res.pkg.Body.TableTraverseRes,
 		UpdFieldSet: nil,
 	}
 
 	//unpack
-	read_bytes, err := unpack_record(data.BatchValueInfo[res.offset: data.BatchValueLen],
-		data.BatchValueLen - res.offset,  rec.KeyMap, rec.ValueMap)
-	if err != nil{
+	readBytes, err := unpackRecord(data.BatchValueInfo[res.offset:data.BatchValueLen],
+		data.BatchValueLen-res.offset, rec.KeyMap, rec.ValueMap, &rec.Version)
+	if err != nil {
 		logger.ERR("record unpack failed, app %d zone %d table %s ,err %s",
 			rec.AppId, rec.ZoneId, rec.TableName, err.Error())
 		return nil, err
 	}
-	logger.DEBUG("record unpack success, key: %+v, value: %+v",  rec.KeyMap,  rec.ValueMap)
+	logger.DEBUG("record unpack success, key: %+v, value: %+v", rec.KeyMap, rec.ValueMap)
 	res.idx += 1
-	res.offset += read_bytes
+	res.offset += readBytes
 
 	logger.DEBUG("record unpack success, app %d zone %d table %s", rec.AppId, rec.ZoneId, rec.TableName)
 	res.record = rec
@@ -122,10 +122,24 @@ func (res *traverseResponse) FetchErrorRecord() (*record.Record, error) {
 	return nil, nil
 }
 
-func (res *traverseResponse) GetRecordMatchCount() int{
+func (res *traverseResponse) GetRecordMatchCount() int {
 	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
 }
 
 func (res *traverseResponse) GetTcaplusPackagePtr() *tcaplus_protocol_cs.TCaplusPkg {
 	return res.pkg
+}
+
+func (res *traverseResponse) GetPerfTest(recvTime uint64) *tcaplus_protocol_cs.PerfTest {
+	if res.pkg.Head.PerfTestLen == 0 {
+		return nil
+	}
+	perf := tcaplus_protocol_cs.NewPerfTest()
+	err := perf.Unpack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion, res.pkg.Head.PerfTest)
+	if err != nil {
+		logger.ERR("unpack perf error: %s", err)
+		return nil
+	}
+	perf.ApiRecvTime = recvTime
+	return perf
 }

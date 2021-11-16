@@ -26,7 +26,7 @@ func (res *listDeleteAllResponse) GetResult() int {
 }
 
 func (res *listDeleteAllResponse) GetTableName() string {
-	tableName := string(res.pkg.Head.RouterInfo.TableName[0:res.pkg.Head.RouterInfo.TableNameLen-1])
+	tableName := string(res.pkg.Head.RouterInfo.TableName[0 : res.pkg.Head.RouterInfo.TableNameLen-1])
 	return tableName
 }
 
@@ -75,14 +75,14 @@ func (res *listDeleteAllResponse) FetchRecord() (*record.Record, error) {
 	rec := &record.Record{
 		AppId:       uint64(res.pkg.Head.RouterInfo.AppID),
 		ZoneId:      uint32(res.pkg.Head.RouterInfo.ZoneID),
-		TableName:   string(res.pkg.Head.RouterInfo.TableName[0:res.pkg.Head.RouterInfo.TableNameLen-1]),
+		TableName:   string(res.pkg.Head.RouterInfo.TableName[0 : res.pkg.Head.RouterInfo.TableNameLen-1]),
 		Cmd:         int(res.pkg.Head.Cmd),
 		KeyMap:      make(map[string][]byte),
 		ValueMap:    make(map[string][]byte),
 		Version:     -1,
-		Index:		 -1,
+		Index:       -1,
 		KeySet:      res.pkg.Head.KeyInfo,
-		ValueSet: nil,
+		ValueSet:    nil,
 		UpdFieldSet: nil,
 	}
 
@@ -109,10 +109,24 @@ func (res *listDeleteAllResponse) HaveMoreResPkgs() int {
 	return 0
 }
 
-func (res *listDeleteAllResponse) GetRecordMatchCount() int{
+func (res *listDeleteAllResponse) GetRecordMatchCount() int {
 	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
 }
 
 func (res *listDeleteAllResponse) GetAffectedRecordNum() int32 {
 	return res.pkg.Body.ListDeleteAllRes.AffectedElementNum
+}
+
+func (res *listDeleteAllResponse) GetPerfTest(recvTime uint64) *tcaplus_protocol_cs.PerfTest {
+	if res.pkg.Head.PerfTestLen == 0 {
+		return nil
+	}
+	perf := tcaplus_protocol_cs.NewPerfTest()
+	err := perf.Unpack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion, res.pkg.Head.PerfTest)
+	if err != nil {
+		logger.ERR("unpack perf error: %s", err)
+		return nil
+	}
+	perf.ApiRecvTime = recvTime
+	return perf
 }

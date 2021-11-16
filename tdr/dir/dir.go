@@ -71,7 +71,7 @@ func (dir *DirServer) Init(appId uint64, zoneList []uint32, dirUrl string, signa
 	return nil
 }
 
-func (dir *DirServer) SendRequest(buf []byte)  error {
+func (dir *DirServer) SendRequest(buf []byte) error {
 	if dir.conn != nil {
 		return dir.conn.Send(buf)
 	}
@@ -109,7 +109,8 @@ func (dir *DirServer) connect() error {
 		//连接dir, 3s超时
 		for i := 0; i < len(dir.urlList); i++ {
 			var err error
-			dir.conn, err = tnet.NewConn(dir.urlList[dir.curDirIndex], 3*time.Second, ParseDirPkgLen, DirCallBackFunc, dir)
+			dir.conn, err = tnet.NewConn(dir.urlList[dir.curDirIndex], 3*time.Second, ParseDirPkgLen,
+				DirCallBackFunc, dir, 0)
 			if err == nil {
 				break
 			}
@@ -189,9 +190,9 @@ func ParseDirPkgLen(buf []byte) int {
 @param cbPara 回调参数，此处为*DirServer
 @retVal error
 */
-func DirCallBackFunc(url *string, pkg *common.PKGBuffer, cbPara interface{}) error {
+func DirCallBackFunc(url *string, pkg *tnet.PKG) error {
 	buf := pkg.GetData()
-	dir, ok := cbPara.(*DirServer)
+	dir, ok := pkg.GetCbPara().(*DirServer)
 	if !ok {
 		log.ERR("RecvCallBackFunc cbPara type invalid")
 		return nil

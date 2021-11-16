@@ -28,9 +28,13 @@ const (
 	TdrSliceMaxCount = "tdr_count"
 )
 
+// 设置字段值函数定义
 type setFieldFunc func(name string, data interface{}) error
+
+// 获取字段值函数定义
 type getFieldFunc func(name string, data interface{}) error
 
+// tdr结构体接口，用于打解包
 type TdrTableSt interface {
 	GetTDRDBFeilds() *tdrcom.TDRDBFeilds
 	Init()
@@ -40,6 +44,7 @@ type TdrTableSt interface {
 	GetCurrentVersion() uint32
 }
 
+// tdr结构体接口，用于打解包
 type TdrSt interface {
 	Init()
 	Pack(cutVer uint32) ([]byte, error)
@@ -48,6 +53,7 @@ type TdrSt interface {
 	UnpackFrom(cutVer uint32, r *tdrcom.Reader) error
 }
 
+// tdr结构体接口，用于打解包
 type TdrUnion interface {
 	Init(selector int64)
 	Pack(cutVer uint32, selector int64) ([]byte, error)
@@ -120,11 +126,16 @@ func (r *Record) SetDataWithIndexAndField(data TdrTableSt, FieldNameList []strin
 	logger.DEBUG("st type %v", stType)
 
 	//遍历字段
-	for i := 0; i < stType.Elem().NumField(); i++ {
-		fieldTag := stType.Elem().Field(i).Tag.Get(TdrFieldTag)
-		fieldName := stType.Elem().Field(i).Name
-		fieldType := stType.Elem().Field(i).Type
-		fieldValue := stValue.Elem().Field(i)
+	numField := stType.Elem().NumField()
+	fieldFunc := stType.Elem().Field
+	valFieldFunc := stValue.Elem().Field
+
+	for i := 0; i < numField; i++ {
+		field := fieldFunc(i)
+		fieldTag := field.Tag.Get(TdrFieldTag)
+		fieldName := field.Name
+		fieldType := field.Type
+		fieldValue := valFieldFunc(i)
 		if len(fieldTag) <= 0 {
 			logger.ERR("data name %s has no tag", fieldName)
 			return &terror.ErrorCode{Code: terror.ParameterInvalid, Message: "data struct has no tag"}
@@ -191,7 +202,7 @@ func (r *Record) SetDataWithIndexAndField(data TdrTableSt, FieldNameList []strin
 			}
 
 			var stBuf []byte
-			unionTag := stType.Elem().Field(i).Tag.Get(TdrSelectTag)
+			unionTag := field.Tag.Get(TdrSelectTag)
 			//判断是否是union类型
 			if len(unionTag) > 0 {
 				//打包union
@@ -237,11 +248,8 @@ func (r *Record) SetDataWithIndexAndField(data TdrTableSt, FieldNameList []strin
 
 			//set data会埋入版本号
 			version := int16(data.GetCurrentVersion())
-			vBuf := new(bytes.Buffer)
-			if err := binary.Write(vBuf, binary.LittleEndian, version); err != nil {
-				return err
-			}
-			value := vBuf.Bytes()
+			value := make([]byte, 2, 2)
+			binary.LittleEndian.PutUint16(value, uint16(version))
 			value = append(value, stBuf...)
 			if err := setFieldFunc(fieldTag, value); err != nil {
 				return err
@@ -250,7 +258,7 @@ func (r *Record) SetDataWithIndexAndField(data TdrTableSt, FieldNameList []strin
 		//slice字段
 		case reflect.Slice:
 			//获取数组的大小
-			referTag := stType.Elem().Field(i).Tag.Get(TdrReferTag)
+			referTag := field.Tag.Get(TdrReferTag)
 			arrayCount := 0
 			if len(referTag) > 0 {
 				//exist refer
@@ -268,7 +276,7 @@ func (r *Record) SetDataWithIndexAndField(data TdrTableSt, FieldNameList []strin
 				arrayCount = count
 			} else {
 				//没有refer，则认为取最大长度
-				countTag := stType.Elem().Field(i).Tag.Get(TdrSliceMaxCount)
+				countTag := field.Tag.Get(TdrSliceMaxCount)
 				if len(countTag) <= 0 {
 					logger.ERR("field array tdr_count failed, name %s tag %s ", fieldName, fieldTag)
 					return &terror.ErrorCode{Code: terror.ParameterInvalid,
@@ -312,7 +320,7 @@ func (r *Record) SetDataWithIndexAndField(data TdrTableSt, FieldNameList []strin
 					if err := binary.Write(vBuf, binary.LittleEndian, version); err != nil {
 						return err
 					}
-					unionTag := stType.Elem().Field(i).Tag.Get(TdrSelectTag)
+					unionTag := field.Tag.Get(TdrSelectTag)
 					for j := 0; j < arrayCount; j++ {
 						eleValue := fieldValue.Index(j)
 						if eleValue.Elem().Kind() != reflect.Struct {
@@ -429,11 +437,16 @@ func (r *Record) GetData(data TdrTableSt) error {
 	logger.DEBUG("st type %v", stType)
 
 	//遍历字段
-	for i := 0; i < stType.Elem().NumField(); i++ {
-		fieldTag := stType.Elem().Field(i).Tag.Get(TdrFieldTag)
-		fieldName := stType.Elem().Field(i).Name
-		fieldType := stType.Elem().Field(i).Type
-		fieldValue := stValue.Elem().Field(i)
+	numField := stType.Elem().NumField()
+	fieldFunc := stType.Elem().Field
+	valFieldFunc := stValue.Elem().Field
+
+	for i := 0; i < numField; i++ {
+		field := fieldFunc(i)
+		fieldTag := field.Tag.Get(TdrFieldTag)
+		fieldName := field.Name
+		fieldType := field.Type
+		fieldValue := valFieldFunc(i)
 		if len(fieldTag) <= 0 {
 			logger.ERR("data name %s has no tag", fieldName)
 			return &terror.ErrorCode{Code: terror.ParameterInvalid, Message: "data struct has no tag"}
@@ -445,7 +458,7 @@ func (r *Record) GetData(data TdrTableSt) error {
 			getFieldFunc = r.getKey
 			findMap = r.KeyMap
 		} else {
-			getFieldFunc = r.GetValue
+			getFieldFunc = r.getValue
 			findMap = r.ValueMap
 		}
 
@@ -457,8 +470,73 @@ func (r *Record) GetData(data TdrTableSt) error {
 
 		//设置字段
 		switch fieldType.Kind() {
-		case reflect.Bool, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint8,
-			reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Float32, reflect.Float64, reflect.String:
+		case reflect.Bool:
+			var vData bool
+			if err := getFieldFunc(fieldTag, &vData); err != nil {
+				return err
+			}
+			fieldValue.SetBool(vData)
+		case reflect.Int8:
+			var vData int8
+			if err := getFieldFunc(fieldTag, &vData); err != nil {
+				return err
+			}
+			fieldValue.SetInt(int64(vData))
+		case reflect.Int16:
+			var vData int16
+			if err := getFieldFunc(fieldTag, &vData); err != nil {
+				return err
+			}
+			fieldValue.SetInt(int64(vData))
+		case reflect.Int32:
+			var vData int32
+			if err := getFieldFunc(fieldTag, &vData); err != nil {
+				return err
+			}
+			fieldValue.SetInt(int64(vData))
+		case reflect.Int64:
+			var vData int64
+			if err := getFieldFunc(fieldTag, &vData); err != nil {
+				return err
+			}
+			fieldValue.SetInt(vData)
+		case reflect.Uint8:
+			var vData uint8
+			if err := getFieldFunc(fieldTag, &vData); err != nil {
+				return err
+			}
+			fieldValue.SetUint(uint64(vData))
+		case reflect.Uint16:
+			var vData uint16
+			if err := getFieldFunc(fieldTag, &vData); err != nil {
+				return err
+			}
+			fieldValue.SetUint(uint64(vData))
+		case reflect.Uint32:
+			var vData uint32
+			if err := getFieldFunc(fieldTag, &vData); err != nil {
+				return err
+			}
+			fieldValue.SetUint(uint64(vData))
+		case reflect.Uint64:
+			var vData uint64
+			if err := getFieldFunc(fieldTag, &vData); err != nil {
+				return err
+			}
+			fieldValue.SetUint(uint64(vData))
+		case reflect.Float32:
+			var vData float32
+			if err := getFieldFunc(fieldTag, &vData); err != nil {
+				return err
+			}
+			fieldValue.SetFloat(float64(vData))
+		case reflect.Float64:
+			var vData float64
+			if err := getFieldFunc(fieldTag, &vData); err != nil {
+				return err
+			}
+			fieldValue.SetFloat(vData)
+		case reflect.String:
 			vData := reflect.New(fieldType)
 			if err := getFieldFunc(fieldTag, vData.Interface()); err != nil {
 				logger.ERR("getFieldFunc %s failed err %s", fieldTag, err.Error())
@@ -486,16 +564,9 @@ func (r *Record) GetData(data TdrTableSt) error {
 			}
 
 			//版本号2B
-			version := int16(0)
-			if err := binary.Read(bytes.NewReader(vData), binary.LittleEndian, &version); err != nil {
-				logger.ERR("zone %d table %s key %s binary.Read err %s",
-					r.ZoneId, r.TableName, fieldTag, err.Error())
-				return err
-			}
+			version := *(*int16)(unsafe.Pointer(&vData[0]))
 
-			newData := reflect.New(fieldType.Elem())
-			st := newData.Interface()
-			unionTag := stType.Elem().Field(i).Tag.Get(TdrSelectTag)
+			unionTag := field.Tag.Get(TdrSelectTag)
 			//判断是union类型
 			if len(unionTag) > 0 {
 				//解包union
@@ -505,7 +576,7 @@ func (r *Record) GetData(data TdrTableSt) error {
 					return err
 				}
 
-				tdrUnion, ok := st.(TdrUnion)
+				tdrUnion, ok := fieldValue.Interface().(TdrUnion)
 				if !ok {
 					logger.ERR("field type invalid name %s tag %s value %v trans to tdrUnion failed",
 						fieldName, fieldTag, fieldValue)
@@ -519,7 +590,7 @@ func (r *Record) GetData(data TdrTableSt) error {
 				}
 			} else {
 				//解包struct
-				tdrSt, ok := st.(TdrSt)
+				tdrSt, ok := fieldValue.Interface().(TdrSt)
 				if !ok {
 					logger.ERR("field type invalid name %s tag %s value %v trans to tdrSt failed",
 						fieldName, fieldTag, fieldValue)
@@ -533,7 +604,6 @@ func (r *Record) GetData(data TdrTableSt) error {
 					return err
 				}
 			}
-			fieldValue.Set(newData)
 
 		//slice 数组字段
 		case reflect.Slice:
@@ -550,15 +620,10 @@ func (r *Record) GetData(data TdrTableSt) error {
 			}
 
 			//版本号2B
-			version := int16(0)
-			if err := binary.Read(bytes.NewReader(vData), binary.LittleEndian, &version); err != nil {
-				logger.ERR("zone %d table %s key %s binary.Read err %s",
-					r.ZoneId, r.TableName, fieldTag, err.Error())
-				return err
-			}
+			version := *(*int16)(unsafe.Pointer(&vData[0]))
 
 			//获取数组的大小
-			referTag := stType.Elem().Field(i).Tag.Get(TdrReferTag)
+			referTag := field.Tag.Get(TdrReferTag)
 			arrayCount := 0
 			if len(referTag) > 0 {
 				//exist refer
@@ -758,7 +823,7 @@ func (r *Record) getUnionSelectForGetData(data TdrTableSt, selector string, keyM
 	if _, exist := keyMap[selector]; exist {
 		getFieldFunc = r.getKey
 	} else {
-		getFieldFunc = r.GetValue
+		getFieldFunc = r.getValue
 	}
 	stValue := reflect.ValueOf(data)
 	stType := reflect.TypeOf(data)
@@ -800,7 +865,7 @@ func (r *Record) getSliceCountForGetData(data TdrTableSt, refer string, keyMap m
 	if _, exist := keyMap[refer]; exist {
 		getFieldFunc = r.getKey
 	} else {
-		getFieldFunc = r.GetValue
+		getFieldFunc = r.getValue
 	}
 	stValue := reflect.ValueOf(data)
 	stType := reflect.TypeOf(data)
@@ -1014,7 +1079,7 @@ func (r *Record) GetPBFieldValues(message proto.Message) error {
 		return &terror.ErrorCode{Code: terror.TableNotExist, Message: errMsg}
 	}
 
-	buf, err := r.getKeyBlob("key")
+	buf, err := r.GetKeyBlob("key")
 	if err != nil {
 		return err
 	}
@@ -1028,7 +1093,7 @@ func (r *Record) GetPBFieldValues(message proto.Message) error {
 		nums := msgDesGrp.NumberMap[numPath]
 		for i, num := range nums {
 			f := tmp.ProtoReflect().Descriptor().Fields().ByNumber(num)
-			if i == len(nums) - 1 {
+			if i == len(nums)-1 {
 				err := proto.UnmarshalOptions{Merge: true}.Unmarshal(v, tmp)
 				if err != nil {
 					logger.ERR(err.Error())
@@ -1048,7 +1113,7 @@ func (r *Record) GetPBDataWithValues(message proto.Message, values []string) err
 	data := &idl.Tbl_Idl{}
 	err := r.GetData(data)
 	if err != nil {
-		value, exist := r.ValueMap["value"];
+		value, exist := r.ValueMap["value"]
 		if !exist {
 			return err
 		}
@@ -1116,7 +1181,7 @@ func (r *Record) setPBValues(message proto.Message, fieldMap map[string][]protow
 			} else {
 				numPath += "." + fmt.Sprint(num)
 			}
-			if i == len(nums) - 1 {
+			if i == len(nums)-1 {
 				keybuf, _ = tcapdbproto.MarshalOptions{}.MarshalField(keybuf, f, tmp.Get(f))
 			} else {
 				tmp = tmp.Get(f).Message()
@@ -1155,7 +1220,7 @@ func (r *Record) cleanField(pro protoreflect.Message, fmap map[string][]protowir
     @retval error 错误码
 **/
 func (r *Record) GetPBKey(msg proto.Message) ([]byte, error) {
-	buf, err := r.getKeyBlob("key")
+	buf, err := r.GetKeyBlob("key")
 	if err != nil {
 		logger.ERR(err.Error())
 		return nil, err

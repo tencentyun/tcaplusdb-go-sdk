@@ -3,6 +3,7 @@ package request
 import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/common"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/logger"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/cs_pool"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/policy"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/tcaplus_protocol_cs"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/record"
@@ -17,14 +18,17 @@ type deleteByPartKeyRequest struct {
 	seq       uint32
 	record    *record.Record
 	pkg       *tcaplus_protocol_cs.TCaplusPkg
+	isPB      bool
 }
 
 func newDeleteByPartKeyRequest(appId uint64, zoneId uint32, tableName string, cmd int,
-	seq uint32, pkg *tcaplus_protocol_cs.TCaplusPkg) (*deleteByPartKeyRequest, error) {
+	seq uint32, pkg *tcaplus_protocol_cs.TCaplusPkg, isPB bool) (*deleteByPartKeyRequest, error) {
 	if pkg == nil || pkg.Body == nil || pkg.Body.DeleteByPartkeyReq == nil {
 		return nil, &terror.ErrorCode{Code: terror.API_ERR_PARAMETER_INVALID, Message: "pkg init fail"}
 	}
-
+	pkg.Body.DeleteByPartkeyReq.CheckVersiontType = 1
+	pkg.Body.DeleteByPartkeyReq.Limit = -1
+	pkg.Body.DeleteByPartkeyReq.OffSet = 0
 	req := &deleteByPartKeyRequest{
 		appId:     appId,
 		zoneId:    zoneId,
@@ -33,6 +37,7 @@ func newDeleteByPartKeyRequest(appId uint64, zoneId uint32, tableName string, cm
 		seq:       seq,
 		record:    nil,
 		pkg:       pkg,
+		isPB:      isPB,
 	}
 	return req, nil
 }
@@ -53,6 +58,7 @@ func (req *deleteByPartKeyRequest) AddRecord(index int32) (*record.Record, error
 		KeySet:      nil,
 		ValueSet:    nil,
 		UpdFieldSet: nil,
+		IsPB:        req.isPB,
 	}
 
 	//key set
@@ -76,11 +82,16 @@ func (req *deleteByPartKeyRequest) SetVersionPolicy(p uint8) error {
 }
 
 func (req *deleteByPartKeyRequest) SetResultFlag(flag int) error {
-		return &terror.ErrorCode{Code: terror.ParameterInvalid, Message: "DeleteByPartkey not Support ResultFlag not support"}
-//	req.pkg.Body.DeleteByPartkeyReq.Flag = byte(flag)
+	return &terror.ErrorCode{Code: terror.ParameterInvalid, Message: "DeleteByPartkey not Support ResultFlag not support"}
+	//	req.pkg.Body.DeleteByPartkeyReq.Flag = byte(flag)
 }
 
 func (req *deleteByPartKeyRequest) Pack() ([]byte, error) {
+	if req.pkg == nil {
+		logger.ERR("Request can not second use")
+		return nil, &terror.ErrorCode{Code: terror.RequestHasHasNoPkg, Message: "Request can not second use"}
+	}
+
 	if req.record == nil {
 		return nil, &terror.ErrorCode{Code: terror.RequestHasNoRecord}
 	}
@@ -107,6 +118,15 @@ func (req *deleteByPartKeyRequest) GetZoneId() uint32 {
 }
 
 func (req *deleteByPartKeyRequest) GetKeyHash() (uint32, error) {
+	if req.pkg == nil {
+		logger.ERR("Request can not second use")
+		return uint32(terror.RequestHasHasNoPkg), &terror.ErrorCode{Code: terror.RequestHasHasNoPkg,
+			Message: "Request can not second use"}
+	}
+	defer func() {
+		cs_pool.PutTcaplusCSPkg(req.pkg)
+		req.pkg = nil
+	}()
 	if req.record == nil {
 		return 0, &terror.ErrorCode{Code: terror.RequestHasNoRecord}
 	}
@@ -114,7 +134,7 @@ func (req *deleteByPartKeyRequest) GetKeyHash() (uint32, error) {
 }
 
 func (req *deleteByPartKeyRequest) SetFieldNames(valueNameList []string) error {
-	return &terror.ErrorCode{Code: terror.ParameterInvalid, Message: "DeleteByPartkey not Support SetFieldNames"}
+	return nil
 }
 
 func (req *deleteByPartKeyRequest) SetUserBuff(userBuffer []byte) error {
@@ -129,20 +149,46 @@ func (req *deleteByPartKeyRequest) SetSeq(seq int32) {
 	req.pkg.Head.Seq = seq
 }
 
-func (req *deleteByPartKeyRequest)SetResultLimit(limit int32, offset int32) int32 {
+func (req *deleteByPartKeyRequest) SetResultLimit(limit int32, offset int32) int32 {
 	req.pkg.Body.DeleteByPartkeyReq.OffSet = offset
 	req.pkg.Body.DeleteByPartkeyReq.Limit = limit
 	return int32(terror.GEN_ERR_SUC)
 }
 
-func (req *deleteByPartKeyRequest)SetMultiResponseFlag(multi_flag byte) int32{
+func (req *deleteByPartKeyRequest) SetMultiResponseFlag(multi_flag byte) int32 {
 	return int32(terror.API_ERR_OPERATION_TYPE_NOT_MATCH)
 }
 
-func (req *deleteByPartKeyRequest)SetResultFlagForSuccess(result_flag byte) int {
+func (req *deleteByPartKeyRequest) SetResultFlagForSuccess(result_flag byte) int {
 	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
 }
 
-func (req *deleteByPartKeyRequest)SetResultFlagForFail(result_flag byte) int {
+func (req *deleteByPartKeyRequest) SetResultFlagForFail(result_flag byte) int {
 	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
+}
+
+func (req *deleteByPartKeyRequest) SetPerfTest(sendTime uint64) int {
+	perf := tcaplus_protocol_cs.NewPerfTest()
+	perf.ApiSendTime = sendTime
+	perf.Version = tcaplus_protocol_cs.PerfTestCurrentVersion
+	p, err := perf.Pack(tcaplus_protocol_cs.PerfTestCurrentVersion)
+	if err != nil {
+		logger.ERR("pack perf error: %s", err)
+		return terror.API_ERR_PARAMETER_INVALID
+	}
+	req.pkg.Head.PerfTest = p
+	req.pkg.Head.PerfTestLen = uint32(len(p))
+	return terror.GEN_ERR_SUC
+}
+
+func (req *deleteByPartKeyRequest) SetFlags(flag int32) int {
+	return setFlags(req.pkg, flag)
+}
+
+func (req *deleteByPartKeyRequest) ClearFlags(flag int32) int {
+	return clearFlags(req.pkg, flag)
+}
+
+func (req *deleteByPartKeyRequest) GetFlags() int32 {
+	return req.pkg.Head.Flags
 }

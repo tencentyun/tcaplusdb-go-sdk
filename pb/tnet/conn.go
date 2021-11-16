@@ -1,7 +1,7 @@
 package tnet
 
 import (
-	"bytes"
+	"bufio"
 	"fmt"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/common"
 	log "github.com/tencentyun/tcaplusdb-go-sdk/pb/logger"
@@ -14,7 +14,19 @@ import (
 	"time"
 )
 
-type RecvCallBackFunc func(url *string, buf []byte, cbPara interface{}) error
+/**
+	@brief 回调函数
+	@param [IN] url 连接地址
+	@param [IN] pkg 未反序列化的传输包
+	@param [IN] cbPara	回调参数
+**/
+type RecvCallBackFunc func(url *string, pkg *PKG) error
+
+/**
+	@brief 解析包长度，用于切分
+	@param [IN] buf
+	@retval [IN] int 长度
+**/
 type ParseFunc func(buf []byte) int
 
 const (
@@ -25,22 +37,41 @@ const (
 	WriteErr     = 4
 )
 
-type Conn struct {
-	netConn   net.Conn
-	network   string
-	url       string
-	ip        string
-	port      string
-	closeFlag chan bool
-	stat      int32
+type Buf []byte
 
+/**
+	@brief tcaplus api客户端
+	@param [IN] appId 业务id
+	@param [IN] zoneList 区列表
+	@param [IN] dirUrl	dir地址
+	@param [IN] initFlag 是否初始化
+	@param [IN] netServer 服务管理
+**/
+type Conn struct {
+	netConn net.Conn
+	network string
+	url     string
+	ip      string
+	port    string
+	stat    int32
+
+	//回调控制
 	parseFunc  ParseFunc        //通过parse判断是否收到完整包
 	cbFunc     RecvCallBackFunc //收到响应后会调用回调
 	cbPara     interface{}      //回调参数
 	timeout    time.Duration    //connect 超时时间
 	createTime time.Time
 
-	sendChan   chan *sendBuf
+	sendChan chan *Buf
+
+	//协程控制
+	closeFlag chan bool
+	sync.WaitGroup
+
+	//io buf
+	wrSize int
+	wr     *bufio.Writer
+	rd     *PKGMemory
 }
 
 //url 格式为tcp://127.0.0.1:80
@@ -63,7 +94,8 @@ func ParseUrl(url *string) (network, ip, port string, err error) {
 
 //url 格式为tcp://127.0.0.1:80
 func NewConn(url string, timeout time.Duration,
-	parseFunc ParseFunc, cbFunc RecvCallBackFunc, cbPara interface{}) (*Conn, error) {
+	parseFunc ParseFunc, cbFunc RecvCallBackFunc, cbPara interface{}, writeIoSize int) (*Conn,
+	error) {
 	network, ip, port, err := ParseUrl(&url)
 	if nil != err {
 		return nil, err
@@ -82,13 +114,16 @@ func NewConn(url string, timeout time.Duration,
 		cbPara:     cbPara,
 		createTime: time.Now(),
 		timeout:    timeout,
-		sendChan:   make(chan *sendBuf, common.ConfigProcReqDepth-1),
+		sendChan:   make(chan *Buf, common.ConfigProcConBufDepth-1),
+		wrSize:     writeIoSize,
 	}
 	go cn.connect()
 	return cn, nil
 }
 
 func (c *Conn) connect() {
+	c.Add(1)
+	defer c.Done()
 	addr := c.ip + ":" + c.port
 	Conn, err := net.DialTimeout(c.network, addr, c.timeout)
 	if nil != err {
@@ -98,65 +133,56 @@ func (c *Conn) connect() {
 	}
 	log.INFO("connect addr %s success", addr)
 	c.netConn = Conn
+	c.rd = nil
+	c.wr = bufio.NewWriterSize(Conn, c.wrSize)
 	atomic.StoreInt32(&c.stat, Connected)
-	go c.process()
-	go c.mergeSend()
+	go c.recvRoutine()
+	go c.SendRoutine()
 }
 
-type sendBuf struct {
-	err error
-	buf []byte
-	sync.WaitGroup
-}
-
-func (c *Conn) send(buf []byte, ret []*sendBuf) {
-	_, err := c.netConn.Write(buf)
-	if err != nil {
-		atomic.StoreInt32(&c.stat, WriteErr)
-		log.ERR("Send data failed %v, conn url %v", err.Error(), c.url)
-	}
-	for _, v := range ret {
-		v.err = err
-		v.Done()
+func (c *Conn) sendPkg(buf *Buf) {
+	var err error
+	if c.GetStat() != Connected || c.netConn == nil {
+		log.ERR("api connect proxy stat not connected")
+		err = fmt.Errorf("api connect proxy stat not connected")
+	} else {
+		_, err = c.wr.Write([]byte(*buf))
+		if err != nil {
+			atomic.StoreInt32(&c.stat, WriteErr)
+			log.ERR("Send data failed %v, conn url %v", err.Error(), c.url)
+		}
 	}
 }
 
-func (c *Conn) Send(buf []byte) (int, error) {
-	b := &sendBuf{buf: buf}
-	b.Add(1)
+func (c *Conn) Send(buf []byte) error {
+	pkg := Buf(buf)
 	select {
 	case <-c.closeFlag:
 		log.INFO("close flag, %s", c.url)
-		return 0, fmt.Errorf("close flag, %s", c.url)
-	case c.sendChan <- b:
+		return fmt.Errorf("close flag, %s", c.url)
+	case c.sendChan <- &pkg:
 	}
-	b.Wait()
-	return 0, b.err
+	return nil
 }
 
-func (c *Conn) mergeSend() {
-	var index int
-	var length int
-	sendBuffer := bytes.NewBuffer(make([]byte, 0, 20<<20))
-	depth := common.ConfigProcReqDepth
+func (c *Conn) SendRoutine() {
+	c.Add(1)
+	defer c.Done()
 
-	proc := func(buf *sendBuf) {
-		bufs := make([]*sendBuf, 0, depth)
-		bufs = append(bufs, buf)
-		sendBuffer.Write(buf.buf)
-		length = len(c.sendChan)
-		index = 0
-		for ; index < length; index++ {
+	proc := func(buf *Buf) {
+		// 设置30秒的发送超时，防止一直卡住
+		c.netConn.SetWriteDeadline(common.TimeNow.Add(ConfigReadWriteTimeOut * time.Second))
+		var length = len(c.sendChan)
+		c.sendPkg(buf)
+		for index := 0; index < length; index++ {
 			buf = <-c.sendChan
-			bufs = append(bufs, buf)
-			sendBuffer.Write(buf.buf)
-			// 当数据大小大于10M时直接发送
-			if sendBuffer.Len() > 10<<20 {
-				break
-			}
+			c.sendPkg(buf)
 		}
-		c.send(sendBuffer.Bytes(), bufs)
-		sendBuffer.Reset()
+		err := c.wr.Flush()
+		if err != nil {
+			atomic.StoreInt32(&c.stat, WriteErr)
+			log.ERR("Flush data failed %v, conn url %v", err.Error(), c.url)
+		}
 	}
 
 	for {
@@ -184,19 +210,34 @@ func (c *Conn) Close() {
 	if c.netConn != nil {
 		_ = c.netConn.Close()
 	}
+	c.Wait()
 }
 
-func (c *Conn) process() {
-	buf := make([]byte, 10*1024*1024)
-	recvBuffer := bytes.NewBuffer(make([]byte, 0, 20*1024*1024))
-
+/*
+	接口调用点：从网络中读，切分出请求，对象池操作
+*/
+func (c *Conn) recvRoutine() {
+	c.Add(1)
+	defer c.Done()
 	for {
 		select {
 		case <-c.closeFlag:
 			log.INFO("close flag, %s", c.url)
 			return
 		default:
-			n, err := c.netConn.Read(buf)
+			if c.GetStat() != Connected || c.netConn == nil {
+				log.ERR("api connect proxy stat not connected")
+				return
+			}
+			if c.rd == nil {
+				c.rd = GetPKGMemory(nil)
+			} else if c.rd.BufferIsFull() {
+				// 满了需要重新申请一段buffer，并将这次未处理完的buffer拷贝
+				c.rd = GetPKGMemory(c.rd)
+			}
+			// 读取网络报文
+			c.netConn.SetReadDeadline(common.TimeNow.Add(ConfigReadWriteTimeOut * time.Second))
+			n, err := c.rd.ReadFromNetConn(c.netConn)
 			if err != nil {
 				atomic.StoreInt32(&c.stat, ReadErr)
 				if err == io.EOF {
@@ -208,31 +249,30 @@ func (c *Conn) process() {
 			}
 
 			if n > 0 {
-				//fmt.Println("recv:", string(buf[0:n]), "len:", n)
-				recvBuffer.Write(buf[0:n])
-				for {
-					//判断是否收到完整包
-					pkgSize := c.parseFunc(recvBuffer.Bytes())
-					if pkgSize <= recvBuffer.Len() && pkgSize > 0 {
-						//收到完整包
-						//log.DEBUG("url %s %d pkgSize %d finish recvBuffer.Len %d", c.url, n, pkgSize, recvBuffer.Len())
-						pkg := make([]byte, pkgSize)
-						_, err := recvBuffer.Read(pkg)
-						if err != nil {
-							log.ERR("recvBuffer.Read err:%s, %s", err.Error(), c.url)
-						}
-
-						//回调处理包
-						err = c.cbFunc(&c.url, pkg, c.cbPara)
-						if err != nil {
-							log.ERR("cbFunc err:%s, %s", err.Error(), c.url)
-						}
-					} else {
-						//log.DEBUG("url %s %d pkgSize %d <= recvBuffer.Len %d", c.url, n, pkgSize, recvBuffer.Len())
-						break
-					}
-				}
+				c.procRecvPkg()
+			} else {
+				//TODO长时间无包释放c.rd,释放内存
 			}
+		}
+	}
+}
+
+func (c *Conn) procRecvPkg() {
+	for {
+		//判断是否收到完整包
+		// 判断buffer是否可以切分出一个完整包
+		pkgSize := c.parseFunc(c.rd.ValidBuffer())
+		if pkgSize <= c.rd.ValidLength() && pkgSize > 0 {
+			// 将包从buffer中取出
+			pkg := c.rd.GetPkg(pkgSize)
+			pkg.cbPara = c.cbPara
+			//收到完整包回调处理包
+			err := c.cbFunc(&c.url, pkg)
+			if err != nil {
+				log.ERR("cbFunc err:%s, %s", err.Error(), c.url)
+			}
+		} else {
+			break
 		}
 	}
 }

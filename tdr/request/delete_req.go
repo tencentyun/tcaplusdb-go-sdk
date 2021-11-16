@@ -3,6 +3,7 @@ package request
 import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/common"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/logger"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/cs_pool"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/policy"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/tcaplus_protocol_cs"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/record"
@@ -26,6 +27,9 @@ func newdeleteRequest(appId uint64, zoneId uint32, tableName string, cmd int,
 		return nil, &terror.ErrorCode{Code: terror.API_ERR_PARAMETER_INVALID, Message: "pkg init fail"}
 	}
 
+	pkg.Body.DeleteReq.CheckVersiontType = 1
+	pkg.Body.DeleteReq.Flag = 0
+	pkg.Body.DeleteReq.Reserve = 0
 	req := &deleteRequest{
 		appId:     appId,
 		zoneId:    zoneId,
@@ -43,21 +47,14 @@ func (req *deleteRequest) AddRecord(index int32) (*record.Record, error) {
 	if req.record != nil {
 		return nil, &terror.ErrorCode{Code: terror.RecordNumOverMax}
 	}
-
-	rec := &record.Record{
-		AppId:       req.appId,
-		ZoneId:      req.zoneId,
-		TableName:   req.tableName,
-		Cmd:         req.cmd,
-		KeyMap:      make(map[string][]byte),
-		ValueMap:    make(map[string][]byte),
-		Version:     -1,
-		KeySet:      nil,
-		ValueSet:    nil,
-		UpdFieldSet: nil,
-		IsPB:        req.isPB,
-	}
-
+	rec := record.GetPoolRecord()
+	rec.AppId = req.appId
+	rec.ZoneId = req.zoneId
+	rec.TableName = req.tableName
+	rec.Cmd = req.cmd
+	rec.KeyMap = make(map[string][]byte)
+	rec.ValueMap = make(map[string][]byte)
+	rec.IsPB = req.isPB
 	//key set
 	rec.ShardingKey = &req.pkg.Head.SplitTableKeyBuff
 	rec.ShardingKeyLen = &req.pkg.Head.SplitTableKeyBuffLen
@@ -90,6 +87,11 @@ func (req *deleteRequest) SetResultFlag(flag int) error {
 }
 
 func (req *deleteRequest) Pack() ([]byte, error) {
+	if req.pkg == nil {
+		logger.ERR("Request can not second use")
+		return nil, &terror.ErrorCode{Code: terror.RequestHasHasNoPkg, Message: "Request can not second use"}
+	}
+
 	if req.record == nil {
 		return nil, &terror.ErrorCode{Code: terror.RequestHasNoRecord}
 	}
@@ -116,6 +118,15 @@ func (req *deleteRequest) GetZoneId() uint32 {
 }
 
 func (req *deleteRequest) GetKeyHash() (uint32, error) {
+	if req.pkg == nil {
+		logger.ERR("Request can not second use")
+		return uint32(terror.RequestHasHasNoPkg), &terror.ErrorCode{Code: terror.RequestHasHasNoPkg,
+			Message: "Request can not second use"}
+	}
+	defer func() {
+		cs_pool.PutTcaplusCSPkg(req.pkg)
+		req.pkg = nil
+	}()
 	if req.record == nil {
 		return 0, &terror.ErrorCode{Code: terror.RequestHasNoRecord}
 	}

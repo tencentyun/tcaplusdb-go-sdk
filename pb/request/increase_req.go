@@ -2,6 +2,7 @@ package request
 
 import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/logger"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/cs_pool"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/policy"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/tcaplus_protocol_cs"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/record"
@@ -9,31 +10,39 @@ import (
 )
 
 type increaseRequest struct {
-	appId     uint64
-	zoneId    uint32
-	tableName string
-	cmd       int
-	seq       uint32
-	record    *record.Record
-	pkg       *tcaplus_protocol_cs.TCaplusPkg
+	appId        uint64
+	zoneId       uint32
+	tableName    string
+	cmd          int
+	seq          uint32
+	record       *record.Record
+	pkg          *tcaplus_protocol_cs.TCaplusPkg
 	valueNameMap map[string]bool
+	isPB         bool
 }
 
 func newIncreaseRequest(appId uint64, zoneId uint32, tableName string, cmd int,
-	seq uint32, pkg *tcaplus_protocol_cs.TCaplusPkg) (*increaseRequest, error) {
+	seq uint32, pkg *tcaplus_protocol_cs.TCaplusPkg, isPB bool) (*increaseRequest, error) {
 	if pkg == nil || pkg.Body == nil || pkg.Body.IncreaseReq == nil {
 		return nil, &terror.ErrorCode{Code: terror.API_ERR_PARAMETER_INVALID, Message: "pkg init fail"}
 	}
 
+	pkg.Body.IncreaseReq.AddableIncrease = 0
+	pkg.Body.IncreaseReq.CheckVersiontType = 1
+	pkg.Body.IncreaseReq.Flag = 0
+	pkg.Body.IncreaseReq.ValueInfo.FieldNum = 0
+	pkg.Body.IncreaseReq.ValueInfo.Fields = nil
+	pkg.Body.IncreaseReq.ValueInfo.Version = 0
 	req := &increaseRequest{
-		appId:     appId,
-		zoneId:    zoneId,
-		tableName: tableName,
-		cmd:       cmd,
-		seq:       seq,
-		record:    nil,
-		pkg:       pkg,
+		appId:        appId,
+		zoneId:       zoneId,
+		tableName:    tableName,
+		cmd:          cmd,
+		seq:          seq,
+		record:       nil,
+		pkg:          pkg,
 		valueNameMap: make(map[string]bool),
+		isPB:         isPB,
 	}
 	return req, nil
 }
@@ -54,6 +63,7 @@ func (req *increaseRequest) AddRecord(index int32) (*record.Record, error) {
 		KeySet:      nil,
 		ValueSet:    nil,
 		UpdFieldSet: nil,
+		IsPB:        req.isPB,
 	}
 
 	//key value set
@@ -87,6 +97,11 @@ func (req *increaseRequest) SetResultFlag(flag int) error {
 }
 
 func (req *increaseRequest) Pack() ([]byte, error) {
+	if req.pkg == nil {
+		logger.ERR("Request can not second use")
+		return nil, &terror.ErrorCode{Code: terror.RequestHasHasNoPkg, Message: "Request can not second use"}
+	}
+
 	if req.record == nil {
 		return nil, &terror.ErrorCode{Code: terror.RequestHasNoRecord}
 	}
@@ -110,6 +125,15 @@ func (req *increaseRequest) GetZoneId() uint32 {
 }
 
 func (req *increaseRequest) GetKeyHash() (uint32, error) {
+	if req.pkg == nil {
+		logger.ERR("Request can not second use")
+		return uint32(terror.RequestHasHasNoPkg), &terror.ErrorCode{Code: terror.RequestHasHasNoPkg,
+			Message: "Request can not second use"}
+	}
+	defer func() {
+		cs_pool.PutTcaplusCSPkg(req.pkg)
+		req.pkg = nil
+	}()
 	if req.record == nil {
 		return 0, &terror.ErrorCode{Code: terror.RequestHasNoRecord}
 	}
@@ -134,23 +158,49 @@ func (req *increaseRequest) GetSeq() int32 {
 func (req *increaseRequest) SetSeq(seq int32) {
 	req.pkg.Head.Seq = seq
 }
-func (req *increaseRequest)SetResultLimit(limit int32, offset int32) int32 {
+func (req *increaseRequest) SetResultLimit(limit int32, offset int32) int32 {
 	return int32(terror.API_ERR_OPERATION_TYPE_NOT_MATCH)
 }
 
-func (req *increaseRequest)SetAddableIncreaseFlag(increase_flag byte) int32{
+func (req *increaseRequest) SetAddableIncreaseFlag(increase_flag byte) int32 {
 	req.pkg.Body.IncreaseReq.AddableIncrease = increase_flag
 	return int32(terror.GEN_ERR_SUC)
 }
 
-func (req *increaseRequest)SetMultiResponseFlag(multi_flag byte) int32{
+func (req *increaseRequest) SetMultiResponseFlag(multi_flag byte) int32 {
 	return int32(terror.GEN_ERR_SUC)
 }
 
-func (req *increaseRequest)SetResultFlagForSuccess(result_flag byte) int {
+func (req *increaseRequest) SetResultFlagForSuccess(result_flag byte) int {
+	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
+}
+
+func (req *increaseRequest) SetResultFlagForFail(result_flag byte) int {
+	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
+}
+
+func (req *increaseRequest) SetPerfTest(sendTime uint64) int {
+	perf := tcaplus_protocol_cs.NewPerfTest()
+	perf.ApiSendTime = sendTime
+	perf.Version = tcaplus_protocol_cs.PerfTestCurrentVersion
+	p, err := perf.Pack(tcaplus_protocol_cs.PerfTestCurrentVersion)
+	if err != nil {
+		logger.ERR("pack perf error: %s", err)
+		return terror.API_ERR_PARAMETER_INVALID
+	}
+	req.pkg.Head.PerfTest = p
+	req.pkg.Head.PerfTestLen = uint32(len(p))
 	return terror.GEN_ERR_SUC
 }
 
-func (req *increaseRequest)SetResultFlagForFail(result_flag byte) int {
-	return terror.GEN_ERR_SUC
+func (req *increaseRequest) SetFlags(flag int32) int {
+	return setFlags(req.pkg, flag)
+}
+
+func (req *increaseRequest) ClearFlags(flag int32) int {
+	return clearFlags(req.pkg, flag)
+}
+
+func (req *increaseRequest) GetFlags() int32 {
+	return req.pkg.Head.Flags
 }

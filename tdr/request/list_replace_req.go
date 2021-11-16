@@ -3,6 +3,7 @@ package request
 import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/common"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/logger"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/cs_pool"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/policy"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/tcaplus_protocol_cs"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/record"
@@ -27,6 +28,16 @@ func newListReplaceRequest(appId uint64, zoneId uint32, tableName string, cmd in
 		return nil, &terror.ErrorCode{Code: terror.API_ERR_PARAMETER_INVALID, Message: "pkg init fail"}
 	}
 	pkg.Body.ListReplaceReq.ElementValueInfo.EncodeType = 1
+	pkg.Body.ListReplaceReq.ElementValueInfo.Version_ = 0
+	pkg.Body.ListReplaceReq.ElementValueInfo.Fields_ = nil
+	pkg.Body.ListReplaceReq.ElementValueInfo.FieldNum_ = 0
+	pkg.Body.ListReplaceReq.ElementValueInfo.CompactValueSet.FieldIndexNum = 0
+	pkg.Body.ListReplaceReq.ElementValueInfo.CompactValueSet.FieldIndexs = nil
+	pkg.Body.ListReplaceReq.ElementValueInfo.CompactValueSet.ValueBufLen = 0
+	pkg.Body.ListReplaceReq.ElementValueInfo.CompactValueSet.ValueBuf = nil
+	pkg.Body.ListReplaceReq.CheckVersiontType = 1
+	pkg.Body.ListReplaceReq.ElementIndex = 0
+	pkg.Body.ListReplaceReq.Flag = 0
 	req := &listReplaceRequest{
 		appId:     appId,
 		zoneId:    zoneId,
@@ -93,6 +104,11 @@ func (req *listReplaceRequest) SetResultFlag(flag int) error {
 }
 
 func (req *listReplaceRequest) Pack() ([]byte, error) {
+	if req.pkg == nil {
+		logger.ERR("Request can not second use")
+		return nil, &terror.ErrorCode{Code: terror.RequestHasHasNoPkg, Message: "Request can not second use"}
+	}
+
 	if req.record == nil {
 		return nil, &terror.ErrorCode{Code: terror.RequestHasNoRecord}
 	}
@@ -122,6 +138,15 @@ func (req *listReplaceRequest) GetZoneId() uint32 {
 }
 
 func (req *listReplaceRequest) GetKeyHash() (uint32, error) {
+	if req.pkg == nil {
+		logger.ERR("Request can not second use")
+		return uint32(terror.RequestHasHasNoPkg), &terror.ErrorCode{Code: terror.RequestHasHasNoPkg,
+			Message: "Request can not second use"}
+	}
+	defer func() {
+		cs_pool.PutTcaplusCSPkg(req.pkg)
+		req.pkg = nil
+	}()
 	if req.record == nil {
 		return 0, &terror.ErrorCode{Code: terror.RequestHasNoRecord}
 	}

@@ -175,9 +175,10 @@ func (p *proxy) processTablesAndAccessMsg(msg *tcapdir_protocol_cs.ResGetTablesA
 	if msg.AccessCount <= 0 {
 		return
 	}
+
 	//唯一化,校验proxy地址
 	accessUrlMap := make(map[string]bool)
-	for i := 0; i < int(msg.AccessCount); i++ {
+	for i := 0; i < int(msg.AccessCount) && i < common.MaxProxyNumPerZone; i++ {
 		url := msg.AccessUrlList[i]
 		urlNet, _, urlPort, err := tnet.ParseUrl(&url)
 		if err != nil {

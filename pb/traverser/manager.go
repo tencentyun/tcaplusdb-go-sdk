@@ -25,15 +25,15 @@ type ClientInf interface {
 }
 
 type TraverserManager struct {
-	lock sync.Mutex
+	lock        sync.RWMutex
 	traverseMap map[string]*Traverser
-	client ClientInf
+	client      ClientInf
 }
 
 func NewTraverserManager(client ClientInf) *TraverserManager {
 	tm := &TraverserManager{
 		traverseMap: make(map[string]*Traverser, 8),
-		client: client,
+		client:      client,
 	}
 	return tm
 }
@@ -52,6 +52,7 @@ func (m *TraverserManager) GetTraverser(zoneId uint32, table string) *Traverser 
 	}
 	t = newTraverser(zoneId, table)
 	t.client = m.client
+	t.tm = m
 	m.traverseMap[zoneTable] = t
 	return t
 }
@@ -63,7 +64,8 @@ func (m *TraverserManager) OnRecvResponse(zoneId uint32, msg *tcaplus_protocol_c
 	}
 	table := string(msg.Head.RouterInfo.TableName[:msg.Head.RouterInfo.TableNameLen-1])
 	zoneTable := fmt.Sprintf("%d|%s", zoneId, table)
-
+	m.lock.RLock()
+	defer m.lock.RUnlock()
 	t, exist := m.traverseMap[zoneTable]
 	if !exist {
 		logger.ERR("traverse %s not find", zoneTable)
@@ -78,7 +80,7 @@ func (m *TraverserManager) OnRecvResponse(zoneId uint32, msg *tcaplus_protocol_c
 	if cmd.TcaplusApiTableTraverseRes == msg.Head.Cmd {
 		asyncId := t.asyncId
 		if 0 == t.asyncId {
-			asyncId = uint64(t.traverseId) << 32 | uint64(t.requestId)
+			asyncId = uint64(t.traverseId)<<32 | uint64(t.requestId)
 		}
 
 		if asyncId != msg.Head.AsynID {
@@ -96,14 +98,9 @@ func (m *TraverserManager) ContinueTraverse() {
 		return
 	}
 
-	m.lock.Lock()
-	defer m.lock.Unlock()
+	m.lock.RLock()
+	defer m.lock.RUnlock()
 	for k, v := range m.traverseMap {
-		if TraverseStateStop == v.state {
-			logger.DEBUG("zoneTable %s traverse stop", k)
-			delete(m.traverseMap, k)
-			continue
-		}
 		if v.busy && TraverseStateNormal == v.state {
 			err := v.continueTraverse()
 			if err != nil {

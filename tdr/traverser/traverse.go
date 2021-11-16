@@ -1,6 +1,7 @@
 package traverser
 
 import (
+	"fmt"
 	log "github.com/tencentyun/tcaplusdb-go-sdk/tdr/logger"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/cmd"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/tcaplus_protocol_cs"
@@ -50,6 +51,7 @@ type Traverser struct {
 	seqForSync int32
 
 	client ClientInf
+	tm     *TraverserManager
 }
 
 func newTraverser(zoneId uint32, table string) *Traverser {
@@ -75,6 +77,10 @@ func (t *Traverser) Start() error {
 }
 
 func (t *Traverser) Stop() error {
+	zoneTable := fmt.Sprintf("%d|%s", t.zoneId, t.tableName)
+	t.tm.lock.Lock()
+	delete(t.tm.traverseMap, zoneTable)
+	t.tm.lock.Unlock()
 	t.state = TraverseStateStop
 	t.zoneId = 0
 	t.tableName = ""

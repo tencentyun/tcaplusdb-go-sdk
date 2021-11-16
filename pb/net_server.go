@@ -2,6 +2,8 @@ package tcaplus
 
 import (
 	"container/list"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/common"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/config"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -33,9 +35,12 @@ type netServer struct {
 	//定时任务，时间间隔s
 	dirListDuration   time.Duration
 	proxyListDuration time.Duration
+
+	//客户端控制
+	ctrl *config.ClientCtrl
 }
 
-func (n *netServer) init(appId uint64, zoneList []uint32, dirUrl string, signature string, timeout uint32) error {
+func (n *netServer) init(appId uint64, zoneList []uint32, dirUrl string, signature string, timeout uint32, ctrl *config.ClientCtrl) error {
 	n.initFlag = NotInit
 	n.initResult = make(chan error, 1)
 	n.stopNetWork = make(chan bool, 1)
@@ -43,6 +48,7 @@ func (n *netServer) init(appId uint64, zoneList []uint32, dirUrl string, signatu
 	n.respCount = 0
 	n.dirListDuration = 30
 	n.proxyListDuration = 300
+	n.ctrl = ctrl
 
 	//dir init
 	if err := n.dirServer.Init(appId, zoneList, dirUrl, signature); err != nil {
@@ -51,7 +57,7 @@ func (n *netServer) init(appId uint64, zoneList []uint32, dirUrl string, signatu
 	}
 
 	//router init
-	if err := n.router.Init(appId, zoneList, signature); err != nil {
+	if err := n.router.Init(appId, zoneList, signature, ctrl); err != nil {
 		logger.ERR("router init failed %s", err.Error())
 		return err
 	}
@@ -62,6 +68,8 @@ func (n *netServer) init(appId uint64, zoneList []uint32, dirUrl string, signatu
 
 //网络协程
 func (n *netServer) netPkgProcess() {
+	n.ctrl.Add(1)
+	defer n.ctrl.Done()
 	n.dirServer.Update()
 	//30s 获取一次dir列表
 	dirListTimer := time.NewTimer(n.dirListDuration * time.Second)
@@ -71,17 +79,22 @@ func (n *netServer) netPkgProcess() {
 	updateTimer := time.NewTimer(100 * time.Millisecond)
 
 	updateTraverse := time.NewTimer(time.Millisecond)
-	updateHashListTimer := time.NewTimer(10*time.Second)
+	updateHashListTimer := time.NewTimer(10 * time.Second)
+
+	// 更新下当前时间，用于不需要精确时间的接口，防止一直去获取时间
+	updateTimeNow := time.NewTimer(time.Second)
 
 	for {
 		select {
 		case <-n.stopNetWork:
-			logger.ERR("client init failed, net routine exit")
+			logger.ERR("client net routine exit, close client")
+			n.dirServer.DisConnect()
+			n.router.Close()
 			return
 		//dir响应消息
 		case dirPkg := <-n.dirServer.MsgPipe:
 			n.processDirMsg(dirPkg)
-		//proxy响应消息
+		//proxy控制面响应消息
 		case routerPkg := <-n.router.MsgPipe:
 			n.processRouterMsg(routerPkg)
 		//proxy列表更新定时器300s
@@ -123,9 +136,12 @@ func (n *netServer) netPkgProcess() {
 		case <-updateTraverse.C:
 			n.router.TM.ContinueTraverse()
 			updateTraverse.Reset(time.Millisecond)
+		case <-updateTimeNow.C:
+			common.TimeNow = time.Now()
+			updateTimeNow.Reset(time.Second)
 		case <-updateHashListTimer.C:
 			n.router.UpdateHashList()
-			updateHashListTimer.Reset(10*time.Second)
+			updateHashListTimer.Reset(10 * time.Second)
 		}
 	}
 }
@@ -160,7 +176,7 @@ func (n *netServer) processDirMsg(msg *tcapdir_protocol_cs.TCapdirCSPkg) {
 		res := msg.Body.ResGetTablesAndAccess
 		logger.INFO("GET_TABLES_AND_ACCESS_RES SetID:%d AppID:%d ZoneID:%d "+
 			"TableCount:%d TableNameList:%v AccessCount:%d AccessUrlList:%v AccessIdList:%v"+
-			"DirAvailableCheckPeriod:%d DirUpdateListInterval:%d DirUpdateTablesAndAcessInterval:%d" +
+			"DirAvailableCheckPeriod:%d DirUpdateListInterval:%d DirUpdateTablesAndAcessInterval:%d"+
 			" ApiFromProxyHeartBeatTime:%d ApiFromDirHeartBeatTime:%d",
 			res.SetID, res.AppID, res.ZoneID,
 			res.TableCount, res.TableNameList[0:res.TableCount],
@@ -202,20 +218,6 @@ func (n *netServer) processRouterMsg(msg *tcaplus_protocol_cs.TCaplusPkg) {
 
 func (n *netServer) recvResponse() (response.TcaplusResponse, error) {
 	return n.router.RecvResponse()
-	if atomic.LoadInt64(&n.respCount) <= 0 {
-		return nil, nil
-	}
-	logger.DEBUG("pop one msg from queue, %d", n.respCount)
-	n.respMsgMutex.Lock()
-	defer n.respMsgMutex.Unlock()
-	ele := n.respMsgQueue.Front()
-	if ele != nil {
-		pkg := ele.Value.(*tcaplus_protocol_cs.TCaplusPkg)
-		n.respMsgQueue.Remove(ele)
-		atomic.AddInt64(&n.respCount, -1)
-		return response.NewResponse(pkg)
-	}
-	return nil, nil
 }
 
 func (n *netServer) sendRequest(req request.TcaplusRequest) error {

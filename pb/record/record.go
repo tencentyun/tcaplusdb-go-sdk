@@ -2,33 +2,69 @@ package record
 
 import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/tcaplus_protocol_cs"
+	"sync"
 )
 
 /*
-注意：用户请通过函数接口进行record的操作
-设置record有两套接口，切记不可混用：
-1. setKey setValue接口设置的数据，只能通过getKey，getValue接口读取
-2. setData接口设置的数据，只能通过getData读取
+	注意：用户请通过函数接口进行record的操作
+	设置record有两套接口，切记不可混用：
+	1. setKey setValue接口设置的数据，只能通过getKey，getValue接口读取
+	2. setData接口设置的数据，只能通过getData读取
 */
-
 type Record struct {
-	AppId       uint64
-	ZoneId      uint32
-	TableName   string
-	Cmd         int
-	KeyMap      map[string][]byte
-	ValueMap    map[string][]byte
-	Version     int32
-	Index		int32
-	KeySet      *tcaplus_protocol_cs.TCaplusKeySet
-	ValueSet    *tcaplus_protocol_cs.TCaplusValueSet_
-	NameSet		*tcaplus_protocol_cs.TCaplusNameSet
-	UpdFieldSet *tcaplus_protocol_cs.TCaplusUpdFieldSet
+	AppId             uint64
+	ZoneId            uint32
+	TableName         string
+	Cmd               int
+	KeyMap            map[string][]byte
+	ValueMap          map[string][]byte
+	Version           int32
+	Index             int32
+	KeySet            *tcaplus_protocol_cs.TCaplusKeySet
+	ValueSet          *tcaplus_protocol_cs.TCaplusValueSet_
+	NameSet           *tcaplus_protocol_cs.TCaplusNameSet
+	UpdFieldSet       *tcaplus_protocol_cs.TCaplusUpdFieldSet
 	SplitTableKeyBuff *tcaplus_protocol_cs.SplitTableKeyBuff
-	PBValueSet  *tcaplus_protocol_cs.ProtobufValueSet_
-	PBFieldMap  map[string]bool
-	ShardingKey *[]byte
-	ShardingKeyLen *uint32
+	PBValueSet        *tcaplus_protocol_cs.ProtobufValueSet_
+	PBFieldMap        map[string]bool
+	ShardingKey       *[]byte
+	ShardingKeyLen    *uint32
+	IsPB              bool
+}
+
+//record缓存池
+var recordPool = sync.Pool{
+	New: func() interface{} {
+		return new(Record)
+	},
+}
+
+func GetPoolRecord() *Record {
+	r := recordPool.Get().(*Record)
+	r.AppId = 0
+	r.ZoneId = 0
+	r.TableName = ""
+	r.Cmd = 0
+	r.KeyMap = nil
+	r.ValueMap = nil
+	r.Version = -1
+	r.KeySet = nil
+	r.ValueSet = nil
+	r.UpdFieldSet = nil
+	r.SplitTableKeyBuff = nil
+	r.PBValueSet = nil
+	r.PBFieldMap = nil
+	r.ShardingKey = nil
+	r.ShardingKeyLen = nil
+	r.IsPB = false
+	return r
+}
+
+func PutPoolRecord(record *Record) {
+	if nil == record {
+		return
+	}
+	recordPool.Put(record)
 }
 
 /**

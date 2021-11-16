@@ -3,6 +3,7 @@ package tcaplus
 import (
 	"container/list"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/common"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/config"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -34,9 +35,12 @@ type netServer struct {
 	//定时任务，时间间隔s
 	dirListDuration   time.Duration
 	proxyListDuration time.Duration
+
+	//客户端控制
+	ctrl *config.ClientCtrl
 }
 
-func (n *netServer) init(appId uint64, zoneList []uint32, dirUrl string, signature string, timeout uint32) error {
+func (n *netServer) init(appId uint64, zoneList []uint32, dirUrl string, signature string, timeout uint32, ctrl *config.ClientCtrl) error {
 	n.initFlag = NotInit
 	n.initResult = make(chan error, 1)
 	n.stopNetWork = make(chan bool, 1)
@@ -44,6 +48,7 @@ func (n *netServer) init(appId uint64, zoneList []uint32, dirUrl string, signatu
 	n.respCount = 0
 	n.dirListDuration = 30
 	n.proxyListDuration = 300
+	n.ctrl = ctrl
 
 	//dir init
 	if err := n.dirServer.Init(appId, zoneList, dirUrl, signature); err != nil {
@@ -52,7 +57,7 @@ func (n *netServer) init(appId uint64, zoneList []uint32, dirUrl string, signatu
 	}
 
 	//router init
-	if err := n.router.Init(appId, zoneList, signature); err != nil {
+	if err := n.router.Init(appId, zoneList, signature, ctrl); err != nil {
 		logger.ERR("router init failed %s", err.Error())
 		return err
 	}
@@ -63,6 +68,8 @@ func (n *netServer) init(appId uint64, zoneList []uint32, dirUrl string, signatu
 
 //网络协程
 func (n *netServer) netPkgProcess() {
+	n.ctrl.Add(1)
+	defer n.ctrl.Done()
 	n.dirServer.Update()
 	//30s 获取一次dir列表
 	dirListTimer := time.NewTimer(n.dirListDuration * time.Second)

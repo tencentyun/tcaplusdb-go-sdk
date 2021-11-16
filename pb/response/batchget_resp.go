@@ -27,7 +27,7 @@ func (res *batchGetResponse) GetResult() int {
 }
 
 func (res *batchGetResponse) GetTableName() string {
-	tableName := string(res.pkg.Head.RouterInfo.TableName[0:res.pkg.Head.RouterInfo.TableNameLen-1])
+	tableName := string(res.pkg.Head.RouterInfo.TableName[0 : res.pkg.Head.RouterInfo.TableNameLen-1])
 	return tableName
 }
 
@@ -62,41 +62,41 @@ func (res *batchGetResponse) FetchRecord() (*record.Record, error) {
 		return nil, &terror.ErrorCode{Code: terror.API_ERR_NO_MORE_RECORD}
 	}
 	data := res.pkg.Body.BatchGetRes
-	if res.idx >= int32(data.RecordNum) || res.offset >= data.BatchValueLen{
-		logger.ERR("resp fetch record over, current idx: %d, ",res.idx)
-		return nil , &terror.ErrorCode{Code: terror.API_ERR_NO_MORE_RECORD}
+	if res.idx >= int32(data.RecordNum) || res.offset >= data.BatchValueLen {
+		logger.ERR("resp fetch record over, current idx: %d, ", res.idx)
+		return nil, &terror.ErrorCode{Code: terror.API_ERR_NO_MORE_RECORD}
 	}
 	logger.DEBUG("read bytes: %d, total bytes: %d", res.offset, data.BatchValueLen)
 	rec := &record.Record{
 		AppId:       uint64(res.pkg.Head.RouterInfo.AppID),
 		ZoneId:      uint32(res.pkg.Head.RouterInfo.ZoneID),
-		TableName:   string(res.pkg.Head.RouterInfo.TableName[0:res.pkg.Head.RouterInfo.TableNameLen-1]),
+		TableName:   string(res.pkg.Head.RouterInfo.TableName[0 : res.pkg.Head.RouterInfo.TableNameLen-1]),
 		Cmd:         int(res.pkg.Head.Cmd),
 		KeyMap:      make(map[string][]byte),
 		ValueMap:    make(map[string][]byte),
 		Version:     -1,
 		KeySet:      res.pkg.Head.KeyInfo,
-		ValueSet:    nil,//res.pkg.Body.BatchGetRes,
+		ValueSet:    nil, //res.pkg.Body.BatchGetRes,
 		UpdFieldSet: nil,
 	}
 
 	//unpack
-	read_bytes, err := unpack_record_k_v(data.BatchValueInfo[res.offset: data.BatchValueLen],
-		data.BatchValueLen - res.offset,  rec.KeyMap, rec.ValueMap)
-	if err != nil{
+	readBytes, err := unpackRecordKV(data.BatchValueInfo[res.offset:data.BatchValueLen],
+		data.BatchValueLen-res.offset, rec.KeyMap, rec.ValueMap, &rec.Version)
+	if err != nil {
 		logger.ERR("record unpack failed, app %d zone %d table %s ,err %s",
 			rec.AppId, rec.ZoneId, rec.TableName, err.Error())
 		return nil, err
 	}
-	logger.DEBUG("record unpack success, key: %+v, value: %+v",  rec.KeyMap,  rec.ValueMap)
+	logger.DEBUG("record unpack success, key: %+v, value: %+v", rec.KeyMap, rec.ValueMap)
 	res.idx += 1
-	res.offset += read_bytes
+	res.offset += readBytes
 
 	logger.DEBUG("record unpack success, app %d zone %d table %s", rec.AppId, rec.ZoneId, rec.TableName)
 	res.record = rec
 
-	if ret := int(data.RecordResult[res.idx - 1 ]); ret != terror.GEN_ERR_SUC{
-		return rec, &terror.ErrorCode{Code:  ret}
+	if ret := int(data.RecordResult[res.idx-1]); ret != terror.GEN_ERR_SUC {
+		return rec, &terror.ErrorCode{Code: ret}
 	}
 	return rec, nil
 }
@@ -110,9 +110,9 @@ func (res *batchGetResponse) GetSeq() int32 {
 }
 
 func (res *batchGetResponse) HaveMoreResPkgs() int {
-	if 0 == res.pkg.Body.BatchGetRes.Result && 0 != res.pkg.Body.BatchGetRes.LeftNum{
+	if 0 == res.pkg.Body.BatchGetRes.Result && 0 != res.pkg.Body.BatchGetRes.LeftNum {
 		return 1
-	}else {
+	} else {
 		return 0
 	}
 }
@@ -126,12 +126,26 @@ func (res *batchGetResponse) GetFailedNum() int {
 }
 
 func (res *batchGetResponse) FetchErrorRecord() (*record.Record, error) {
-	return nil,nil
+	return nil, nil
 }
 
-func (res *batchGetResponse) GetRecordMatchCount() int{
-	if 0 == res.pkg.Body.BatchGetRes.Result{
+func (res *batchGetResponse) GetRecordMatchCount() int {
+	if 0 == res.pkg.Body.BatchGetRes.Result {
 		return int(res.pkg.Body.BatchGetRes.TotalNum)
 	}
-	return terror.GEN_ERR_ERR;
+	return terror.GEN_ERR_ERR
+}
+
+func (res *batchGetResponse) GetPerfTest(recvTime uint64) *tcaplus_protocol_cs.PerfTest {
+	if res.pkg.Head.PerfTestLen == 0 {
+		return nil
+	}
+	perf := tcaplus_protocol_cs.NewPerfTest()
+	err := perf.Unpack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion, res.pkg.Head.PerfTest)
+	if err != nil {
+		logger.ERR("unpack perf error: %s", err)
+		return nil
+	}
+	perf.ApiRecvTime = recvTime
+	return perf
 }

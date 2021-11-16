@@ -1,7 +1,6 @@
 package dir
 
 import (
-	"bytes"
 	"encoding/binary"
 	"fmt"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/common"
@@ -23,6 +22,7 @@ const (
 	SignUpFail    = 3
 )
 
+// dir服务管理
 type DirServer struct {
 	appId     uint64
 	zoneList  []uint32
@@ -71,6 +71,14 @@ func (dir *DirServer) Init(appId uint64, zoneList []uint32, dirUrl string, signa
 	return nil
 }
 
+func (dir *DirServer) SendRequest(buf []byte) error {
+	if dir.conn != nil {
+		return dir.conn.Send(buf)
+	}
+	log.ERR("dir.conn is nil")
+	return &terror.ErrorCode{Code: terror.SendRequestFail, Message: "dir not connected"}
+}
+
 func (dir *DirServer) Update() {
 	dir.connect()
 	if nil == dir.conn {
@@ -101,7 +109,8 @@ func (dir *DirServer) connect() error {
 		//连接dir, 3s超时
 		for i := 0; i < len(dir.urlList); i++ {
 			var err error
-			dir.conn, err = tnet.NewConn(dir.urlList[dir.curDirIndex], 3*time.Second, ParseDirPkgLen, DirCallBackFunc, dir)
+			dir.conn, err = tnet.NewConn(dir.urlList[dir.curDirIndex], 3*time.Second, ParseDirPkgLen,
+				DirCallBackFunc, dir, 0)
 			if err == nil {
 				break
 			}
@@ -167,10 +176,8 @@ func (dir *DirServer) ProcessSignUpRes(res int) {
 //TcapdirCSHead = Magic(2) + Cmd(2) + Version(2) + HeadLen(2) + BodyLen(4) + AppID(8) = 20
 func ParseDirPkgLen(buf []byte) int {
 	if len(buf) >= 20 {
-		headLen := int16(0)
-		bodyLen := int32(0)
-		binary.Read(bytes.NewReader(buf[6:8]), binary.BigEndian, &headLen)
-		binary.Read(bytes.NewReader(buf[8:12]), binary.BigEndian, &bodyLen)
+		headLen := binary.BigEndian.Uint16(buf[6:8])
+		bodyLen := binary.BigEndian.Uint32(buf[8:12])
 		return int(headLen) + int(bodyLen)
 	}
 	return 0
@@ -183,15 +190,19 @@ func ParseDirPkgLen(buf []byte) int {
 @param cbPara 回调参数，此处为*DirServer
 @retVal error
 */
-func DirCallBackFunc(url *string, buf []byte, cbPara interface{}) error {
-	dir, ok := cbPara.(*DirServer)
+func DirCallBackFunc(url *string, pkg *tnet.PKG) error {
+	buf := pkg.GetData()
+	dir, ok := pkg.GetCbPara().(*DirServer)
 	if !ok {
 		log.ERR("RecvCallBackFunc cbPara type invalid")
 		return nil
 	}
 
 	resp := tcapdir_protocol_cs.NewTCapdirCSPkg()
-	if err := resp.Unpack(tcapdir_protocol_cs.TCapdirCSPkgCurrentVersion, buf); err != nil {
+	err := resp.Unpack(tcapdir_protocol_cs.TCapdirCSPkgCurrentVersion, buf)
+	// 之后这个pkg不会再被用到，回收到对象池中
+	pkg.Done()
+	if err != nil {
 		log.ERR("Unpack dir msg failed, url %v err %v", *url, err.Error())
 		return err
 	}
@@ -288,7 +299,7 @@ func (dir *DirServer) signUp() error {
 				log.ERR("Unpack dir msg failed, err %v", err.Error())
 			}*/
 		log.DEBUG("msg:%+v signUp pack len %v", *req.Head, len(buf))
-		go dir.conn.Send(buf)
+		dir.SendRequest(buf)
 	}
 	log.DEBUG("signUp send ")
 	return nil
@@ -325,7 +336,7 @@ func (dir *DirServer) GetDirList() error {
 		return err
 	} else {
 		log.DEBUG("msg:%+v GetDirList pack len %v", *req.Head, len(buf))
-		go dir.conn.Send(buf)
+		dir.SendRequest(buf)
 	}
 	log.DEBUG("GetDirList send ")
 	return nil
@@ -369,7 +380,7 @@ func (dir *DirServer) GetAccessProxy() error {
 			return err
 		} else {
 			log.DEBUG("msg:%+v GetAccessProxy pack len %v", *req.Head, len(buf))
-			go dir.conn.Send(buf)
+			dir.SendRequest(buf)
 		}
 		log.DEBUG("GetAccessProxy send, zone %v", dir.zoneList[i])
 	}
@@ -385,7 +396,7 @@ func (dir *DirServer) ProcessDirListRes(res *tcapdir_protocol_cs.ResGetDirServer
 	}
 
 	if res.DirServerCount <= 0 {
-		log.WARN("DirListRes DirServerCount invalid %d", res.DirServerCount)
+		log.INFO("DirListRes DirServerCount invalid %d", res.DirServerCount)
 		return
 	}
 
@@ -436,13 +447,13 @@ func (dir *DirServer) ProcessDirListRes(res *tcapdir_protocol_cs.ResGetDirServer
 	log.DEBUG("dirList not changed")
 }
 
-func (dir *DirServer)SetHeartbeatInterval(heartbeatInterval time.Duration) {
+func (dir *DirServer) SetHeartbeatInterval(heartbeatInterval time.Duration) {
 	if heartbeatInterval != dir.heartbeatInterval && heartbeatInterval > 0 {
 		dir.heartbeatInterval = heartbeatInterval
 	}
 }
 
-func (dir *DirServer)SendHeartbeat() {
+func (dir *DirServer) SendHeartbeat() {
 	req := tcapdir_protocol_cs.NewTCapdirCSPkg()
 	//head
 	req.Head.Magic = uint16(tcapdir_protocol_cs.TCAPLUS_PROTOCOL_MAGIC_DIR_CS)
@@ -462,7 +473,7 @@ func (dir *DirServer)SendHeartbeat() {
 		return
 	} else {
 		log.DEBUG("msg:%+v SendHeartbeat pack len %v", *req.Head, len(buf))
-		go dir.conn.Send(buf)
+		dir.SendRequest(buf)
 	}
 	log.DEBUG("SendHeartbeat send, dir %v", dir.url)
 }

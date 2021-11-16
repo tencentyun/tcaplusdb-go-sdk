@@ -3,6 +3,7 @@ package request
 import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/common"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/logger"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/cs_pool"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/policy"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/tcaplus_protocol_cs"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/record"
@@ -28,6 +29,18 @@ func newUpdateRequest(appId uint64, zoneId uint32, tableName string, cmd int,
 	}
 
 	pkg.Body.UpdateReq.ValueInfo.EncodeType = 1
+	pkg.Body.UpdateReq.ValueInfo.Version_ = 0
+	pkg.Body.UpdateReq.ValueInfo.CompactValueSet.ValueBuf = nil
+	pkg.Body.UpdateReq.ValueInfo.CompactValueSet.ValueBufLen = 0
+	pkg.Body.UpdateReq.ValueInfo.CompactValueSet.FieldIndexs = nil
+	pkg.Body.UpdateReq.ValueInfo.CompactValueSet.FieldIndexNum = 0
+	pkg.Body.UpdateReq.ValueInfo.FieldNum_ = 0
+	pkg.Body.UpdateReq.ValueInfo.Fields_ = nil
+	pkg.Body.UpdateReq.Flag = 0
+	pkg.Body.UpdateReq.CheckVersiontType = 1
+	pkg.Body.UpdateReq.IncreaseValueInfo.FieldNum = 0
+	pkg.Body.UpdateReq.IncreaseValueInfo.Fields = nil
+	pkg.Body.UpdateReq.IncreaseValueInfo.Version = 0
 	req := &updateRequest{
 		appId:        appId,
 		zoneId:       zoneId,
@@ -46,20 +59,14 @@ func (req *updateRequest) AddRecord(index int32) (*record.Record, error) {
 	if req.record != nil {
 		return nil, &terror.ErrorCode{Code: terror.RecordNumOverMax}
 	}
-
-	rec := &record.Record{
-		AppId:       req.appId,
-		ZoneId:      req.zoneId,
-		TableName:   req.tableName,
-		Cmd:         req.cmd,
-		KeyMap:      make(map[string][]byte),
-		ValueMap:    make(map[string][]byte),
-		Version:     -1,
-		KeySet:      nil,
-		ValueSet:    nil,
-		UpdFieldSet: nil,
-		IsPB:        req.isPB,
-	}
+	rec := record.GetPoolRecord()
+	rec.AppId = req.appId
+	rec.ZoneId = req.zoneId
+	rec.TableName = req.tableName
+	rec.Cmd = req.cmd
+	rec.KeyMap = make(map[string][]byte)
+	rec.ValueMap = make(map[string][]byte)
+	rec.IsPB = req.isPB
 
 	//key value set
 	rec.ShardingKey = &req.pkg.Head.SplitTableKeyBuff
@@ -94,10 +101,16 @@ func (req *updateRequest) SetResultFlag(flag int) error {
 }
 
 func (req *updateRequest) Pack() ([]byte, error) {
+	if req.pkg == nil {
+		logger.ERR("Request can not second use")
+		return nil, &terror.ErrorCode{Code: terror.RequestHasHasNoPkg, Message: "Request can not second use"}
+	}
+
 	if req.record == nil {
 		return nil, &terror.ErrorCode{Code: terror.RequestHasNoRecord}
 	}
 
+	defer record.PutPoolRecord(req.record)
 	if err := req.record.PackKey(); err != nil {
 		logger.ERR("record pack key failed, %s", err.Error())
 		return nil, err
@@ -125,6 +138,15 @@ func (req *updateRequest) GetZoneId() uint32 {
 }
 
 func (req *updateRequest) GetKeyHash() (uint32, error) {
+	if req.pkg == nil {
+		logger.ERR("Request can not second use")
+		return uint32(terror.RequestHasHasNoPkg), &terror.ErrorCode{Code: terror.RequestHasHasNoPkg,
+			Message: "Request can not second use"}
+	}
+	defer func() {
+		cs_pool.PutTcaplusCSPkg(req.pkg)
+		req.pkg = nil
+	}()
 	if req.record == nil {
 		return 0, &terror.ErrorCode{Code: terror.RequestHasNoRecord}
 	}

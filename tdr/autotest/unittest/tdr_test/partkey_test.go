@@ -152,7 +152,7 @@ func TestGetBypartkeySuccess(t *testing.T) {
 			return
 		}
 		if record.GetVersion() <= 0 {
-			t.Errorf("record.GetVersion %d <=0 ",record.GetVersion())
+			t.Errorf("record.GetVersion %d <=0 ", record.GetVersion())
 		}
 	}
 }
