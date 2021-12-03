@@ -80,9 +80,6 @@ func (s *server) send(data []byte) error {
 }
 
 func (s *server) connect() {
-	if s.prepareStop {
-		return
-	}
 	if s.conn == nil {
 		//连接proxy, 3s超时
 		conn, err := tnet.NewConn(s.proxyUrl, 3*time.Second, ParseProxyPkgLen, ProxyCallBackFunc, s,
