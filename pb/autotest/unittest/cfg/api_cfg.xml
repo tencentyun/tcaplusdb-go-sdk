@@ -1,8 +1,8 @@
 <ApiTstCfg>
-	<dir_addr>tcp://x.x.x.x:xxxx</dir_addr>
-	<signature>xxxxxxxxxxxxxx</signature>
-	<app_id>x</app_id>
-	<zone_id>x</zone_id>
-	<table>game_players,tb_online_list</table>
+	<dir_addr>tcp://9.135.8.72:9999</dir_addr>
+	<signature>763A5B0AB0386690</signature>
+	<app_id>3</app_id>
+	<zone_id>1</zone_id>
+	<table>game_players,tb_online_list,user,tb_map,list_user</table>
 	<public_ip></public_ip>
 </ApiTstCfg>

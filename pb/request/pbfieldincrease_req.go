@@ -94,11 +94,6 @@ func (req *pbFieldIncreaseRequest) SetResultFlag(flag int) error {
 }
 
 func (req *pbFieldIncreaseRequest) Pack() ([]byte, error) {
-	if req.pkg == nil {
-		logger.ERR("Request can not second use")
-		return nil, &terror.ErrorCode{Code: terror.RequestHasHasNoPkg, Message: "Request can not second use"}
-	}
-
 	if req.record == nil {
 		return nil, &terror.ErrorCode{Code: terror.RequestHasNoRecord}
 	}

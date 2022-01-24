@@ -1,7 +1,12 @@
 package record
 
 import (
+	"bytes"
+	"encoding/binary"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/common"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/tcaplus_protocol_cs"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/terror"
+	"sort"
 	"sync"
 )
 
@@ -98,4 +103,33 @@ func (r *Record) GetVersion() int32 {
 
 func (r *Record) GetIndex() int32 {
 	return r.Index
+}
+
+func (r *Record) GetAllKeyBlob() (string, error) {
+	if len(r.KeyMap) <= 0 {
+		return "", &terror.ErrorCode{Code: terror.RequestHasNoKeyField}
+	}
+
+	keys := make([]string, len(r.KeyMap))
+	i := 0
+	buffLen := 0
+	for k, v := range r.KeyMap {
+		keys[i] = k
+		i++
+		buffLen += len(v)
+	}
+	sort.Strings(keys)
+
+	buffLen += 4
+	buf := new(bytes.Buffer)
+	buf.Grow(buffLen)
+	buf.Reset()
+	for _, k := range keys {
+		v := r.KeyMap[k]
+		if v != nil {
+			buf.Write(v)
+		}
+	}
+	binary.Write(buf, binary.LittleEndian, r.Index)
+	return common.Bytes2str(buf.Bytes()), nil
 }

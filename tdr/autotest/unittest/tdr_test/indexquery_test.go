@@ -89,5 +89,7 @@ func TestIndexQueryAggregation(t *testing.T) {
 		t.Errorf("ProcAggregationSqlQueryType failed %s", err.Error())
 		return
 	}
-	logger.DEBUG("%s", common.CovertToJson(r))
+	if logger.GetLogLevel() == "DEBUG" {
+		logger.DEBUG("%s", common.CovertToJson(r))
+	}
 }

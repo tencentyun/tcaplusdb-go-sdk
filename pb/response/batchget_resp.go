@@ -56,7 +56,6 @@ func (res *batchGetResponse) GetRecordCount() int {
 }
 
 func (res *batchGetResponse) FetchRecord() (*record.Record, error) {
-
 	if res.GetRecordCount() < 1 {
 		logger.ERR("resp has no record")
 		return nil, &terror.ErrorCode{Code: terror.API_ERR_NO_MORE_RECORD}
@@ -84,6 +83,7 @@ func (res *batchGetResponse) FetchRecord() (*record.Record, error) {
 	readBytes, err := unpackRecordKV(data.BatchValueInfo[res.offset:data.BatchValueLen],
 		data.BatchValueLen-res.offset, rec.KeyMap, rec.ValueMap, &rec.Version)
 	if err != nil {
+		res.idx += 1
 		logger.ERR("record unpack failed, app %d zone %d table %s ,err %s",
 			rec.AppId, rec.ZoneId, rec.TableName, err.Error())
 		return nil, err

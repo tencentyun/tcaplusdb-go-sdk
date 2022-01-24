@@ -73,19 +73,19 @@ func (res *listDeleteBatchResponse) GetRecordCount() int {
 		if res.pkg.Body.ListDeleteBatchRes.Result == 0 {
 			iResultFlagForSuccess = GetResultFlagByBit(res.pkg.Body.ListDeleteBatchRes.Flag, true)
 			if tcaplus_protocol_cs.TCaplusValueFlag_ALLOLDVALUE == iResultFlagForSuccess {
-				return int(res.pkg.Body.ListDeleteBatchRes.AffectedElementNum)
+				return int(res.pkg.Body.ListDeleteBatchRes.ResultInfo.ElementNum)
 			}
 		} else {
 			iResultFlagForFail = GetResultFlagByBit(res.pkg.Body.ListDeleteBatchRes.Flag, false)
 			if tcaplus_protocol_cs.TCaplusValueFlag_ALLOLDVALUE == iResultFlagForFail {
-				return int(res.pkg.Body.ListDeleteBatchRes.AffectedElementNum)
+				return int(res.pkg.Body.ListDeleteBatchRes.ResultInfo.ElementNum)
 			}
 		}
 	} else {
 		//老版本的result flag 通过ResultFlag判断
 		if 0 == res.pkg.Body.ListDeleteBatchRes.Result ||
 			terror.SVR_ERR_FAIL_INVALID_VERSION == int(res.pkg.Body.ListDeleteBatchRes.Result) {
-			return int(res.pkg.Body.ListDeleteBatchRes.AffectedElementNum)
+			return int(res.pkg.Body.ListDeleteBatchRes.ResultInfo.ElementNum)
 		}
 	}
 	return 0
@@ -98,7 +98,9 @@ func (res *listDeleteBatchResponse) FetchRecord() (*record.Record, error) {
 		return nil, &terror.ErrorCode{Code: terror.API_ERR_NO_MORE_RECORD}
 	}
 
-	logger.DEBUG("%s", common.CovertToJson(res.pkg.Body.ListDeleteBatchRes))
+	if logger.GetLogLevel() == "DEBUG" {
+		logger.DEBUG("%s", common.CovertToJson(res.pkg.Body.ListDeleteBatchRes))
+	}
 
 	if res.idx >= int32(data.ElementNum) {
 		logger.ERR("resp fetch record over, current idx: %d, ", res.idx)

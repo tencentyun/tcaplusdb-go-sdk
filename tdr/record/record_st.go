@@ -94,7 +94,10 @@ func (r *Record) SetDataWithIndexAndField(data TdrTableSt, FieldNameList []strin
 	if "" == IndexName {
 		fullkeyMap = keyMap
 	} else {
-		fullKeyList := strings.Split(data.GetTDRDBFeilds().PrimaryKey, ",")
+		primaryKey := data.GetTDRDBFeilds().PrimaryKey
+		// 去掉空格
+		primaryKey = strings.Replace(primaryKey, " ", "", -1)
+		fullKeyList := strings.Split(primaryKey, ",")
 		for _, v := range fullKeyList {
 			if len(v) > 0 {
 				fullkeyMap[v] = true
@@ -464,7 +467,7 @@ func (r *Record) GetData(data TdrTableSt) error {
 
 		//field 不存在则不解析
 		if _, exist := findMap[fieldTag]; !exist {
-			logger.INFO("st field name %s tag %s not exist", fieldName, fieldTag)
+			logger.DEBUG("st field name %s tag %s not exist", fieldName, fieldTag)
 			continue
 		}
 
@@ -918,7 +921,75 @@ func (r *Record) AddValueOperation(FieldName string, FieldBuff []byte, FieldLen 
 	}
 	r.UpdFieldSet.Fields = append(r.UpdFieldSet.Fields, Fields)
 	return nil
+}
 
+/** brief  自增自减字段操作
+ *  param  [in] field_name         字段名称
+ *  param  [in] incData            加减数值，和表中定义的字段类型保持一致
+ *  param  [in] operation          操作类型，cmd.TcaplusApiOpPlus 加操作 cmd.TcaplusApiOpMinus 减操作
+ *  param [IN] lower_limit         操作结果值下限，如果比这个值小，返回 TcapErrCode::SVR_ERR_FAIL_OUT_OF_USER_DEF_RANGE
+ *  param [IN] upper_limit         操作结果值上限，如果比这个值大，返回 TcapErrCode::SVR_ERR_FAIL_OUT_OF_USER_DEF_RANGE
+ *  note                           lower_limit == upper_limit 时，存储端不对操作结果进行范围检测
+ */
+func (r *Record) SetIncValue(fieldName string, incData interface{},
+	operation uint32, lowerLimit int64, upperLimit int64) error {
+	if operation < cmd.TcaplusApiOpPlus || operation > cmd.TcaplusApiOpMinus {
+		return &terror.ErrorCode{Code: terror.API_ERR_PARAMETER_INVALID, Message: "AddValueOperation invalid param"}
+	}
+
+	//check type
+	var value []byte
+	if incData != nil {
+		switch t := incData.(type) {
+		case int8:
+			value = make([]byte, 1, 1)
+			value[0] = byte(t)
+			break
+		case int16:
+			value = make([]byte, 2, 2)
+			binary.LittleEndian.PutUint16(value, uint16(t))
+			break
+		case int32:
+			value = make([]byte, 4, 4)
+			binary.LittleEndian.PutUint32(value, uint32(t))
+			break
+		case int64:
+			value = make([]byte, 8, 8)
+			binary.LittleEndian.PutUint64(value, uint64(t))
+			break
+		case uint8:
+			value = make([]byte, 1, 1)
+			value[0] = t
+			break
+		case uint16:
+			value = make([]byte, 2, 2)
+			binary.LittleEndian.PutUint16(value, t)
+			break
+		case uint32:
+			value = make([]byte, 4, 4)
+			binary.LittleEndian.PutUint32(value, t)
+			break
+		case uint64:
+			value = make([]byte, 8, 8)
+			binary.LittleEndian.PutUint64(value, t)
+			break
+		default:
+			logger.ERR("value type not support %v", t)
+			return &terror.ErrorCode{Code: terror.RecordValueTypeInvalid, Message: "value type not support increase"}
+		}
+	}
+
+	r.UpdFieldSet.FieldNum += 1
+	Fields := &tcaplus_protocol_cs.TCaplusUpdField{
+		FieldName:      fieldName,
+		FieldLen:       uint32(len(value)),
+		FieldBuff:      value,
+		FieldOperation: operation,
+		LowerLimit:     lowerLimit,
+		UpperLimit:     upperLimit,
+	}
+	r.UpdFieldSet.Fields = append(r.UpdFieldSet.Fields, Fields)
+	return nil
 }
 
 /**
@@ -1111,20 +1182,18 @@ func (r *Record) GetPBFieldValues(message proto.Message) error {
 // 获取指定value， values不为空时，将 values 以外的字段置空
 func (r *Record) GetPBDataWithValues(message proto.Message, values []string) error {
 	data := &idl.Tbl_Idl{}
-	err := r.GetData(data)
-	if err != nil {
-		value, exist := r.ValueMap["value"]
-		if !exist {
-			return err
-		}
-		_, exist = r.ValueMap["vlen"]
-		if !exist {
-			data.Value = value
-		} else {
-			data.Value = value[2:]
-		}
+	value, exist := r.ValueMap["value"]
+	if !exist {
+		return &terror.ErrorCode{Code: terror.API_ERR_UNPACK_MESSAGE, Message: "rsp not has pb value"}
 	}
-	err = proto.Unmarshal(data.Value, message)
+	_, exist = r.ValueMap["vlen"]
+	if !exist {
+		data.Value = value
+	} else {
+		data.Value = value[2:]
+	}
+
+	err := proto.Unmarshal(data.Value, message)
 	if err != nil {
 		logger.ERR(err.Error())
 		return &terror.ErrorCode{Code: terror.API_ERR_UNPACK_MESSAGE}

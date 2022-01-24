@@ -82,7 +82,8 @@ func (s *server) send(data []byte) error {
 func (s *server) connect() {
 	if s.conn == nil {
 		//连接proxy, 3s超时
-		conn, err := tnet.NewConn(s.proxyUrl, 3*time.Second, ParseProxyPkgLen, ProxyCallBackFunc, s,
+		conn, err := tnet.NewConn(s.proxyUrl, s.router.ctrl.Option.ProxyConnOption.ConTimeout, ParseProxyPkgLen,
+			ProxyCallBackFunc, s,
 			s.router.ctrl.Option.ProxyConnOption.BufSizePerCon)
 		if err != nil {
 			logger.ERR("new conn failed %v", err)
@@ -115,7 +116,7 @@ func (s *server) connect() {
 			}
 			logger.ERR("connect proxy %v failed, conn stat %v, retry connect", s.proxyUrl, s.conn.GetStat())
 			s.disConnect()
-			conn, err := tnet.NewConn(s.proxyUrl, 3*time.Second, ParseProxyPkgLen, ProxyCallBackFunc, s,
+			conn, err := tnet.NewConn(s.proxyUrl, s.router.ctrl.Option.ProxyConnOption.ConTimeout, ParseProxyPkgLen, ProxyCallBackFunc, s,
 				s.router.ctrl.Option.ProxyConnOption.BufSizePerCon)
 			if err != nil {
 				logger.ERR("new conn failed %v", err)

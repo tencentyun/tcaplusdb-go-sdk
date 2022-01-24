@@ -54,6 +54,11 @@ func (req *batchGetRequest) AddRecord(index int32) (*record.Record, error) {
 		logger.ERR("Request can not second use")
 		return nil, &terror.ErrorCode{Code: terror.RequestHasHasNoPkg, Message: "Request can not second use"}
 	}
+
+	if len(req.record) >= 1024 {
+		logger.ERR("record num > 1024")
+		return nil, &terror.ErrorCode{Code: terror.RecordNumOverMax}
+	}
 	//batchGetReq := req.pkg.Body.BatchGetReq
 	rec := &record.Record{
 		AppId:             req.appId,

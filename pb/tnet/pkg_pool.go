@@ -7,10 +7,10 @@ import (
 )
 
 const (
-	PkgMemoryMaxSize = 11 * 1024 * 1024 //收包的最大包大小10MB,设置包内存块最大为11MB
-	// 读写网络报文的超时时间
-	ConfigReadWriteTimeOut = 30
+	BigPkgMemorySize = 11 * 1024 * 1024 //收包的最大包大小10MB,设置包内存块最大为11MB
 )
+
+var PkgMemorySize = 0 //小内存块大小1MB-11MB，当小内存不够用时，申请大内存
 
 //tcp拆包，从大块内存中拆小块消息
 //内存池
@@ -24,7 +24,13 @@ type PKGMemory struct {
 //memory缓存池
 var pkgMemoryPool = sync.Pool{
 	New: func() interface{} {
-		return &PKGMemory{data: make([]byte, PkgMemoryMaxSize)}
+		return &PKGMemory{data: make([]byte, PkgMemorySize)}
+	},
+}
+
+var bigPkgMemoryPool = sync.Pool{
+	New: func() interface{} {
+		return &PKGMemory{data: make([]byte, BigPkgMemorySize)}
 	},
 }
 
@@ -43,7 +49,15 @@ var pkgPool = sync.Pool{
 }
 
 func GetPKGMemory(oldMemory *PKGMemory) *PKGMemory {
-	newMemory := pkgMemoryPool.Get().(*PKGMemory)
+	var newMemory *PKGMemory
+	if oldMemory != nil &&
+		(oldMemory.last-oldMemory.prev >= PkgMemorySize) {
+		//申请大内存
+		newMemory = bigPkgMemoryPool.Get().(*PKGMemory)
+	} else {
+		//申请小内存
+		newMemory = pkgMemoryPool.Get().(*PKGMemory)
+	}
 	newMemory.refNum = 1
 	newMemory.prev = 0
 	newMemory.last = 0
@@ -58,7 +72,11 @@ func PutPKGMemory(mem *PKGMemory) {
 	//判断引用计数，引用计数为空即可释放
 	ref := atomic.AddInt64(&mem.refNum, -1)
 	if ref == 0 {
-		pkgMemoryPool.Put(mem)
+		if cap(mem.data) == BigPkgMemorySize {
+			bigPkgMemoryPool.Put(mem)
+		} else {
+			pkgMemoryPool.Put(mem)
+		}
 	}
 }
 
@@ -86,7 +104,7 @@ func (m *PKGMemory) GetPkg(size int) *PKG {
 }
 
 func (m *PKGMemory) BufferIsFull() bool {
-	return m.last == PkgMemoryMaxSize
+	return m.last == cap(m.data)
 }
 
 //pkg func

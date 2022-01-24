@@ -108,6 +108,7 @@ type commonInterface interface {
 							2表示: 操作成功，响应返回变更记录的所有字段最新数据
 							3表示: 操作成功，响应返回变更记录的所有字段旧数据
 	@retval error      错误码
+	NOTE：SetResultFlag有历史包袱，某些场景并不准确，推荐使用SetResultFlagForSuccess
 	**/
 	SetResultFlag(flag int) error
 
@@ -522,7 +523,7 @@ func keyHashCode(keySet *tcaplus_protocol_cs.TCaplusKeySet) (uint32, error) {
 	return crc32.ChecksumIEEE(buf), nil
 }
 
-var allowd_flag_cmd_map = [][]uint32{
+var allowdFlagCmdMap = [][]uint32{
 	/* bit1 (0x00000001): TCAPLUS_FLAG_FETCH_ONLY_IF_MODIFIED */
 	{tcaplusCmd.TcaplusApiGetReq,
 		tcaplusCmd.TcaplusApiListGetReq,
@@ -544,28 +545,30 @@ var allowd_flag_cmd_map = [][]uint32{
 	{tcaplusCmd.TcaplusApiListDeleteReq,
 		tcaplusCmd.TcaplusApiListDeleteAllReq,
 		tcaplusCmd.TcaplusApiListDeleteBatchReq},
+	/* bit5 (0x00000010): TcaplusFlagInsertRecordIfNotExist int32 = 16 PB的FieldUpdate使用，数据不存在则插入*/
+	{tcaplusCmd.TcaplusApiPBFieldUpdateReq},
 }
 
 func manipulateFlags(pkg *tcaplus_protocol_cs.TCaplusPkg, flags int32, clear bool) int {
 	if pkg == nil {
-		return -1
+		return int(terror.RequestHasHasNoPkg)
 	}
 
 	// 针对每个flag检查合法
-	for i := 0; i < len(allowd_flag_cmd_map); i++ {
+	for i := 0; i < len(allowdFlagCmdMap); i++ {
 		if ((1 << uint32(i)) & flags) != 0 {
 			continue
 		}
 
 		k := 0
-		for ; k < len(allowd_flag_cmd_map[i]); k++ {
-			if allowd_flag_cmd_map[i][k] == pkg.Head.Cmd {
+		for ; k < len(allowdFlagCmdMap[i]); k++ {
+			if allowdFlagCmdMap[i][k] == pkg.Head.Cmd {
 				break
 			}
 		}
 
-		if k >= len(allowd_flag_cmd_map[i]) {
-			return -1
+		if k >= len(allowdFlagCmdMap[i]) {
+			return int(terror.OperationNotSupport)
 		}
 	}
 

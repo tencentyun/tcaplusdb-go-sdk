@@ -102,7 +102,9 @@ func (req *listDeleteAllRequest) Pack() ([]byte, error) {
 		return nil, err
 	}
 
-	logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+	if logger.GetLogLevel() == "DEBUG" {
+		logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+	}
 	data, err := req.pkg.Pack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion)
 	if err != nil {
 		logger.ERR("listDeleteAllRequest pack failed, %s", err.Error())

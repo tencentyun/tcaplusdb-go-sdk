@@ -284,6 +284,28 @@ func InitClientAndReqWithTableName(cmd int, tableName string) (*tcaplus.Client, 
 	}
 	return client, req
 }
+func InitClient() (*tcaplus.Client, error) {
+	if err := cfg.ReadApiCfg("../cfg/api_cfg.xml"); err != nil {
+		fmt.Printf("ReadApiCfg fail %s", err.Error())
+		return nil, err
+
+	}
+
+	client = tcaplus.NewClient()
+	if err := client.SetLogCfg("../cfg/logconf.xml"); err != nil {
+		fmt.Printf("excepted SetLogCfg success")
+		return nil, err
+	}
+
+	ZoneId = cfg.ApiConfig.ZoneId
+	err := client.Dial(cfg.ApiConfig.AppId, []uint32{cfg.ApiConfig.ZoneId}, cfg.ApiConfig.DirUrl, cfg.ApiConfig.Signature, 30)
+	if err != nil {
+		fmt.Printf("excepted dial success, %s", err.Error())
+		return nil, err
+	}
+	client.SetDefaultZoneId(cfg.ApiConfig.ZoneId)
+	return client, nil
+}
 
 func AsyncSendAndGetRes(client *tcaplus.Client, req request.TcaplusRequest) (response.TcaplusResponse, error) {
 	if err := client.SendRequest(req); err != nil {

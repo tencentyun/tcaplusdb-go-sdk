@@ -171,12 +171,24 @@ func (req *increaseRequest) SetMultiResponseFlag(multi_flag byte) int32 {
 	return int32(terror.GEN_ERR_SUC)
 }
 
-func (req *increaseRequest) SetResultFlagForSuccess(result_flag byte) int {
-	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
+func (req *increaseRequest) SetResultFlagForSuccess(flag byte) int {
+	if flag != 0 && flag != 1 && flag != 2 && flag != 3 {
+		logger.ERR("result flag invalid %d.", flag)
+		return terror.ParameterInvalid
+	}
+	req.pkg.Body.IncreaseReq.Flag = flag << 4
+	req.pkg.Body.IncreaseReq.Flag |= 1 << 6
+	return terror.GEN_ERR_SUC
 }
 
-func (req *increaseRequest) SetResultFlagForFail(result_flag byte) int {
-	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
+func (req *increaseRequest) SetResultFlagForFail(flag byte) int {
+	if flag != 0 && flag != 1 && flag != 2 && flag != 3 {
+		logger.ERR("result flag invalid %d.", flag)
+		return terror.ParameterInvalid
+	}
+	req.pkg.Body.IncreaseReq.Flag = flag << 2
+	req.pkg.Body.IncreaseReq.Flag |= 1 << 6
+	return terror.GEN_ERR_SUC
 }
 
 func (req *increaseRequest) SetPerfTest(sendTime uint64) int {

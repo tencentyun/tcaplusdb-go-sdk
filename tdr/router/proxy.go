@@ -177,8 +177,12 @@ func (p *proxy) processTablesAndAccessMsg(msg *tcapdir_protocol_cs.ResGetTablesA
 	}
 
 	//唯一化,校验proxy地址
+	maxProxyNumPerZone := p.router.ctrl.Option.ProxyConnOption.ProxyMaxCount
+	if maxProxyNumPerZone < 2 {
+		maxProxyNumPerZone = 2
+	}
 	accessUrlMap := make(map[string]bool)
-	for i := 0; i < int(msg.AccessCount) && i < common.MaxProxyNumPerZone; i++ {
+	for i := 0; i < int(msg.AccessCount) && i < maxProxyNumPerZone; i++ {
 		url := msg.AccessUrlList[i]
 		urlNet, _, urlPort, err := tnet.ParseUrl(&url)
 		if err != nil {
