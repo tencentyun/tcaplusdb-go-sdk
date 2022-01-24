@@ -23,7 +23,36 @@ const (
 	TcaplusFlagFetchOnlyIfExpired               int32 = 2
 	TcaplusFlagOnlyReadFromSlave                int32 = 4
 	TcaplusFlagListReserveIndexHavingNoElements int32 = 8
+	TcaplusFlagInsertRecordIfNotExist           int32 = 16 //PB的FieldUpdate使用，数据不存在则插入
 )
+
+/** brief  自增自减字段操作
+ *  param  [in] field_name         字段名称
+ *  param  [in] incData            加减数值，和表中定义的字段类型保持一致
+ *  param  [in] operation          操作类型，cmd.TcaplusApiOpPlus 加操作 cmd.TcaplusApiOpMinus 减操作
+ *  param [IN] lower_limit         操作结果值下限，如果比这个值小，返回 TcapErrCode::SVR_ERR_FAIL_OUT_OF_USER_DEF_RANGE
+									支持double类型，int64(math.Float64bits(3.1415))
+ *  param [IN] upper_limit         操作结果值上限，如果比这个值大，返回 TcapErrCode::SVR_ERR_FAIL_OUT_OF_USER_DEF_RANGE
+									支持double类型，int64(math.Float64bits(3.1415))
+ *  note                           lower_limit == upper_limit 时，存储端不对操作结果进行范围检测
+*/
+type IncFieldInfo struct {
+	FieldName  string      //字段名称
+	IncData    interface{} //加减数值，和表中定义的字段类型保持一致,支持double
+	Operation  uint32      //操作类型，cmd.TcaplusApiOpPlus 加操作 cmd.TcaplusApiOpMinus 减操作
+	LowerLimit int64       // 操作结果值下限，支持double类型，int64(math.Float64bits(3.1415))
+	UpperLimit int64       // 操作结果值上限， 支持double类型，int64(math.Float64bits(3.1415))
+}
+
+/*
+	@param [IN] ttl 生存时间（过期时间），时间单位为毫秒，如果是相对时间，比如该参数值为10，则表示记录写入10ms之后过期，该参数值为0，则表示记录永不过期
+     	如果是绝对时间，比如该参数值为1599105600000, 则表示记录到"20200903 12:00:00"之后过期，该参数值为0，则表示记录永不过期
+	@param [IN] IsAbsolute 时间类型是否为绝对时间，true表示绝对时间，false表示相对时间，默认是false，即相对时间
+*/
+type TTLInfo struct {
+	TTL        uint64
+	IsAbsolute bool
+}
 
 type TDROpt struct {
 	/**
@@ -39,15 +68,23 @@ type TDROpt struct {
 	**/
 	VersionPolicy byte
 	Version       int32
-
+	BatchVersion  []int32 //批量操作， partKey时读取该version
+	/**
+	@brief  批量操作，单条记录的操作结果
+	**/
+	BatchResult []error
+	//ttl 信息
+	BatchTTL []TTLInfo
 	/**
 	@brief  设置响应标志。主要用于Generic表的insert、increase、replace、update、delete操作, 请求标志:
 			TcaplusResultFlagNoValue表示: 只需返回操作执行成功与否
 			TcaplusResultFlagSameWithRequest表示: 操作成功，响应返回与请求字段一致
 			TcaplusResultFlagAllNewValue表示: 操作成功，响应返回变更记录的所有字段最新数据
 			TcaplusResultFlagAllOldValue表示: 操作成功，响应返回变更记录的所有字段旧数据
+		ResultFlag 是本次请求执行成功后返回给前端的数据
 		ResultFlagForSuccess是本次请求执行成功后返回给前端的数据
 		ResultFlagForFail是本次请求执行失败后返回给前端的数据
+	NOTE：ResultFlag有历史包袱，某些场景并不准确，推荐使用ResultFlagForSuccess
 	**/
 	ResultFlag           byte
 	ResultFlagForSuccess byte
@@ -104,16 +141,41 @@ type TDROpt struct {
 	*/
 	Flags int32
 
-	//同步请求意义不大，设置用户缓存，响应消息将携带返回
-	UserBuff []byte
-	//同步请求意义不大，设置请求的异步事务ID
-	AsyncId uint64
+	/**
+	  @brief  如果此请求会返回多条记录，通过此接口对返回的记录做一些限制
+	  @param [IN] limit       需要查询的记录条数, limit若等于-1表示操作或返回所有匹配的数据记录.
+	  @param [IN] offset      记录起始编号；若设置为负值(-N, N>0)，则从倒数第N个记录开始返回结果
+	  @retval 0               设置成功
+	  @retval <0              设置失败，具体错误参见 \link ErrorCode \endlink
+	  @note 对于Generic类型的部分Key查询，limit表示所要获取Record的条数，offset表示所要获取Record的开始下标；
+		   	对于List类型的GetAll操作，limit表示所要获取Record的条数，offset表示所要获取Record的开始下标，
+			在当前版本中这些Record一定属于同一个List.
+		   	该函数仅仅对于GET_BY_PARTKEY(Generic类型的部分Key查询), UPDATE_BY_PARTKEY,
+			DELETE_BY_PARTKEY, LIST_GETALL(List类型的GetAll操)这4种操作类型有效。
+	*/
+	Limit  int32
+	Offset int32
 
+	/**
+	  @brief  设置是否允许一个请求包可以自动响应多个应答包，仅对ListGetAll和BatchGet协议有效。
+	  @param [IN] multi_flag   多响应包标示，1表示允许一个请求包可以自动响应多个应答包,
+							   0表示不允许一个请求包自动响应多个应答包
+	  @retval 0                设置成功
+	  @retval <0               设置失败，具体错误参见 \link ErrorCode \endlink
+	  @note	分包应答，batch类操作+resultFlag建议开启，多包返回
+			函数会返回<0的错误码。
+	*/
+	MultiFlag byte
 	/**
 	@brief  tdr表设置需要查询或更新的Value字段名称列表，即部分Value字段查询和更新，可用于get、replace、update操作。
 			需要查询或更新的字段名称列表
 	**/
 	FieldNames []string
+
+	/**
+	@brief  自增自减字段设置，IncreaseReq使用
+	**/
+	IncField []IncFieldInfo
 
 	/**
 	@brief  超时时间,不设置默认5s
@@ -125,6 +187,15 @@ type TDROpt struct {
 			当记录不存在时，将按字段默认值创建新记录再自增；若无默认值则返回错误
 	*/
 	AddableIncreaseFlag byte
+	/**
+	@brief  条件更新
+	*/
+	Condition string
+
+	//同步请求意义不大，设置用户缓存，响应消息将携带返回
+	UserBuff []byte
+	//同步请求意义不大，设置请求的异步事务ID
+	AsyncId uint64
 }
 
 type PBOpt struct {
@@ -141,7 +212,13 @@ type PBOpt struct {
 	**/
 	VersionPolicy byte
 	Version       int32
+	BatchVersion  []int32 //批量操作， partKey时读取该version
+	/**
+	@brief  批量操作，单条记录的操作结果
+	**/
+	BatchResult []error
 
+	BatchTTL []TTLInfo
 	/**
 	@brief  设置响应标志。主要用于Generic表的insert、increase、replace、update、delete操作, 请求标志:
 			TcaplusResultFlagNoValue表示: 只需返回操作执行成功与否
@@ -227,7 +304,7 @@ type PBOpt struct {
 							   0表示不允许一个请求包自动响应多个应答包
 	  @retval 0                设置成功
 	  @retval <0               设置失败，具体错误参见 \link ErrorCode \endlink
-	  @note	分包应答，目前只支持ListGetAll和BatchGet操作；其他操作设置该值是没有意义的，
+	  @note	分包应答，batch类操作+resultFlag建议开启，多包返回
 			函数会返回<0的错误码。
 	*/
 	MultiFlag byte
@@ -236,6 +313,19 @@ type PBOpt struct {
 	@brief  超时时间,不设置默认5s
 	**/
 	Timeout time.Duration
+
+	/**
+	@brief  设置空记录自增允许标志。用于Generic表的increase操作, 空记录自增允许标志。
+			TcaplusAddableIncreaseFalse表示不允许,TcaplusAddableIncreaseTrue表示允许，
+			当记录不存在时，将按字段默认值创建新记录再自增；若无默认值则返回错误
+	*/
+	AddableIncreaseFlag byte
+
+	/**
+	@brief  条件更新
+	*/
+	Condition string
+
 	/**
 	@brief  PB FieldGet和FieldSet使用，获取或更新部分字段
 	**/

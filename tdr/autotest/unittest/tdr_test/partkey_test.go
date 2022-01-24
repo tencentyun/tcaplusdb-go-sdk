@@ -151,9 +151,6 @@ func TestGetBypartkeySuccess(t *testing.T) {
 			fmt.Println(oldJson2)
 			return
 		}
-		if record.GetVersion() <= 0 {
-			t.Errorf("record.GetVersion %d <=0 ", record.GetVersion())
-		}
 	}
 }
 

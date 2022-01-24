@@ -3,7 +3,7 @@
 //     go code compiler
 //     author: cowhuang@tencent.com
 //
-// create time: 2021-05-27 15:40:57
+// create time: 2021-07-08 12:01:04
 package tcapdir_protocol_cs
 
 import (
@@ -13,7 +13,7 @@ import (
 	"github.com/tencentyun/tsf4g/tdrcom"
 )
 
-const TCAPDIR_URL_LEN int64 = 32
+const TCAPDIR_URL_LEN int64 = 64
 const TCAPDIR_URL_LEN_MORE int64 = 1024
 
 // 最多拉取的表数量
@@ -136,21 +136,27 @@ func (this *TableInfo) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
 
 const (
 	TableAccessBaseVersion      uint32 = 1
-	TableAccessCurrentVersion   uint32 = 107
+	TableAccessCurrentVersion   uint32 = 120
+	TableAccessURLV6Version     uint32 = 120
 	TableAccessProxyIDVersion   uint32 = 53
 	TableAccessPublicURLVersion uint32 = 107
 	TableAccessVpcURLVersion    uint32 = 107
+	TableAccessVpcURLV6Version  uint32 = 120
 )
 
 // TableAccess
 type TableAccess struct {
 	URL string `tdr_field:"URL"`
 
+	URLV6 string `tdr_field:"URLV6"`
+
 	ProxyID string `tdr_field:"ProxyID"`
 
 	PublicURL string `tdr_field:"PublicURL"`
 
 	VpcURL string `tdr_field:"VpcURL"`
+
+	VpcURLV6 string `tdr_field:"VpcURLV6"`
 }
 
 func NewTableAccess() *TableAccess {
@@ -201,6 +207,18 @@ func (this *TableAccess) PackTo(cutVer uint32, w *tdrcom.Writer) error {
 		return errors.New("TableAccess.URL string content pack error\n" + err.Error())
 	}
 
+	if cutVer >= TableAccessURLV6Version {
+
+		err = binary.Write(w, binary.BigEndian, uint32(len(this.URLV6))+1)
+		if err != nil {
+			return errors.New("TableAccess.URLV6 string size pack error\n" + err.Error())
+		}
+		err = binary.Write(w, binary.BigEndian, append([]byte(this.URLV6), 0))
+		if err != nil {
+			return errors.New("TableAccess.URLV6 string content pack error\n" + err.Error())
+		}
+
+	}
 	if cutVer >= TableAccessProxyIDVersion {
 
 		err = binary.Write(w, binary.BigEndian, uint32(len(this.ProxyID))+1)
@@ -234,6 +252,18 @@ func (this *TableAccess) PackTo(cutVer uint32, w *tdrcom.Writer) error {
 		err = binary.Write(w, binary.BigEndian, append([]byte(this.VpcURL), 0))
 		if err != nil {
 			return errors.New("TableAccess.VpcURL string content pack error\n" + err.Error())
+		}
+
+	}
+	if cutVer >= TableAccessVpcURLV6Version {
+
+		err = binary.Write(w, binary.BigEndian, uint32(len(this.VpcURLV6))+1)
+		if err != nil {
+			return errors.New("TableAccess.VpcURLV6 string size pack error\n" + err.Error())
+		}
+		err = binary.Write(w, binary.BigEndian, append([]byte(this.VpcURLV6), 0))
+		if err != nil {
+			return errors.New("TableAccess.VpcURLV6 string content pack error\n" + err.Error())
 		}
 
 	}
@@ -272,6 +302,22 @@ func (this *TableAccess) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
 	}
 	this.URL = string(URLBytes[:len(URLBytes)-1])
 
+	if cutVer >= TableAccessURLV6Version {
+
+		var URLV6Size uint32
+		err = binary.Read(r, binary.BigEndian, &URLV6Size)
+		if err != nil {
+			return errors.New("TableAccess.URLV6 string size unpack error\n" + err.Error())
+		}
+
+		URLV6Bytes := make([]byte, URLV6Size)
+		err = binary.Read(r, binary.BigEndian, URLV6Bytes)
+		if err != nil {
+			return errors.New("TableAccess.URLV6 string content unpack error\n" + err.Error())
+		}
+		this.URLV6 = string(URLV6Bytes[:len(URLV6Bytes)-1])
+
+	}
 	if cutVer >= TableAccessProxyIDVersion {
 
 		var ProxyIDSize uint32
@@ -320,12 +366,28 @@ func (this *TableAccess) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
 		this.VpcURL = string(VpcURLBytes[:len(VpcURLBytes)-1])
 
 	}
+	if cutVer >= TableAccessVpcURLV6Version {
+
+		var VpcURLV6Size uint32
+		err = binary.Read(r, binary.BigEndian, &VpcURLV6Size)
+		if err != nil {
+			return errors.New("TableAccess.VpcURLV6 string size unpack error\n" + err.Error())
+		}
+
+		VpcURLV6Bytes := make([]byte, VpcURLV6Size)
+		err = binary.Read(r, binary.BigEndian, VpcURLV6Bytes)
+		if err != nil {
+			return errors.New("TableAccess.VpcURLV6 string content unpack error\n" + err.Error())
+		}
+		this.VpcURLV6 = string(VpcURLV6Bytes[:len(VpcURLV6Bytes)-1])
+
+	}
 	return err
 }
 
 const (
 	TableAccessListBaseVersion    uint32 = 1
-	TableAccessListCurrentVersion uint32 = 107
+	TableAccessListCurrentVersion uint32 = 120
 )
 
 // TableAccessList

@@ -10,7 +10,7 @@ import (
 )
 
 func InsertBatchTestKV(uin uint64, name string, key3 string, key4 string) {
-	client, req := InitClientAndReq(cmd.TcaplusApiReplaceReq)
+	client, req := InitClientAndReq(cmd.TcaplusApiInsertReq)
 	if nil == client || nil == req {
 		fmt.Printf("NewRequest fail")
 		return
@@ -137,13 +137,9 @@ func TestBatchGetRecord(t *testing.T) {
 	}
 
 	for idx := int(0); idx < resp.GetRecordCount(); idx++ {
-		rec, err := resp.FetchRecord()
+		_, err := resp.FetchRecord()
 		if err != nil {
 			t.Errorf("expect ok but return: %s", err.Error())
-		}
-		fmt.Printf("version %d", rec.GetVersion())
-		if rec.GetVersion() <= 0 {
-			t.Errorf("rec.GetVersion return: %d", rec.GetVersion())
 		}
 		return
 	}
@@ -188,7 +184,6 @@ func TestBatchGetRecordDoMore(t *testing.T) {
 			return
 		}
 		InsertBatchTestKV(data.Uin, data.Name, data.Key3, data.Key4)
-		InsertBatchTestKV(data.Uin, data.Name, data.Key3, data.Key4)
 
 	}
 
@@ -205,14 +200,10 @@ func TestBatchGetRecordDoMore(t *testing.T) {
 		}
 		fmt.Printf("has more, current pkg rec num:%d\n", res2.GetRecordCount())
 		for idx := int(0); idx < res2.GetRecordCount(); idx++ {
-			rec, err := res2.FetchRecord()
+			_, err := res2.FetchRecord()
 			if err != nil {
 				t.Errorf("expect ok but return: %s", err.Error())
 				return
-			}
-			fmt.Printf("version %d", rec.GetVersion())
-			if rec.GetVersion() <= 0 {
-				t.Errorf("rec.GetVersion return: %d", rec.GetVersion())
 			}
 		}
 	}
@@ -268,13 +259,9 @@ func TestBatchGetRecord_1024(t *testing.T) {
 	}
 
 	for idx := int(0); idx < resp.GetRecordCount(); idx++ {
-		rec, err := resp.FetchRecord()
+		_, err := resp.FetchRecord()
 		if err != nil {
 			t.Errorf("expect ok but return: %s", err.Error())
-		}
-		fmt.Printf("version %d", rec.GetVersion())
-		if rec.GetVersion() <= 0 {
-			t.Errorf("rec.GetVersion return: %d", rec.GetVersion())
 		}
 		return
 	}

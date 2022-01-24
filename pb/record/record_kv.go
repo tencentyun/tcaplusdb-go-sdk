@@ -574,6 +574,12 @@ func (r *Record) GetKeyStr(name string) (string, error) {
 	@ret  [out] error         	nil success
 */
 func (r *Record) GetKeyBlob(name string) ([]byte, error) {
+	if r.IsPB {
+		return nil, &terror.ErrorCode{Code: terror.API_ERR_OPERATION_TYPE_NOT_MATCH}
+	}
+	return r.getKeyBlob(name)
+}
+func (r *Record) getKeyBlob(name string) ([]byte, error) {
 	var data []byte
 	err := r.GetKey(name, &data)
 	return data, err

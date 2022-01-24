@@ -4,7 +4,7 @@
     <!--   日志文件名称  -->
     <LogName>TcaplusApi</LogName>
     <!--   日志级别DEBUG|INFO|WARN|ERROR  -->
-    <LogLevel>INFO</LogLevel>
+    <LogLevel>DEBUG</LogLevel>
     <!--   日志格式console|json  -->
     <LogType>console</LogType>
     <!--   日志文件大小MB  -->

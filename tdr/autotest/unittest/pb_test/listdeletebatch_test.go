@@ -450,3 +450,81 @@ func TestListDeleteBatchAllNotExist(t *testing.T) {
 		return
 	}
 }
+
+// 全部索引存在
+func TestListDeleteBatchCondition(t *testing.T) {
+	data := &tcaplusservice.ListUser{}
+	data.Id = 1
+	data.Name = "a"
+	oldJson := tools.StToJson(data)
+	fmt.Println(oldJson)
+
+	client, req := tools.InitPBClientAndReqWithTableName(cmd.TcaplusApiListDeleteBatchReq, "list_user")
+
+	client.ListDeleteAll(data)
+	for i := int32(1); i <= 5; i++ {
+		data.Rank = i
+		client.ListAddAfter(data, -1)
+	}
+	defer client.ListDeleteAll(data)
+
+	rec, err := req.AddRecord(0)
+	if err != nil {
+		t.Errorf("AddRecord fail, %s", err.Error())
+		return
+	}
+
+	if _, err := rec.SetPBData(data); err != nil {
+		t.Errorf("SetData fail, %s", err.Error())
+		return
+	}
+
+	rec.SetCondition("rank != 2")
+	req.AddElementIndex(1) // rank = 2
+	req.AddElementIndex(2) // rank = 3
+	req.AddElementIndex(3) // rank = 4
+	req.SetResultFlagForSuccess(3)
+
+	if err := client.SendRequest(req); err != nil {
+		t.Errorf("SendRequest fail, %s", err.Error())
+		return
+	}
+
+	//recv resp
+	resp, err := tools.RecvResponse(client)
+	if err != nil {
+		t.Errorf("recvResponse fail, %s", err.Error())
+		return
+	}
+
+	if err := resp.GetResult(); err != 0 {
+		t.Errorf("resp.GetResult err , %s", terror.GetErrMsg(err))
+		return
+	}
+
+	if 2 != resp.GetRecordCount() {
+		t.Errorf("resp.GetRecordCount() %d != 2", resp.GetRecordCount())
+		return
+	}
+
+	for i := 0; i < resp.GetRecordCount(); i++ {
+		record, err := resp.FetchRecord()
+		if err != nil {
+			t.Errorf("FetchRecord failed %s", err.Error())
+			return
+		}
+
+		newData := &tcaplusservice.ListUser{}
+		if err := record.GetPBData(newData); err != nil {
+			t.Errorf("record.GetData failed %s", err.Error())
+			return
+		}
+
+		newJson := tools.StToJson(newData)
+		fmt.Println(newJson)
+		if newData.Rank != 3 && newData.Rank != 4 {
+			t.Errorf("newData.Rank <= 2 || newData.Rank >= 7")
+			return
+		}
+	}
+}

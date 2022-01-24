@@ -20,8 +20,6 @@ const (
 	ConfigProcRespRoutineNum = 8
 	// 处理用户同步请求的协程数
 	ConfigProcReqRoutineNum = 8
-	//每个zone的最大proxy数量
-	MaxProxyNumPerZone = 200
 )
 
 var PublicIP string

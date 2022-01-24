@@ -387,3 +387,129 @@ func TestListUpdateIndexNotExist(t *testing.T) {
 		return
 	}
 }
+
+// case 更新附带条件与操作
+func TestListReplaceWithOperateCondition(t *testing.T) {
+	data := &tcaplusservice.ListUser{}
+	data.Id = 1
+	data.Name = "a"
+	data.Rank = 1
+	oldJson := tools.StToJson(data)
+	fmt.Println(oldJson)
+
+	client, req := tools.InitPBClientAndReqWithTableName(cmd.TcaplusApiListReplaceReq, "list_user")
+
+	client.ListDeleteAll(data)
+	client.ListAddAfter(data, -1)
+	defer client.ListDeleteAll(data)
+
+	rec, err := req.AddRecord(0)
+	if err != nil {
+		t.Errorf("AddRecord fail, %s", err.Error())
+		return
+	}
+
+	data.Rank = 100
+	if _, err := rec.SetPBData(data); err != nil {
+		t.Errorf("SetData fail, %s", err.Error())
+		return
+	}
+
+	rec.SetCondition("rank == 1")
+	rec.SetOperation("PUSH gameids #[-1][$=234]", 0)
+
+	req.SetResultFlagForSuccess(2)
+
+	if err := client.SendRequest(req); err != nil {
+		t.Errorf("SendRequest fail, %s", err.Error())
+		return
+	}
+
+	//recv resp
+	resp, err := tools.RecvResponse(client)
+	if err != nil {
+		t.Errorf("recvResponse fail, %s", err.Error())
+		return
+	}
+
+	if err := resp.GetResult(); err != 0 {
+		t.Errorf("resp.GetResult err , %s", terror.GetErrMsg(err))
+		return
+	}
+
+	if 1 != resp.GetRecordCount() {
+		t.Errorf("resp.GetRecordCount() %d != 1", resp.GetRecordCount())
+		return
+	}
+
+	for i := 0; i < resp.GetRecordCount(); i++ {
+		record, err := resp.FetchRecord()
+		if err != nil {
+			t.Errorf("FetchRecord failed %s", err.Error())
+			return
+		}
+
+		newData := &tcaplusservice.ListUser{}
+		if err := record.GetPBData(newData); err != nil {
+			t.Errorf("record.GetData failed %s", err.Error())
+			return
+		}
+
+		newJson := tools.StToJson(newData)
+		fmt.Println(newJson)
+		if newData.Rank != 100 || newData.Gameids[0] != 234 {
+			t.Errorf("newData.Rank != 100 || newData.Gameids[0] != 234")
+			return
+		}
+	}
+}
+
+// case 条件不符
+func TestListReplaceWithCondition(t *testing.T) {
+	data := &tcaplusservice.ListUser{}
+	data.Id = 1
+	data.Name = "a"
+	data.Rank = 1
+	oldJson := tools.StToJson(data)
+	fmt.Println(oldJson)
+
+	client, req := tools.InitPBClientAndReqWithTableName(cmd.TcaplusApiListReplaceReq, "list_user")
+
+	client.ListDeleteAll(data)
+	client.ListAddAfter(data, -1)
+	defer client.ListDeleteAll(data)
+
+	rec, err := req.AddRecord(0)
+	if err != nil {
+		t.Errorf("AddRecord fail, %s", err.Error())
+		return
+	}
+
+	data.Rank = 100
+	if _, err := rec.SetPBData(data); err != nil {
+		t.Errorf("SetData fail, %s", err.Error())
+		return
+	}
+
+	rec.SetCondition("rank == 10")
+	rec.SetOperation("PUSH gameids #[-1][$=234]", 0)
+
+	req.SetResultFlagForSuccess(2)
+
+	if err := client.SendRequest(req); err != nil {
+		t.Errorf("SendRequest fail, %s", err.Error())
+		return
+	}
+
+	//recv resp
+	resp, err := tools.RecvResponse(client)
+	if err != nil {
+		t.Errorf("recvResponse fail, %s", err.Error())
+		return
+	}
+
+	if err := resp.GetResult(); err != 281 {
+		t.Errorf("resp.GetResult err , %s", terror.GetErrMsg(err))
+		return
+	}
+}

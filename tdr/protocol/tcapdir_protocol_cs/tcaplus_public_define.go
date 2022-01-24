@@ -3,12 +3,13 @@
 //     go code compiler
 //     author: cowhuang@tencent.com
 //
-// create time: 2021-05-27 15:40:56
+// create time: 2021-07-08 12:01:03
 package tcapdir_protocol_cs
 
 const MAX_STR_LEN_SS int64 = 32
 const MAX_STR_LEN_S int64 = 64
 const TCAPLUS_MAX_STR_LEN int64 = 256
+const TCAPLUS_MAX_ENCRYPT_PASSWD_LEN int64 = 128
 const MAX_STR_LEN_L int64 = 512
 const MAX_STR_LEN_LL int64 = 1024
 
@@ -84,10 +85,10 @@ const DEF_DATADISK_FREESPACE_STARTING_READONLY int64 = 20480
 const DEF_ULOGDISK_FREESPACE_STARTING_READONLY int64 = 20480
 
 // 导致进入只读状态的数据文件所在分区的剩余空间阀值的最小值，单位为MB.
-const MIN_DATADISK_FREESPACE_STARTING_READONLY int64 = 5000
+const MIN_DATADISK_FREESPACE_STARTING_READONLY int64 = 1024
 
 // 导致进入只读状态的Ulog文件所在分区的剩余空间阀值的最小值，单位为MB.
-const MIN_ULOGDISK_FREESPACE_STARTING_READONLY int64 = 5000
+const MIN_ULOGDISK_FREESPACE_STARTING_READONLY int64 = 1024
 
 // 导致进入只读状态的数据文件所在分区的剩余空间阀值的最大值，单位为MB.
 const MAX_DATADISK_FREESPACE_STARTING_READONLY int64 = 1024000
@@ -148,6 +149,12 @@ const DIR_UPDATE_TABLES_AND_ACESS_INTERVAL int64 = 300
 // 发布包地址的最大长度
 const MAX_RELEASE_PACKAGE_ADDR int64 = 256
 
+// License文件地址的最大长度
+const MAX_LICENSE_FILE_ADDR int64 = 256
+
+// License相关请求的参数最大长度
+const MAX_LICENSE_PARAMETERS_LENGTH int64 = 1024
+
 // MD5的最大长度
 const MAX_MD5_LEN int64 = 128
 const MAX_DEVICE_CLASS_LEN int64 = 128
@@ -183,6 +190,9 @@ const INDEX_SERVER_DOMAIN_LEN int64 = 256
 
 // 分布式索引字段列表最大长度
 const DISTRIBUTE_INDEX_FIELD_LIST_MAX_LEN int64 = 10240
+
+// 最大长度为32个字节的的用作密码校验的md5sum长度
+const TCAPLUS_MAX_MD5SUM_FOR_PASSWD_LEN int64 = 33
 const TCAPLUS_RUN_MODE_INVALID int64 = -1
 const TCAPLUS_RUN_MODE_MASTER int64 = 0
 const TCAPLUS_RUN_MODE_SLAVE int64 = 1
@@ -203,11 +213,18 @@ const TCAPLUS_RUN_STATUS_WAIT_SERVICE int64 = 1
 const TCAPLUS_RUN_STATUS_SERVICE int64 = 2
 const TCAPLUS_TABLE_TYPE_GENERIC int64 = 0
 const TCAPLUS_TABLE_TYPE_LIST int64 = 1
-const TCAPLUS_DB_TYPE_POSTGRESQL int64 = 0
+const ULOG_NO_OLDVALUE_NO_FULL int64 = 0
+const ULOG_NO_OLDVALUE_WITH_FULL int64 = 1
+const ULOG_WITH_OLDVALUE_NO_FULL int64 = 2
+const ULOG_WITH_OLDVALUE_WITH_FULL int64 = 3
+const TCAPLUS_DB_TYPE_NONE int64 = 0
 const TCAPLUS_DB_TYPE_MYSQL int64 = 1
 const TCAPLUS_DB_TYPE_TDBANK int64 = 2
 const TCAPLUS_DB_TYPE_GCS int64 = 3
 const TCAPLUS_DB_TYPE_INDEX_SERVER int64 = 4
+const TCAPLUS_DB_TYPE_PLUGIN int64 = 5
+const TCAPLUS_DB_TYPE_KAFKA int64 = 6
+const TCAPLUS_DB_TYPE_POSTGRESQL int64 = 7
 const TCAPLUS_ENGINE_TCH int64 = 0
 const TCAPLUS_ENGINE_TCB int64 = 1
 const TCAPLUS_ENGINE_TXH int64 = 2
@@ -272,6 +289,9 @@ const TCAPLUS_PROTOCOL_MAGIC_PROXY_MSG int64 = 0x5177
 
 // 数据搬迁过程中的binlog同步过来的ulog记录转换出来并转发给工作线程的协议
 const TCAPLUS_PROTOCOL_MAGIC_BINLOG_SYNC_FOR_DATA_MOVE int64 = 0xbeef
+
+// 分布式cache协议预留MAGIC
+const TCAPLUS_PROTOCOL_MAGIC_CACHE int64 = 0x5a5a
 
 // tcapsvr、tcaproxy组件内部状态统计大周期的时间间隔的默认值,单位为秒.
 const DEFAULT_STAT_INTERVAL int64 = 60
@@ -390,6 +410,9 @@ const EXPECTED_PROCESS_STOP_SPEED_SLOW int64 = 1
 
 // 期望立即停止. 表示数据有可能保留共享内存未落地到硬盘文件，已接收消息会被立马丢失进而进程迅速退出.
 const EXPECTED_PROCESS_STOP_SPEED_IMMEDIATE int64 = 2
+
+// 期望立即停止. cache中的数据不回刷，清表使用.
+const EXPECTED_PROCESS_STOP_DROP_CACHE int64 = 3
 
 // 普通停止
 const EXPECTED_PROCESS_STOP_NORMAL int64 = 0
@@ -566,6 +589,21 @@ const CONF_ITEM_CID_TCAPROXY_TCP_RECVBUF int64 = 1044
 // Tcaproxy tcp sendbuf
 const CONF_ITEM_CID_TCAPROXY_TCP_SENDBUF int64 = 1045
 
+// tcapsvr rebuild distribute index speed
+const CONF_ITEM_CID_TCAPSVR_REBUILD_INDEX_SPEED_RULES int64 = 1046
+
+// tcaproxy SlowProcessTimeMS
+const CONF_ITEM_CID_TCAPROXY_SLOW_PROCESS_TIME_MS int64 = 1047
+
+// tcapsvr MaxMemUseSizePerShard
+const CONF_ITEM_CID_TCAPSVR_MAX_MEM_USE_SIZE_PER_SHARD int64 = 1048
+
+// tcapsvr EnableRandomExpire
+const CONF_ITEM_CID_TCAPSVR_ENABLE_RANDOM_EXPIRE int64 = 1049
+
+// tcapsvr EnableCache
+const CONF_ITEM_CID_TCAPSVR_ENABLE_CACHE int64 = 1050
+
 // TDR 1.0
 const TDR_VERSION_TYPE_V1 int64 = 1
 
@@ -628,3 +666,9 @@ const TCAPLUS_MAX_USERNAME_LEN int64 = 33
 
 // 最大IP白名单长度
 const MAX_WHITELIST_IP_LENGTH int64 = 160000
+
+// 腾讯云CU(capacity unit)定义的标准大小
+const TCAPLUSDB_DEFAULT_SIZE_PER_CU int64 = 4096
+const TCAPLUS_QCLOUD_CLUSTER_OLD int64 = 0
+const TCAPLUS_QCLOUD_CLUSTER_SHARED int64 = 1
+const TCAPLUS_QCLOUD_CLUSTER_INDEPENDENT int64 = 2

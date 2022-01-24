@@ -72,6 +72,8 @@ func (req *pbFieldUpdateRequest) AddRecord(index int32) (*record.Record, error) 
 	rec.ShardingKeyLen = &req.pkg.Head.SplitTableKeyBuffLen
 	rec.KeySet = req.pkg.Head.KeyInfo
 	rec.PBValueSet = req.pkg.Body.TCaplusPbFieldUpdateReq.ValueInfo
+	rec.Condition = &req.pkg.Body.TCaplusPbFieldUpdateReq.Condition
+	rec.Operation = &req.pkg.Body.TCaplusPbFieldUpdateReq.Operation
 	req.record = rec
 	return rec, nil
 }

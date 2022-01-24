@@ -71,6 +71,8 @@ func (req *pbFieldIncreaseRequest) AddRecord(index int32) (*record.Record, error
 	rec.ShardingKeyLen = &req.pkg.Head.SplitTableKeyBuffLen
 	rec.KeySet = req.pkg.Head.KeyInfo
 	rec.PBValueSet = req.pkg.Body.TCaplusPbFieldIncReq.ValueInfo
+	rec.Condition = &req.pkg.Body.TCaplusPbFieldIncReq.Condition
+	rec.Operation = &req.pkg.Body.TCaplusPbFieldIncReq.Operation
 	req.record = rec
 	return rec, nil
 }
@@ -93,12 +95,12 @@ func (req *pbFieldIncreaseRequest) SetResultFlag(flag int) error {
 	return &terror.ErrorCode{Code: terror.ParameterInvalid, Message: "FieldIncrease not Support ResultFlag"}
 }
 
-func (req *pbFieldIncreaseRequest) Pack() ([]byte, error) {
-	if req.pkg == nil {
-		logger.ERR("Request can not second use")
-		return nil, &terror.ErrorCode{Code: terror.RequestHasHasNoPkg, Message: "Request can not second use"}
-	}
+func (req *pbFieldIncreaseRequest) SetEnableIncreaseNotExist(flag byte) int32 {
+	req.pkg.Body.TCaplusPbFieldIncReq.EnableIncreaseNotExist = flag
+	return int32(terror.GEN_ERR_SUC)
+}
 
+func (req *pbFieldIncreaseRequest) Pack() ([]byte, error) {
 	if req.record == nil {
 		return nil, &terror.ErrorCode{Code: terror.RequestHasNoRecord}
 	}

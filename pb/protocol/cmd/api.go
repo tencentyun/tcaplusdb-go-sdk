@@ -85,6 +85,42 @@ const (
 	/** \brief 批量查询应答 */
 	TcaplusApiBatchGetRes = 0x0018
 
+	// Generic批量插入请求
+	TcaplusApiBatchInsertReq = 0x0091
+
+	// Generic批量插入响应
+	TcaplusApiBatchInsertRes = 0x0092
+
+	// Generic批量替换请求
+	TcaplusApiBatchReplaceReq = 0x0093
+
+	// Generic批量替换响应
+	TcaplusApiBatchReplaceRes = 0x0094
+
+	// Generic批量更新请求
+	TcaplusApiBatchUpdateReq = 0x0095
+
+	// Generic批量更新响应
+	TcaplusApiBatchUpdateRes = 0x0096
+
+	// Generic批量删除请求
+	TcaplusApiBatchDeleteReq = 0x0097
+
+	// Generic批量删除响应
+	TcaplusApiBatchDeleteRes = 0x0098
+
+	/** \brief List批量查询 */
+	TcaplusApiListGetBatchReq = 0x0099
+	TcaplusApiListGetBatchRes = 0x009a
+
+	/** \brief List批量插入 */
+	TcaplusApiListAddAfterBatchReq = 0x009b
+	TcaplusApiListAddAfterBatchRes = 0x009c
+
+	/** \brief List批量替换 */
+	TcaplusApiListReplaceBatchReq = 0x009d
+	TcaplusApiListReplaceBatchRes = 0x009e
+
 	/** \brief 部分Key查询请求 */
 	TcaplusApiGetByPartkeyReq = 0x0019
 
@@ -172,6 +208,18 @@ const (
 	//
 	///**\brief List table的遍历响应*/
 	//TCAPLUS_API_LIST_TABLE_TRAVERSE_RES = 0x0058
+
+	/** \brief 设置记录的ttl请求 */
+	TcaplusApiSetTtlReq = 0x0059
+
+	/** \brief 设置记录的ttl响应 */
+	TcaplusApiSetTtlRes = 0x005a
+
+	/** \brief 获取记录的ttl请求 */
+	TcaplusApiGetTtlReq = 0x005b
+
+	/** \brief 获取记录的ttl响应 */
+	TcaplusApiGetTtlRes = 0x005c
 
 	/** \brief protobuf部分字段获取请求 */
 	TcaplusApiPBFieldGetReq = 0x0067

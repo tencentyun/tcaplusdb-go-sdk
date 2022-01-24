@@ -14,7 +14,6 @@ message game_players {  // Define a TcaplusDB table with message
     option(tcaplusservice.tcaplus_index) = "index_1(player_id, player_name)";
     option(tcaplusservice.tcaplus_index) = "index_2(player_id, player_email)";
 
-
     // Value Types supported by TcaplusDB
     // int32, int64, uint32, uint64, sint32, sint64, bool, fixed64, sfixed64, double, fixed32, sfixed32, float, string, bytes
     // Nested Types Message
@@ -24,7 +23,6 @@ message game_players {  // Define a TcaplusDB table with message
     string player_name = 2;
     string player_email = 3;
 
-	
     // Ordinary fields
     int32 game_server_id = 4;
     repeated string login_timestamp = 5;
@@ -34,13 +32,12 @@ message game_players {  // Define a TcaplusDB table with message
     payment pay = 8; 
 }
 
-
-message payment { 
-    
+message payment {
 	int64 pay_id = 1;
 	uint64 amount = 2;
     int64 method = 3;
-
+	float anker = 4;
+	double anker_01 = 5;
 }
 
 message tb_online_list {
@@ -59,5 +56,74 @@ message tb_online_list {
         uint64 total_money = 1;
         uint64 pay_times = 2;
     }
+}
 
+message user {
+    option(tcaplusservice.tcaplus_primary_key) = "id,name";
+    option(tcaplusservice.tcaplus_index) = "name_index(name)";
+
+    message mail {
+        string title = 1;
+        string content = 2;
+    }
+
+    int32 id = 1;
+    string name = 2;
+    int32 rank = 3;
+    repeated int64 gameids = 4;
+    repeated mail mailbox = 5;
+}
+
+message list_user {
+    option(tcaplusservice.tcaplus_primary_key) = "id,name";
+    option(tcaplusservice.tcaplus_customattr) = "TableType=SORTLIST;ListNum=1024;SortField=rank";
+
+    message mail {
+        string title = 1;
+        string content = 2;
+    }
+
+    int32 id = 1;
+    string name = 2;
+    int32 rank = 3;
+    repeated int64 gameids = 4;
+    repeated mail mailbox = 5;
+}
+
+enum enum_t {
+    E0 = 0;
+    E1 = 1;
+}
+
+message all_type_t {
+    bool b = 1;
+    int32 i32 = 2;
+    uint64 u64 = 3;
+    float f = 4;
+    double d = 5;
+    enum_t e = 6;
+
+    repeated bool rb = 7;
+    repeated int32 ri32 = 8;
+    repeated uint64 ru64 = 9;
+    repeated float rf = 10;
+    repeated double rd = 11;
+    repeated enum_t re = 12;
+}
+
+message tb_map {
+    option(tcaplusservice.tcaplus_primary_key) = "id,name";
+    option(tcaplusservice.tcaplus_index) = "index(name)";
+    int32 id = 1;
+    string name = 2;
+
+    int32 i32 = 3;
+    string str = 4;
+    all_type_t all_type = 5;
+    repeated string str_array = 6;
+    repeated int32 i32_array = 7;
+    repeated all_type_t all_type_array = 8;
+
+    map<int32, all_type_t> int_map = 9;
+    map<string, all_type_t> str_map = 10;
 }

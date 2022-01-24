@@ -218,6 +218,24 @@ func NewResponse(pkg *tcaplus_protocol_cs.TCaplusPkg) (TcaplusResponse, error) {
 		resp.commonInterface, err = newTraverseResponse(pkg)
 	case cmd.TcaplusApiGetTableRecordCountRes:
 		resp.commonInterface, err = newCountResponse(pkg)
+	case cmd.TcaplusApiBatchInsertRes:
+		resp.commonInterface, err = newBatchInsertResponse(pkg)
+	case cmd.TcaplusApiBatchDeleteRes:
+		resp.commonInterface, err = newBatchDeleteResponse(pkg)
+	case cmd.TcaplusApiBatchReplaceRes:
+		resp.commonInterface, err = newBatchReplaceResponse(pkg)
+	case cmd.TcaplusApiBatchUpdateRes:
+		resp.commonInterface, err = newBatchUpdateResponse(pkg)
+	case cmd.TcaplusApiGetTtlRes:
+		resp.commonInterface, err = newGetTtlResponse(pkg)
+	case cmd.TcaplusApiSetTtlRes:
+		resp.commonInterface, err = newSetTtlResponse(pkg)
+	case cmd.TcaplusApiListAddAfterBatchRes:
+		resp.commonInterface, err = newListAddAfterBatchResponse(pkg)
+	case cmd.TcaplusApiListGetBatchRes:
+		resp.commonInterface, err = newListGetBatchResponse(pkg)
+	case cmd.TcaplusApiListReplaceBatchRes:
+		resp.commonInterface, err = newListReplaceBatchResponse(pkg)
 	default:
 		logger.ERR("invalid cmd %d", pkg.Head.Cmd)
 		return nil, &terror.ErrorCode{Code: terror.InvalidCmd}
@@ -283,6 +301,12 @@ func (res *tcapResponse) GetAffectedRecordNum() int32 {
 		return res.commonInterface.(*listDeleteAllResponse).GetAffectedRecordNum()
 	case *listDeleteBatchResponse:
 		return res.commonInterface.(*listDeleteBatchResponse).GetAffectedRecordNum()
+	case *listGetBatchResponse:
+		return res.commonInterface.(*listGetBatchResponse).GetAffectedRecordNum()
+	case *listAddAfterBatchResponse:
+		return res.commonInterface.(*listAddAfterBatchResponse).GetAffectedRecordNum()
+	case *listReplaceBatchResponse:
+		return res.commonInterface.(*listReplaceBatchResponse).GetAffectedRecordNum()
 	default:
 		return int32(terror.API_ERR_OPERATION_TYPE_NOT_MATCH)
 	}

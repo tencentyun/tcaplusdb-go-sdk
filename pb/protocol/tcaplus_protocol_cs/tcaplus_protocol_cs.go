@@ -3,7 +3,7 @@
 //     go code compiler
 //     author: cowhuang@tencent.com
 //
-// create time: 2021-05-27 15:40:32
+// create time: 2021-07-08 12:01:09
 package tcaplus_protocol_cs
 
 import (
@@ -23,12 +23,19 @@ const TCAPLUS_MAX_UPDATE_FIELD_LEN int64 = 32
 const TCAPLUS_MAX_SERVID_LEN int64 = 32
 const TCAPLUS_MAX_FAST_BATCH_LIMIT int64 = 50
 const TCAPLUS_MAX_PARTKEY_NUM_IN_ONE_REQUEST int64 = 10
+const TCAPLUS_MAX_EXPR_TEXT_LEN int64 = 1024
+const TCAPLUS_MAX_QUERY_ARRAY_ITEM_NUM int64 = 1024
 const TCAPLUS_MAX_HTTP_VERSION_LEN int64 = 64
 const TCAPLUS_MAX_HTTP_TARGET_LEN int64 = 64
 const MAX_SWIFT_HEAD_LEN int64 = 1024
+const MAX_STATUS_ITEM_NUM int64 = 100
+const MAX_STATUS_NAME_LEN int64 = 64
 
 // 字符串最大长度,1MB
 const MAX_STRING_LEN int64 = 1048576
+
+// 物理迁移buffer最大长度,1MB
+const TCAPLUS_PHYS_MOVE_BUF_LEN int64 = 1048576
 
 // 插入数据请求
 const TCAPLUS_CMD_INSERT_REQ int64 = 0x0001
@@ -294,6 +301,18 @@ const TCAPLUS_CMD_LIST_TABLE_TRAVERSE_REQ int64 = 0x0057
 // List表全表遍历响应
 const TCAPLUS_CMD_LIST_TABLE_TRAVERSE_RES int64 = 0x0058
 
+// 设置记录的ttl(过期时间)请求
+const TCAPLUS_CMD_SET_TTL_REQ int64 = 0x0059
+
+// 设置记录的ttl(过期时间)响应
+const TCAPLUS_CMD_SET_TTL_RES int64 = 0x005a
+
+// 获取记录的ttl(过期时间)请求
+const TCAPLUS_CMD_GET_TTL_REQ int64 = 0x005b
+
+// 获取记录的ttl(过期时间)响应
+const TCAPLUS_CMD_GET_TTL_RES int64 = 0x005c
+
 // Probotuf部分字段获取请求
 const TCAPLUS_CMD_PROTOBUF_FIELD_GET_REQ int64 = 0x0067
 
@@ -329,6 +348,48 @@ const TCAPLUS_CMD_GET_FOR_SQL_QUERY_REQ int64 = 0x0083
 
 // 索引查询时，从svr获取记录响应
 const TCAPLUS_CMD_GET_FOR_SQL_QUERY_RES int64 = 0x0084
+
+// Generic批量插入请求
+const TCAPLUS_CMD_BATCH_INSERT_REQ int64 = 0x0091
+
+// Generic批量插入响应
+const TCAPLUS_CMD_BATCH_INSERT_RES int64 = 0x0092
+
+// Generic批量替换请求
+const TCAPLUS_CMD_BATCH_REPLACE_REQ int64 = 0x0093
+
+// Generic批量替换响应
+const TCAPLUS_CMD_BATCH_REPLACE_RES int64 = 0x0094
+
+// Generic批量更新请求
+const TCAPLUS_CMD_BATCH_UPDATE_REQ int64 = 0x0095
+
+// Generic批量更新响应
+const TCAPLUS_CMD_BATCH_UPDATE_RES int64 = 0x0096
+
+// Generic批量删除请求
+const TCAPLUS_CMD_BATCH_DELETE_REQ int64 = 0x0097
+
+// Generic批量删除响应
+const TCAPLUS_CMD_BATCH_DELETE_RES int64 = 0x0098
+
+// List批量查询请求
+const TCAPLUS_CMD_LIST_GET_BATCH_REQ int64 = 0x0099
+
+// List批量查询响应
+const TCAPLUS_CMD_LIST_GET_BATCH_RES int64 = 0x009a
+
+// List批量插入请求
+const TCAPLUS_CMD_LIST_ADDAFTER_BATCH_REQ int64 = 0x009b
+
+// List批量插入响应
+const TCAPLUS_CMD_LIST_ADDAFTER_BATCH_RES int64 = 0x009c
+
+// List批量替换请求
+const TCAPLUS_CMD_LIST_REPLACE_BATCH_REQ int64 = 0x009d
+
+// List批量替换响应
+const TCAPLUS_CMD_LIST_REPLACE_BATCH_RES int64 = 0x009e
 
 // 系统内部的读取数据请求
 const TCAPLUS_CMD_SYS_GET_REQ int64 = 0x1001
@@ -468,6 +529,48 @@ const TCAPLUS_CMD_LIST_ELEMENT_MOVEREPLACE_REQ int64 = 0x1079
 // list表元素数据搬迁replace响应
 const TCAPLUS_CMD_LIST_ELEMENT_MOVEREPLACE_RES int64 = 0x107a
 
+// 获取表的状态信息请求
+const TCAPLUS_CMD_GET_TABLE_STATUS_INFO_REQ int64 = 0x107b
+
+// 获取表的状态信息响应
+const TCAPLUS_CMD_GET_TABLE_STATUS_INFO_RES int64 = 0x107c
+
+// 数组元素PUSH/POP操作请求
+const TCAPLUS_CMD_UPDATE_ITEM_REQ int64 = 0x107d
+
+// 数组元素PUSH/POP操作响应
+const TCAPLUS_CMD_UPDATE_ITEM_RES int64 = 0x107e
+
+// List表的数组元素PUSH/POP操作请求
+const TCAPLUS_CMD_LIST_UPDATE_ITEM_REQ int64 = 0x107f
+
+// List表的数组元素PUSH/POP操作响应
+const TCAPLUS_CMD_LIST_UPDATE_ITEM_RES int64 = 0x1080
+
+// 查询操作请求
+const TCAPLUS_CMD_QUERY_REQ int64 = 0x1081
+
+// 查询操作响应
+const TCAPLUS_CMD_QUERY_RES int64 = 0x1082
+
+// List表的查询操作请求
+const TCAPLUS_CMD_LIST_QUERY_REQ int64 = 0x1083
+
+// List表的查询操作请求
+const TCAPLUS_CMD_LIST_QUERY_RES int64 = 0x1084
+
+// phys data move init file req
+const TCAPLUS_CMD_PHYS_MOVE_INIT_FILE_REQ int64 = 0x1085
+
+// phys data move init file res
+const TCAPLUS_CMD_PHYS_MOVE_INIT_FILE_RES int64 = 0x1086
+
+// phys data move send data req
+const TCAPLUS_CMD_PHYS_MOVE_SEND_DATA_REQ int64 = 0x1087
+
+// phys data move send data res
+const TCAPLUS_CMD_PHYS_MOVE_SEND_DATA_RES int64 = 0x1088
+
 // 无效命令
 const DOCUMENT_COMMAND_INVALID int64 = 0
 
@@ -533,6 +636,18 @@ const RETURN_RECORD_WITH_ALL_VALUE_FIELDS int64 = 0x01
 
 // 响应包中返回所指定的字段
 const RETURN_RECORD_WITH_SPECIFY_VALUE_FIELDS int64 = 0x02
+
+// 求和
+const SUM int64 = 0x00
+
+// 取平均
+const AVG int64 = 0x01
+
+// 取最大
+const MAX int64 = 0x03
+
+// 取最小
+const MIN int64 = 0x04
 const (
 	TCaplusNameSetBaseVersion    uint32 = 1
 	TCaplusNameSetCurrentVersion uint32 = 1
@@ -670,8 +785,9 @@ func (this *TCaplusNameSet) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
 }
 
 const (
-	TCaplusListElementSetBaseVersion    uint32 = 1
-	TCaplusListElementSetCurrentVersion uint32 = 1
+	TCaplusListElementSetBaseVersion       uint32 = 1
+	TCaplusListElementSetCurrentVersion    uint32 = 119
+	TCaplusListElementSetElementTTLVersion uint32 = 119
 )
 
 // TCaplusListElementSet
@@ -683,6 +799,8 @@ type TCaplusListElementSet struct {
 	ElementsBuffLen uint32 `tdr_field:"ElementsBuffLen"`
 
 	ElementsBuff []byte `tdr_field:"ElementsBuff" tdr_count:"10300000" tdr_refer:"ElementsBuffLen"`
+
+	ElementTTL []uint64 `tdr_field:"ElementTTL" tdr_count:"10240" tdr_refer:"ElementNum"`
 }
 
 func NewTCaplusListElementSet() *TCaplusListElementSet {
@@ -759,6 +877,27 @@ func (this *TCaplusListElementSet) PackTo(cutVer uint32, w *tdrcom.Writer) error
 		}
 	}
 
+	if cutVer >= TCaplusListElementSetElementTTLVersion {
+
+		if this.ElementNum < 0 {
+			return errors.New("TCaplusListElementSet.ElementTTL's refer ElementNum should >= 0")
+		}
+		if this.ElementNum > 10240 {
+			return errors.New("TCaplusListElementSet.ElementTTL's refer ElementNum should <= count 10240")
+		}
+		if len(this.ElementTTL) < int(this.ElementNum) {
+			return errors.New("TCaplusListElementSet.ElementTTL's length should > ElementNum")
+		}
+		if this.ElementNum > 0 {
+			referElementTTL := this.ElementTTL[:this.ElementNum]
+			err = binary.Write(w, binary.BigEndian, referElementTTL)
+			if err != nil {
+				return errors.New("TCaplusListElementSet.ElementTTL pack error\n" + err.Error())
+			}
+		}
+
+	}
+
 	return nil
 }
 
@@ -812,14 +951,35 @@ func (this *TCaplusListElementSet) UnpackFrom(cutVer uint32, r *tdrcom.Reader) e
 		return errors.New("TCaplusListElementSet.ElementsBuff pack error\n" + err.Error())
 	}
 
+	if cutVer >= TCaplusListElementSetElementTTLVersion {
+
+		if this.ElementNum < 0 {
+			return errors.New("TCaplusListElementSet.ElementTTL's refer ElementNum should >= 0")
+		}
+		if this.ElementNum > 10240 {
+			return errors.New("TCaplusListElementSet.ElementTTL's refer ElementNum should <= count 10240")
+		}
+
+		if this.ElementTTL == nil {
+			this.ElementTTL = make([]uint64, int(this.ElementNum))
+		}
+
+		referElementTTL := this.ElementTTL[:this.ElementNum]
+		err = binary.Read(r, binary.BigEndian, referElementTTL)
+		if err != nil {
+			return errors.New("TCaplusListElementSet.ElementTTL pack error\n" + err.Error())
+		}
+
+	}
 	return err
 }
 
 const (
-	TCaplusUpdFieldBaseVersion       uint32 = 1
-	TCaplusUpdFieldCurrentVersion    uint32 = 21
-	TCaplusUpdFieldLowerLimitVersion uint32 = 21
-	TCaplusUpdFieldUpperLimitVersion uint32 = 21
+	TCaplusUpdFieldBaseVersion                uint32 = 1
+	TCaplusUpdFieldCurrentVersion             uint32 = 119
+	TCaplusUpdFieldLowerLimitVersion          uint32 = 21
+	TCaplusUpdFieldUpperLimitVersion          uint32 = 21
+	TCaplusUpdFieldLowerUpperLimitTypeVersion uint32 = 119
 )
 
 // TCaplusUpdField
@@ -835,6 +995,8 @@ type TCaplusUpdField struct {
 	LowerLimit int64 `tdr_field:"LowerLimit"`
 
 	UpperLimit int64 `tdr_field:"UpperLimit"`
+
+	LowerUpperLimitType byte `tdr_field:"LowerUpperLimitType"`
 }
 
 func NewTCaplusUpdField() *TCaplusUpdField {
@@ -858,6 +1020,8 @@ func (this *TCaplusUpdField) Init() {
 	this.LowerLimit = 0
 
 	this.UpperLimit = 0
+
+	this.LowerUpperLimitType = 0
 
 }
 
@@ -931,6 +1095,14 @@ func (this *TCaplusUpdField) PackTo(cutVer uint32, w *tdrcom.Writer) error {
 		err = binary.Write(w, binary.BigEndian, this.UpperLimit)
 		if err != nil {
 			return errors.New("TCaplusUpdField.UpperLimit pack error\n" + err.Error())
+		}
+
+	}
+	if cutVer >= TCaplusUpdFieldLowerUpperLimitTypeVersion {
+
+		err = binary.Write(w, binary.BigEndian, this.LowerUpperLimitType)
+		if err != nil {
+			return errors.New("TCaplusUpdField.LowerUpperLimitType pack error\n" + err.Error())
 		}
 
 	}
@@ -1018,12 +1190,23 @@ func (this *TCaplusUpdField) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
 		this.UpperLimit = 0
 
 	}
+	if cutVer >= TCaplusUpdFieldLowerUpperLimitTypeVersion {
+
+		err = binary.Read(r, binary.BigEndian, &this.LowerUpperLimitType)
+		if err != nil {
+			return errors.New("TCaplusUpdField.LowerUpperLimitType unpack error\n" + err.Error())
+		}
+
+	} else {
+		this.LowerUpperLimitType = 0
+
+	}
 	return err
 }
 
 const (
 	TCaplusUpdFieldSetBaseVersion    uint32 = 1
-	TCaplusUpdFieldSetCurrentVersion uint32 = 21
+	TCaplusUpdFieldSetCurrentVersion uint32 = 119
 )
 
 // TCaplusUpdFieldSet
@@ -1368,9 +1551,11 @@ func (this *TCaplusInsertRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error 
 
 const (
 	TCaplusReplaceReqBaseVersion              uint32 = 1
-	TCaplusReplaceReqCurrentVersion           uint32 = 109
+	TCaplusReplaceReqCurrentVersion           uint32 = 125
 	TCaplusReplaceReqCheckVersiontTypeVersion uint32 = 13
 	TCaplusReplaceReqIncreaseValueInfoVersion uint32 = 36
+	TCaplusReplaceReqConditionVersion         uint32 = 125
+	TCaplusReplaceReqOperationVersion         uint32 = 125
 )
 
 // TCaplusReplaceReq
@@ -1382,6 +1567,10 @@ type TCaplusReplaceReq struct {
 	CheckVersiontType byte `tdr_field:"CheckVersiontType"`
 
 	IncreaseValueInfo *TCaplusUpdFieldSet `tdr_field:"IncreaseValueInfo"`
+
+	Condition string `tdr_field:"Condition"`
+
+	Operation string `tdr_field:"Operation"`
 }
 
 func NewTCaplusReplaceReq() *TCaplusReplaceReq {
@@ -1455,6 +1644,30 @@ func (this *TCaplusReplaceReq) PackTo(cutVer uint32, w *tdrcom.Writer) error {
 		}
 
 	}
+	if cutVer >= TCaplusReplaceReqConditionVersion {
+
+		err = binary.Write(w, binary.BigEndian, uint32(len(this.Condition))+1)
+		if err != nil {
+			return errors.New("TCaplusReplaceReq.Condition string size pack error\n" + err.Error())
+		}
+		err = binary.Write(w, binary.BigEndian, append([]byte(this.Condition), 0))
+		if err != nil {
+			return errors.New("TCaplusReplaceReq.Condition string content pack error\n" + err.Error())
+		}
+
+	}
+	if cutVer >= TCaplusReplaceReqOperationVersion {
+
+		err = binary.Write(w, binary.BigEndian, uint32(len(this.Operation))+1)
+		if err != nil {
+			return errors.New("TCaplusReplaceReq.Operation string size pack error\n" + err.Error())
+		}
+		err = binary.Write(w, binary.BigEndian, append([]byte(this.Operation), 0))
+		if err != nil {
+			return errors.New("TCaplusReplaceReq.Operation string content pack error\n" + err.Error())
+		}
+
+	}
 
 	return nil
 }
@@ -1507,6 +1720,38 @@ func (this *TCaplusReplaceReq) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error
 
 	} else {
 		this.IncreaseValueInfo.Init()
+
+	}
+	if cutVer >= TCaplusReplaceReqConditionVersion {
+
+		var ConditionSize uint32
+		err = binary.Read(r, binary.BigEndian, &ConditionSize)
+		if err != nil {
+			return errors.New("TCaplusReplaceReq.Condition string size unpack error\n" + err.Error())
+		}
+
+		ConditionBytes := make([]byte, ConditionSize)
+		err = binary.Read(r, binary.BigEndian, ConditionBytes)
+		if err != nil {
+			return errors.New("TCaplusReplaceReq.Condition string content unpack error\n" + err.Error())
+		}
+		this.Condition = string(ConditionBytes[:len(ConditionBytes)-1])
+
+	}
+	if cutVer >= TCaplusReplaceReqOperationVersion {
+
+		var OperationSize uint32
+		err = binary.Read(r, binary.BigEndian, &OperationSize)
+		if err != nil {
+			return errors.New("TCaplusReplaceReq.Operation string size unpack error\n" + err.Error())
+		}
+
+		OperationBytes := make([]byte, OperationSize)
+		err = binary.Read(r, binary.BigEndian, OperationBytes)
+		if err != nil {
+			return errors.New("TCaplusReplaceReq.Operation string content unpack error\n" + err.Error())
+		}
+		this.Operation = string(OperationBytes[:len(OperationBytes)-1])
 
 	}
 	return err
@@ -1643,9 +1888,11 @@ func (this *TCaplusReplaceRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error
 
 const (
 	TCaplusUpdateReqBaseVersion              uint32 = 1
-	TCaplusUpdateReqCurrentVersion           uint32 = 109
+	TCaplusUpdateReqCurrentVersion           uint32 = 125
 	TCaplusUpdateReqCheckVersiontTypeVersion uint32 = 13
 	TCaplusUpdateReqIncreaseValueInfoVersion uint32 = 36
+	TCaplusUpdateReqConditionVersion         uint32 = 125
+	TCaplusUpdateReqOperationVersion         uint32 = 125
 )
 
 // TCaplusUpdateReq
@@ -1657,6 +1904,10 @@ type TCaplusUpdateReq struct {
 	CheckVersiontType byte `tdr_field:"CheckVersiontType"`
 
 	IncreaseValueInfo *TCaplusUpdFieldSet `tdr_field:"IncreaseValueInfo"`
+
+	Condition string `tdr_field:"Condition"`
+
+	Operation string `tdr_field:"Operation"`
 }
 
 func NewTCaplusUpdateReq() *TCaplusUpdateReq {
@@ -1730,6 +1981,30 @@ func (this *TCaplusUpdateReq) PackTo(cutVer uint32, w *tdrcom.Writer) error {
 		}
 
 	}
+	if cutVer >= TCaplusUpdateReqConditionVersion {
+
+		err = binary.Write(w, binary.BigEndian, uint32(len(this.Condition))+1)
+		if err != nil {
+			return errors.New("TCaplusUpdateReq.Condition string size pack error\n" + err.Error())
+		}
+		err = binary.Write(w, binary.BigEndian, append([]byte(this.Condition), 0))
+		if err != nil {
+			return errors.New("TCaplusUpdateReq.Condition string content pack error\n" + err.Error())
+		}
+
+	}
+	if cutVer >= TCaplusUpdateReqOperationVersion {
+
+		err = binary.Write(w, binary.BigEndian, uint32(len(this.Operation))+1)
+		if err != nil {
+			return errors.New("TCaplusUpdateReq.Operation string size pack error\n" + err.Error())
+		}
+		err = binary.Write(w, binary.BigEndian, append([]byte(this.Operation), 0))
+		if err != nil {
+			return errors.New("TCaplusUpdateReq.Operation string content pack error\n" + err.Error())
+		}
+
+	}
 
 	return nil
 }
@@ -1782,6 +2057,38 @@ func (this *TCaplusUpdateReq) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error 
 
 	} else {
 		this.IncreaseValueInfo.Init()
+
+	}
+	if cutVer >= TCaplusUpdateReqConditionVersion {
+
+		var ConditionSize uint32
+		err = binary.Read(r, binary.BigEndian, &ConditionSize)
+		if err != nil {
+			return errors.New("TCaplusUpdateReq.Condition string size unpack error\n" + err.Error())
+		}
+
+		ConditionBytes := make([]byte, ConditionSize)
+		err = binary.Read(r, binary.BigEndian, ConditionBytes)
+		if err != nil {
+			return errors.New("TCaplusUpdateReq.Condition string content unpack error\n" + err.Error())
+		}
+		this.Condition = string(ConditionBytes[:len(ConditionBytes)-1])
+
+	}
+	if cutVer >= TCaplusUpdateReqOperationVersion {
+
+		var OperationSize uint32
+		err = binary.Read(r, binary.BigEndian, &OperationSize)
+		if err != nil {
+			return errors.New("TCaplusUpdateReq.Operation string size unpack error\n" + err.Error())
+		}
+
+		OperationBytes := make([]byte, OperationSize)
+		err = binary.Read(r, binary.BigEndian, OperationBytes)
+		if err != nil {
+			return errors.New("TCaplusUpdateReq.Operation string content unpack error\n" + err.Error())
+		}
+		this.Operation = string(OperationBytes[:len(OperationBytes)-1])
 
 	}
 	return err
@@ -1898,7 +2205,7 @@ func (this *TCaplusUpdateRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error 
 
 const (
 	TCaplusIncreaseReqBaseVersion              uint32 = 1
-	TCaplusIncreaseReqCurrentVersion           uint32 = 21
+	TCaplusIncreaseReqCurrentVersion           uint32 = 119
 	TCaplusIncreaseReqAddableIncreaseVersion   uint32 = 9
 	TCaplusIncreaseReqCheckVersiontTypeVersion uint32 = 13
 )
@@ -2180,9 +2487,1156 @@ func (this *TCaplusIncreaseRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader) erro
 }
 
 const (
+	TCaplusUpdateItemReqBaseVersion    uint32 = 125
+	TCaplusUpdateItemReqCurrentVersion uint32 = 125
+)
+
+// TCaplusUpdateItemReq
+type TCaplusUpdateItemReq struct {
+	Flag byte `tdr_field:"Flag"`
+
+	CheckVersionType byte `tdr_field:"CheckVersionType"`
+
+	Condition string `tdr_field:"Condition"`
+
+	Operation string `tdr_field:"Operation"`
+}
+
+func NewTCaplusUpdateItemReq() *TCaplusUpdateItemReq {
+	obj := new(TCaplusUpdateItemReq)
+	obj.Init()
+	return obj
+}
+
+func (this *TCaplusUpdateItemReq) GetBaseVersion() uint32 {
+	return TCaplusUpdateItemReqBaseVersion
+}
+
+func (this *TCaplusUpdateItemReq) GetCurrentVersion() uint32 {
+	return TCaplusUpdateItemReqCurrentVersion
+}
+
+func (this *TCaplusUpdateItemReq) Init() {
+
+	this.CheckVersionType = 1
+
+}
+
+func (this *TCaplusUpdateItemReq) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("TCaplusUpdateItemReq Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *TCaplusUpdateItemReq) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > TCaplusUpdateItemReqCurrentVersion {
+		cutVer = TCaplusUpdateItemReqCurrentVersion
+	}
+	// check cut version
+	if cutVer < TCaplusUpdateItemReqBaseVersion {
+		return errors.New("TCaplusUpdateItemReq cut version must large than TCaplusUpdateItemReqBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, this.Flag)
+	if err != nil {
+		return errors.New("TCaplusUpdateItemReq.Flag pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.CheckVersionType)
+	if err != nil {
+		return errors.New("TCaplusUpdateItemReq.CheckVersionType pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, uint32(len(this.Condition))+1)
+	if err != nil {
+		return errors.New("TCaplusUpdateItemReq.Condition string size pack error\n" + err.Error())
+	}
+	err = binary.Write(w, binary.BigEndian, append([]byte(this.Condition), 0))
+	if err != nil {
+		return errors.New("TCaplusUpdateItemReq.Condition string content pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, uint32(len(this.Operation))+1)
+	if err != nil {
+		return errors.New("TCaplusUpdateItemReq.Operation string size pack error\n" + err.Error())
+	}
+	err = binary.Write(w, binary.BigEndian, append([]byte(this.Operation), 0))
+	if err != nil {
+		return errors.New("TCaplusUpdateItemReq.Operation string content pack error\n" + err.Error())
+	}
+
+	return nil
+}
+
+func (this *TCaplusUpdateItemReq) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("TCaplusUpdateItemReq data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *TCaplusUpdateItemReq) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > TCaplusUpdateItemReqCurrentVersion {
+		cutVer = TCaplusUpdateItemReqCurrentVersion
+	}
+	// check version
+	if cutVer < TCaplusUpdateItemReqBaseVersion {
+		errors.New("TCaplusUpdateItemReq cut version must large than TCaplusUpdateItemReqBaseVersion\n")
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.Flag)
+	if err != nil {
+		return errors.New("TCaplusUpdateItemReq.Flag unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.CheckVersionType)
+	if err != nil {
+		return errors.New("TCaplusUpdateItemReq.CheckVersionType unpack error\n" + err.Error())
+	}
+
+	var ConditionSize uint32
+	err = binary.Read(r, binary.BigEndian, &ConditionSize)
+	if err != nil {
+		return errors.New("TCaplusUpdateItemReq.Condition string size unpack error\n" + err.Error())
+	}
+
+	ConditionBytes := make([]byte, ConditionSize)
+	err = binary.Read(r, binary.BigEndian, ConditionBytes)
+	if err != nil {
+		return errors.New("TCaplusUpdateItemReq.Condition string content unpack error\n" + err.Error())
+	}
+	this.Condition = string(ConditionBytes[:len(ConditionBytes)-1])
+
+	var OperationSize uint32
+	err = binary.Read(r, binary.BigEndian, &OperationSize)
+	if err != nil {
+		return errors.New("TCaplusUpdateItemReq.Operation string size unpack error\n" + err.Error())
+	}
+
+	OperationBytes := make([]byte, OperationSize)
+	err = binary.Read(r, binary.BigEndian, OperationBytes)
+	if err != nil {
+		return errors.New("TCaplusUpdateItemReq.Operation string content unpack error\n" + err.Error())
+	}
+	this.Operation = string(OperationBytes[:len(OperationBytes)-1])
+
+	return err
+}
+
+const (
+	TCaplusQueryReqBaseVersion    uint32 = 125
+	TCaplusQueryReqCurrentVersion uint32 = 125
+)
+
+// TCaplusQueryReq
+type TCaplusQueryReq struct {
+	Option int32 `tdr_field:"Option"`
+
+	Query string `tdr_field:"Query"`
+
+	Condition string `tdr_field:"Condition"`
+}
+
+func NewTCaplusQueryReq() *TCaplusQueryReq {
+	obj := new(TCaplusQueryReq)
+	obj.Init()
+	return obj
+}
+
+func (this *TCaplusQueryReq) GetBaseVersion() uint32 {
+	return TCaplusQueryReqBaseVersion
+}
+
+func (this *TCaplusQueryReq) GetCurrentVersion() uint32 {
+	return TCaplusQueryReqCurrentVersion
+}
+
+func (this *TCaplusQueryReq) Init() {
+	this.Option = 0
+
+}
+
+func (this *TCaplusQueryReq) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("TCaplusQueryReq Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *TCaplusQueryReq) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > TCaplusQueryReqCurrentVersion {
+		cutVer = TCaplusQueryReqCurrentVersion
+	}
+	// check cut version
+	if cutVer < TCaplusQueryReqBaseVersion {
+		return errors.New("TCaplusQueryReq cut version must large than TCaplusQueryReqBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, this.Option)
+	if err != nil {
+		return errors.New("TCaplusQueryReq.Option pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, uint32(len(this.Query))+1)
+	if err != nil {
+		return errors.New("TCaplusQueryReq.Query string size pack error\n" + err.Error())
+	}
+	err = binary.Write(w, binary.BigEndian, append([]byte(this.Query), 0))
+	if err != nil {
+		return errors.New("TCaplusQueryReq.Query string content pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, uint32(len(this.Condition))+1)
+	if err != nil {
+		return errors.New("TCaplusQueryReq.Condition string size pack error\n" + err.Error())
+	}
+	err = binary.Write(w, binary.BigEndian, append([]byte(this.Condition), 0))
+	if err != nil {
+		return errors.New("TCaplusQueryReq.Condition string content pack error\n" + err.Error())
+	}
+
+	return nil
+}
+
+func (this *TCaplusQueryReq) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("TCaplusQueryReq data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *TCaplusQueryReq) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > TCaplusQueryReqCurrentVersion {
+		cutVer = TCaplusQueryReqCurrentVersion
+	}
+	// check version
+	if cutVer < TCaplusQueryReqBaseVersion {
+		errors.New("TCaplusQueryReq cut version must large than TCaplusQueryReqBaseVersion\n")
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.Option)
+	if err != nil {
+		return errors.New("TCaplusQueryReq.Option unpack error\n" + err.Error())
+	}
+
+	var QuerySize uint32
+	err = binary.Read(r, binary.BigEndian, &QuerySize)
+	if err != nil {
+		return errors.New("TCaplusQueryReq.Query string size unpack error\n" + err.Error())
+	}
+
+	QueryBytes := make([]byte, QuerySize)
+	err = binary.Read(r, binary.BigEndian, QueryBytes)
+	if err != nil {
+		return errors.New("TCaplusQueryReq.Query string content unpack error\n" + err.Error())
+	}
+	this.Query = string(QueryBytes[:len(QueryBytes)-1])
+
+	var ConditionSize uint32
+	err = binary.Read(r, binary.BigEndian, &ConditionSize)
+	if err != nil {
+		return errors.New("TCaplusQueryReq.Condition string size unpack error\n" + err.Error())
+	}
+
+	ConditionBytes := make([]byte, ConditionSize)
+	err = binary.Read(r, binary.BigEndian, ConditionBytes)
+	if err != nil {
+		return errors.New("TCaplusQueryReq.Condition string content unpack error\n" + err.Error())
+	}
+	this.Condition = string(ConditionBytes[:len(ConditionBytes)-1])
+
+	return err
+}
+
+const (
+	TCaplusQueryResBaseVersion    uint32 = 125
+	TCaplusQueryResCurrentVersion uint32 = 125
+)
+
+// TCaplusQueryRes
+type TCaplusQueryRes struct {
+	Result int32 `tdr_field:"Result"`
+
+	ResultInfo *TCaplusValueSet_ `tdr_field:"ResultInfo"`
+
+	ArrayItemNum int32 `tdr_field:"ArrayItemNum"`
+
+	ArrayItemIndex []int32 `tdr_field:"ArrayItemIndex" tdr_count:"1024" tdr_refer:"ArrayItemNum"`
+
+	LastAccessTime uint64 `tdr_field:"LastAccessTime"`
+}
+
+func NewTCaplusQueryRes() *TCaplusQueryRes {
+	obj := new(TCaplusQueryRes)
+	obj.Init()
+	return obj
+}
+
+func (this *TCaplusQueryRes) GetBaseVersion() uint32 {
+	return TCaplusQueryResBaseVersion
+}
+
+func (this *TCaplusQueryRes) GetCurrentVersion() uint32 {
+	return TCaplusQueryResCurrentVersion
+}
+
+func (this *TCaplusQueryRes) Init() {
+
+	this.ResultInfo = NewTCaplusValueSet_()
+
+	this.ArrayItemNum = 0
+
+}
+
+func (this *TCaplusQueryRes) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("TCaplusQueryRes Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *TCaplusQueryRes) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > TCaplusQueryResCurrentVersion {
+		cutVer = TCaplusQueryResCurrentVersion
+	}
+	// check cut version
+	if cutVer < TCaplusQueryResBaseVersion {
+		return errors.New("TCaplusQueryRes cut version must large than TCaplusQueryResBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, this.Result)
+	if err != nil {
+		return errors.New("TCaplusQueryRes.Result pack error\n" + err.Error())
+	}
+
+	err = this.ResultInfo.PackTo(cutVer, w)
+	if err != nil {
+		return errors.New("TCaplusQueryRes.ResultInfo pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.ArrayItemNum)
+	if err != nil {
+		return errors.New("TCaplusQueryRes.ArrayItemNum pack error\n" + err.Error())
+	}
+
+	if this.ArrayItemNum < 0 {
+		return errors.New("TCaplusQueryRes.ArrayItemIndex's refer ArrayItemNum should >= 0")
+	}
+	if this.ArrayItemNum > 1024 {
+		return errors.New("TCaplusQueryRes.ArrayItemIndex's refer ArrayItemNum should <= count 1024")
+	}
+	if len(this.ArrayItemIndex) < int(this.ArrayItemNum) {
+		return errors.New("TCaplusQueryRes.ArrayItemIndex's length should > ArrayItemNum")
+	}
+	if this.ArrayItemNum > 0 {
+		referArrayItemIndex := this.ArrayItemIndex[:this.ArrayItemNum]
+		err = binary.Write(w, binary.BigEndian, referArrayItemIndex)
+		if err != nil {
+			return errors.New("TCaplusQueryRes.ArrayItemIndex pack error\n" + err.Error())
+		}
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.LastAccessTime)
+	if err != nil {
+		return errors.New("TCaplusQueryRes.LastAccessTime pack error\n" + err.Error())
+	}
+
+	return nil
+}
+
+func (this *TCaplusQueryRes) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("TCaplusQueryRes data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *TCaplusQueryRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > TCaplusQueryResCurrentVersion {
+		cutVer = TCaplusQueryResCurrentVersion
+	}
+	// check version
+	if cutVer < TCaplusQueryResBaseVersion {
+		errors.New("TCaplusQueryRes cut version must large than TCaplusQueryResBaseVersion\n")
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.Result)
+	if err != nil {
+		return errors.New("TCaplusQueryRes.Result unpack error\n" + err.Error())
+	}
+
+	err = this.ResultInfo.UnpackFrom(cutVer, r)
+	if err != nil {
+		return errors.New("TCaplusQueryRes.ResultInfo unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.ArrayItemNum)
+	if err != nil {
+		return errors.New("TCaplusQueryRes.ArrayItemNum unpack error\n" + err.Error())
+	}
+
+	if this.ArrayItemNum < 0 {
+		return errors.New("TCaplusQueryRes.ArrayItemIndex's refer ArrayItemNum should >= 0")
+	}
+	if this.ArrayItemNum > 1024 {
+		return errors.New("TCaplusQueryRes.ArrayItemIndex's refer ArrayItemNum should <= count 1024")
+	}
+
+	if this.ArrayItemIndex == nil {
+		this.ArrayItemIndex = make([]int32, int(this.ArrayItemNum))
+	}
+
+	referArrayItemIndex := this.ArrayItemIndex[:this.ArrayItemNum]
+	err = binary.Read(r, binary.BigEndian, referArrayItemIndex)
+	if err != nil {
+		return errors.New("TCaplusQueryRes.ArrayItemIndex pack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.LastAccessTime)
+	if err != nil {
+		return errors.New("TCaplusQueryRes.LastAccessTime unpack error\n" + err.Error())
+	}
+
+	return err
+}
+
+const (
+	TCaplusUpdateItemResBaseVersion    uint32 = 125
+	TCaplusUpdateItemResCurrentVersion uint32 = 125
+)
+
+// TCaplusUpdateItemRes
+type TCaplusUpdateItemRes struct {
+	Result int32 `tdr_field:"Result"`
+
+	Flag byte `tdr_field:"Flag"`
+
+	ResultInfo *TCaplusValueSet_ `tdr_field:"ResultInfo"`
+}
+
+func NewTCaplusUpdateItemRes() *TCaplusUpdateItemRes {
+	obj := new(TCaplusUpdateItemRes)
+	obj.Init()
+	return obj
+}
+
+func (this *TCaplusUpdateItemRes) GetBaseVersion() uint32 {
+	return TCaplusUpdateItemResBaseVersion
+}
+
+func (this *TCaplusUpdateItemRes) GetCurrentVersion() uint32 {
+	return TCaplusUpdateItemResCurrentVersion
+}
+
+func (this *TCaplusUpdateItemRes) Init() {
+
+	this.ResultInfo = NewTCaplusValueSet_()
+
+}
+
+func (this *TCaplusUpdateItemRes) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("TCaplusUpdateItemRes Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *TCaplusUpdateItemRes) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > TCaplusUpdateItemResCurrentVersion {
+		cutVer = TCaplusUpdateItemResCurrentVersion
+	}
+	// check cut version
+	if cutVer < TCaplusUpdateItemResBaseVersion {
+		return errors.New("TCaplusUpdateItemRes cut version must large than TCaplusUpdateItemResBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, this.Result)
+	if err != nil {
+		return errors.New("TCaplusUpdateItemRes.Result pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.Flag)
+	if err != nil {
+		return errors.New("TCaplusUpdateItemRes.Flag pack error\n" + err.Error())
+	}
+
+	err = this.ResultInfo.PackTo(cutVer, w)
+	if err != nil {
+		return errors.New("TCaplusUpdateItemRes.ResultInfo pack error\n" + err.Error())
+	}
+
+	return nil
+}
+
+func (this *TCaplusUpdateItemRes) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("TCaplusUpdateItemRes data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *TCaplusUpdateItemRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > TCaplusUpdateItemResCurrentVersion {
+		cutVer = TCaplusUpdateItemResCurrentVersion
+	}
+	// check version
+	if cutVer < TCaplusUpdateItemResBaseVersion {
+		errors.New("TCaplusUpdateItemRes cut version must large than TCaplusUpdateItemResBaseVersion\n")
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.Result)
+	if err != nil {
+		return errors.New("TCaplusUpdateItemRes.Result unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.Flag)
+	if err != nil {
+		return errors.New("TCaplusUpdateItemRes.Flag unpack error\n" + err.Error())
+	}
+
+	err = this.ResultInfo.UnpackFrom(cutVer, r)
+	if err != nil {
+		return errors.New("TCaplusUpdateItemRes.ResultInfo unpack error\n" + err.Error())
+	}
+
+	return err
+}
+
+const (
+	TCaplusListUpdateItemReqBaseVersion    uint32 = 125
+	TCaplusListUpdateItemReqCurrentVersion uint32 = 125
+)
+
+// TCaplusListUpdateItemReq
+type TCaplusListUpdateItemReq struct {
+	Flag byte `tdr_field:"Flag"`
+
+	ElementIndex int32 `tdr_field:"ElementIndex"`
+
+	CheckVersionType byte `tdr_field:"CheckVersionType"`
+
+	Condition string `tdr_field:"Condition"`
+
+	Operation string `tdr_field:"Operation"`
+}
+
+func NewTCaplusListUpdateItemReq() *TCaplusListUpdateItemReq {
+	obj := new(TCaplusListUpdateItemReq)
+	obj.Init()
+	return obj
+}
+
+func (this *TCaplusListUpdateItemReq) GetBaseVersion() uint32 {
+	return TCaplusListUpdateItemReqBaseVersion
+}
+
+func (this *TCaplusListUpdateItemReq) GetCurrentVersion() uint32 {
+	return TCaplusListUpdateItemReqCurrentVersion
+}
+
+func (this *TCaplusListUpdateItemReq) Init() {
+
+	this.ElementIndex = 0
+
+	this.CheckVersionType = 1
+
+}
+
+func (this *TCaplusListUpdateItemReq) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("TCaplusListUpdateItemReq Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *TCaplusListUpdateItemReq) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > TCaplusListUpdateItemReqCurrentVersion {
+		cutVer = TCaplusListUpdateItemReqCurrentVersion
+	}
+	// check cut version
+	if cutVer < TCaplusListUpdateItemReqBaseVersion {
+		return errors.New("TCaplusListUpdateItemReq cut version must large than TCaplusListUpdateItemReqBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, this.Flag)
+	if err != nil {
+		return errors.New("TCaplusListUpdateItemReq.Flag pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.ElementIndex)
+	if err != nil {
+		return errors.New("TCaplusListUpdateItemReq.ElementIndex pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.CheckVersionType)
+	if err != nil {
+		return errors.New("TCaplusListUpdateItemReq.CheckVersionType pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, uint32(len(this.Condition))+1)
+	if err != nil {
+		return errors.New("TCaplusListUpdateItemReq.Condition string size pack error\n" + err.Error())
+	}
+	err = binary.Write(w, binary.BigEndian, append([]byte(this.Condition), 0))
+	if err != nil {
+		return errors.New("TCaplusListUpdateItemReq.Condition string content pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, uint32(len(this.Operation))+1)
+	if err != nil {
+		return errors.New("TCaplusListUpdateItemReq.Operation string size pack error\n" + err.Error())
+	}
+	err = binary.Write(w, binary.BigEndian, append([]byte(this.Operation), 0))
+	if err != nil {
+		return errors.New("TCaplusListUpdateItemReq.Operation string content pack error\n" + err.Error())
+	}
+
+	return nil
+}
+
+func (this *TCaplusListUpdateItemReq) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("TCaplusListUpdateItemReq data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *TCaplusListUpdateItemReq) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > TCaplusListUpdateItemReqCurrentVersion {
+		cutVer = TCaplusListUpdateItemReqCurrentVersion
+	}
+	// check version
+	if cutVer < TCaplusListUpdateItemReqBaseVersion {
+		errors.New("TCaplusListUpdateItemReq cut version must large than TCaplusListUpdateItemReqBaseVersion\n")
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.Flag)
+	if err != nil {
+		return errors.New("TCaplusListUpdateItemReq.Flag unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.ElementIndex)
+	if err != nil {
+		return errors.New("TCaplusListUpdateItemReq.ElementIndex unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.CheckVersionType)
+	if err != nil {
+		return errors.New("TCaplusListUpdateItemReq.CheckVersionType unpack error\n" + err.Error())
+	}
+
+	var ConditionSize uint32
+	err = binary.Read(r, binary.BigEndian, &ConditionSize)
+	if err != nil {
+		return errors.New("TCaplusListUpdateItemReq.Condition string size unpack error\n" + err.Error())
+	}
+
+	ConditionBytes := make([]byte, ConditionSize)
+	err = binary.Read(r, binary.BigEndian, ConditionBytes)
+	if err != nil {
+		return errors.New("TCaplusListUpdateItemReq.Condition string content unpack error\n" + err.Error())
+	}
+	this.Condition = string(ConditionBytes[:len(ConditionBytes)-1])
+
+	var OperationSize uint32
+	err = binary.Read(r, binary.BigEndian, &OperationSize)
+	if err != nil {
+		return errors.New("TCaplusListUpdateItemReq.Operation string size unpack error\n" + err.Error())
+	}
+
+	OperationBytes := make([]byte, OperationSize)
+	err = binary.Read(r, binary.BigEndian, OperationBytes)
+	if err != nil {
+		return errors.New("TCaplusListUpdateItemReq.Operation string content unpack error\n" + err.Error())
+	}
+	this.Operation = string(OperationBytes[:len(OperationBytes)-1])
+
+	return err
+}
+
+const (
+	TCaplusListUpdateItemResBaseVersion    uint32 = 125
+	TCaplusListUpdateItemResCurrentVersion uint32 = 125
+)
+
+// TCaplusListUpdateItemRes
+type TCaplusListUpdateItemRes struct {
+	Result int32 `tdr_field:"Result"`
+
+	Flag byte `tdr_field:"Flag"`
+
+	ElementIndex int32 `tdr_field:"ElementIndex"`
+
+	ResultInfo *TCaplusListElementSet `tdr_field:"ResultInfo"`
+}
+
+func NewTCaplusListUpdateItemRes() *TCaplusListUpdateItemRes {
+	obj := new(TCaplusListUpdateItemRes)
+	obj.Init()
+	return obj
+}
+
+func (this *TCaplusListUpdateItemRes) GetBaseVersion() uint32 {
+	return TCaplusListUpdateItemResBaseVersion
+}
+
+func (this *TCaplusListUpdateItemRes) GetCurrentVersion() uint32 {
+	return TCaplusListUpdateItemResCurrentVersion
+}
+
+func (this *TCaplusListUpdateItemRes) Init() {
+
+	this.ElementIndex = 0
+
+	this.ResultInfo = NewTCaplusListElementSet()
+
+}
+
+func (this *TCaplusListUpdateItemRes) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("TCaplusListUpdateItemRes Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *TCaplusListUpdateItemRes) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > TCaplusListUpdateItemResCurrentVersion {
+		cutVer = TCaplusListUpdateItemResCurrentVersion
+	}
+	// check cut version
+	if cutVer < TCaplusListUpdateItemResBaseVersion {
+		return errors.New("TCaplusListUpdateItemRes cut version must large than TCaplusListUpdateItemResBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, this.Result)
+	if err != nil {
+		return errors.New("TCaplusListUpdateItemRes.Result pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.Flag)
+	if err != nil {
+		return errors.New("TCaplusListUpdateItemRes.Flag pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.ElementIndex)
+	if err != nil {
+		return errors.New("TCaplusListUpdateItemRes.ElementIndex pack error\n" + err.Error())
+	}
+
+	err = this.ResultInfo.PackTo(cutVer, w)
+	if err != nil {
+		return errors.New("TCaplusListUpdateItemRes.ResultInfo pack error\n" + err.Error())
+	}
+
+	return nil
+}
+
+func (this *TCaplusListUpdateItemRes) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("TCaplusListUpdateItemRes data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *TCaplusListUpdateItemRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > TCaplusListUpdateItemResCurrentVersion {
+		cutVer = TCaplusListUpdateItemResCurrentVersion
+	}
+	// check version
+	if cutVer < TCaplusListUpdateItemResBaseVersion {
+		errors.New("TCaplusListUpdateItemRes cut version must large than TCaplusListUpdateItemResBaseVersion\n")
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.Result)
+	if err != nil {
+		return errors.New("TCaplusListUpdateItemRes.Result unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.Flag)
+	if err != nil {
+		return errors.New("TCaplusListUpdateItemRes.Flag unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.ElementIndex)
+	if err != nil {
+		return errors.New("TCaplusListUpdateItemRes.ElementIndex unpack error\n" + err.Error())
+	}
+
+	err = this.ResultInfo.UnpackFrom(cutVer, r)
+	if err != nil {
+		return errors.New("TCaplusListUpdateItemRes.ResultInfo unpack error\n" + err.Error())
+	}
+
+	return err
+}
+
+const (
+	TCaplusListQueryReqBaseVersion    uint32 = 125
+	TCaplusListQueryReqCurrentVersion uint32 = 125
+)
+
+// TCaplusListQueryReq
+type TCaplusListQueryReq struct {
+	Option int32 `tdr_field:"Option"`
+
+	ElementIndex int32 `tdr_field:"ElementIndex"`
+
+	Query string `tdr_field:"Query"`
+
+	Condition string `tdr_field:"Condition"`
+}
+
+func NewTCaplusListQueryReq() *TCaplusListQueryReq {
+	obj := new(TCaplusListQueryReq)
+	obj.Init()
+	return obj
+}
+
+func (this *TCaplusListQueryReq) GetBaseVersion() uint32 {
+	return TCaplusListQueryReqBaseVersion
+}
+
+func (this *TCaplusListQueryReq) GetCurrentVersion() uint32 {
+	return TCaplusListQueryReqCurrentVersion
+}
+
+func (this *TCaplusListQueryReq) Init() {
+	this.Option = 0
+
+	this.ElementIndex = 0
+
+}
+
+func (this *TCaplusListQueryReq) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("TCaplusListQueryReq Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *TCaplusListQueryReq) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > TCaplusListQueryReqCurrentVersion {
+		cutVer = TCaplusListQueryReqCurrentVersion
+	}
+	// check cut version
+	if cutVer < TCaplusListQueryReqBaseVersion {
+		return errors.New("TCaplusListQueryReq cut version must large than TCaplusListQueryReqBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, this.Option)
+	if err != nil {
+		return errors.New("TCaplusListQueryReq.Option pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.ElementIndex)
+	if err != nil {
+		return errors.New("TCaplusListQueryReq.ElementIndex pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, uint32(len(this.Query))+1)
+	if err != nil {
+		return errors.New("TCaplusListQueryReq.Query string size pack error\n" + err.Error())
+	}
+	err = binary.Write(w, binary.BigEndian, append([]byte(this.Query), 0))
+	if err != nil {
+		return errors.New("TCaplusListQueryReq.Query string content pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, uint32(len(this.Condition))+1)
+	if err != nil {
+		return errors.New("TCaplusListQueryReq.Condition string size pack error\n" + err.Error())
+	}
+	err = binary.Write(w, binary.BigEndian, append([]byte(this.Condition), 0))
+	if err != nil {
+		return errors.New("TCaplusListQueryReq.Condition string content pack error\n" + err.Error())
+	}
+
+	return nil
+}
+
+func (this *TCaplusListQueryReq) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("TCaplusListQueryReq data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *TCaplusListQueryReq) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > TCaplusListQueryReqCurrentVersion {
+		cutVer = TCaplusListQueryReqCurrentVersion
+	}
+	// check version
+	if cutVer < TCaplusListQueryReqBaseVersion {
+		errors.New("TCaplusListQueryReq cut version must large than TCaplusListQueryReqBaseVersion\n")
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.Option)
+	if err != nil {
+		return errors.New("TCaplusListQueryReq.Option unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.ElementIndex)
+	if err != nil {
+		return errors.New("TCaplusListQueryReq.ElementIndex unpack error\n" + err.Error())
+	}
+
+	var QuerySize uint32
+	err = binary.Read(r, binary.BigEndian, &QuerySize)
+	if err != nil {
+		return errors.New("TCaplusListQueryReq.Query string size unpack error\n" + err.Error())
+	}
+
+	QueryBytes := make([]byte, QuerySize)
+	err = binary.Read(r, binary.BigEndian, QueryBytes)
+	if err != nil {
+		return errors.New("TCaplusListQueryReq.Query string content unpack error\n" + err.Error())
+	}
+	this.Query = string(QueryBytes[:len(QueryBytes)-1])
+
+	var ConditionSize uint32
+	err = binary.Read(r, binary.BigEndian, &ConditionSize)
+	if err != nil {
+		return errors.New("TCaplusListQueryReq.Condition string size unpack error\n" + err.Error())
+	}
+
+	ConditionBytes := make([]byte, ConditionSize)
+	err = binary.Read(r, binary.BigEndian, ConditionBytes)
+	if err != nil {
+		return errors.New("TCaplusListQueryReq.Condition string content unpack error\n" + err.Error())
+	}
+	this.Condition = string(ConditionBytes[:len(ConditionBytes)-1])
+
+	return err
+}
+
+const (
+	TCaplusListQueryResBaseVersion    uint32 = 125
+	TCaplusListQueryResCurrentVersion uint32 = 125
+)
+
+// TCaplusListQueryRes
+type TCaplusListQueryRes struct {
+	Result int32 `tdr_field:"Result"`
+
+	ElementIndex int32 `tdr_field:"ElementIndex"`
+
+	ResultInfo *TCaplusListElementSet `tdr_field:"ResultInfo"`
+
+	ArrayItemNum int32 `tdr_field:"ArrayItemNum"`
+
+	ArrayItemIndex []int32 `tdr_field:"ArrayItemIndex" tdr_count:"1024" tdr_refer:"ArrayItemNum"`
+
+	LastAccessTime uint64 `tdr_field:"LastAccessTime"`
+}
+
+func NewTCaplusListQueryRes() *TCaplusListQueryRes {
+	obj := new(TCaplusListQueryRes)
+	obj.Init()
+	return obj
+}
+
+func (this *TCaplusListQueryRes) GetBaseVersion() uint32 {
+	return TCaplusListQueryResBaseVersion
+}
+
+func (this *TCaplusListQueryRes) GetCurrentVersion() uint32 {
+	return TCaplusListQueryResCurrentVersion
+}
+
+func (this *TCaplusListQueryRes) Init() {
+
+	this.ElementIndex = 0
+
+	this.ResultInfo = NewTCaplusListElementSet()
+
+	this.ArrayItemNum = 0
+
+}
+
+func (this *TCaplusListQueryRes) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("TCaplusListQueryRes Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *TCaplusListQueryRes) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > TCaplusListQueryResCurrentVersion {
+		cutVer = TCaplusListQueryResCurrentVersion
+	}
+	// check cut version
+	if cutVer < TCaplusListQueryResBaseVersion {
+		return errors.New("TCaplusListQueryRes cut version must large than TCaplusListQueryResBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, this.Result)
+	if err != nil {
+		return errors.New("TCaplusListQueryRes.Result pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.ElementIndex)
+	if err != nil {
+		return errors.New("TCaplusListQueryRes.ElementIndex pack error\n" + err.Error())
+	}
+
+	err = this.ResultInfo.PackTo(cutVer, w)
+	if err != nil {
+		return errors.New("TCaplusListQueryRes.ResultInfo pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.ArrayItemNum)
+	if err != nil {
+		return errors.New("TCaplusListQueryRes.ArrayItemNum pack error\n" + err.Error())
+	}
+
+	if this.ArrayItemNum < 0 {
+		return errors.New("TCaplusListQueryRes.ArrayItemIndex's refer ArrayItemNum should >= 0")
+	}
+	if this.ArrayItemNum > 1024 {
+		return errors.New("TCaplusListQueryRes.ArrayItemIndex's refer ArrayItemNum should <= count 1024")
+	}
+	if len(this.ArrayItemIndex) < int(this.ArrayItemNum) {
+		return errors.New("TCaplusListQueryRes.ArrayItemIndex's length should > ArrayItemNum")
+	}
+	if this.ArrayItemNum > 0 {
+		referArrayItemIndex := this.ArrayItemIndex[:this.ArrayItemNum]
+		err = binary.Write(w, binary.BigEndian, referArrayItemIndex)
+		if err != nil {
+			return errors.New("TCaplusListQueryRes.ArrayItemIndex pack error\n" + err.Error())
+		}
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.LastAccessTime)
+	if err != nil {
+		return errors.New("TCaplusListQueryRes.LastAccessTime pack error\n" + err.Error())
+	}
+
+	return nil
+}
+
+func (this *TCaplusListQueryRes) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("TCaplusListQueryRes data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *TCaplusListQueryRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > TCaplusListQueryResCurrentVersion {
+		cutVer = TCaplusListQueryResCurrentVersion
+	}
+	// check version
+	if cutVer < TCaplusListQueryResBaseVersion {
+		errors.New("TCaplusListQueryRes cut version must large than TCaplusListQueryResBaseVersion\n")
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.Result)
+	if err != nil {
+		return errors.New("TCaplusListQueryRes.Result unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.ElementIndex)
+	if err != nil {
+		return errors.New("TCaplusListQueryRes.ElementIndex unpack error\n" + err.Error())
+	}
+
+	err = this.ResultInfo.UnpackFrom(cutVer, r)
+	if err != nil {
+		return errors.New("TCaplusListQueryRes.ResultInfo unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.ArrayItemNum)
+	if err != nil {
+		return errors.New("TCaplusListQueryRes.ArrayItemNum unpack error\n" + err.Error())
+	}
+
+	if this.ArrayItemNum < 0 {
+		return errors.New("TCaplusListQueryRes.ArrayItemIndex's refer ArrayItemNum should >= 0")
+	}
+	if this.ArrayItemNum > 1024 {
+		return errors.New("TCaplusListQueryRes.ArrayItemIndex's refer ArrayItemNum should <= count 1024")
+	}
+
+	if this.ArrayItemIndex == nil {
+		this.ArrayItemIndex = make([]int32, int(this.ArrayItemNum))
+	}
+
+	referArrayItemIndex := this.ArrayItemIndex[:this.ArrayItemNum]
+	err = binary.Read(r, binary.BigEndian, referArrayItemIndex)
+	if err != nil {
+		return errors.New("TCaplusListQueryRes.ArrayItemIndex pack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.LastAccessTime)
+	if err != nil {
+		return errors.New("TCaplusListQueryRes.LastAccessTime unpack error\n" + err.Error())
+	}
+
+	return err
+}
+
+const (
 	TCaplusGetReqBaseVersion       uint32 = 1
-	TCaplusGetReqCurrentVersion    uint32 = 109
+	TCaplusGetReqCurrentVersion    uint32 = 125
 	TCaplusGetReqExpireTimeVersion uint32 = 20
+	TCaplusGetReqConditionVersion  uint32 = 125
 )
 
 // TCaplusGetReq
@@ -2190,6 +3644,8 @@ type TCaplusGetReq struct {
 	ValueInfo *TCaplusValueSet_ `tdr_field:"ValueInfo"`
 
 	ExpireTime uint32 `tdr_field:"ExpireTime"`
+
+	Condition string `tdr_field:"Condition"`
 }
 
 func NewTCaplusGetReq() *TCaplusGetReq {
@@ -2247,6 +3703,18 @@ func (this *TCaplusGetReq) PackTo(cutVer uint32, w *tdrcom.Writer) error {
 		}
 
 	}
+	if cutVer >= TCaplusGetReqConditionVersion {
+
+		err = binary.Write(w, binary.BigEndian, uint32(len(this.Condition))+1)
+		if err != nil {
+			return errors.New("TCaplusGetReq.Condition string size pack error\n" + err.Error())
+		}
+		err = binary.Write(w, binary.BigEndian, append([]byte(this.Condition), 0))
+		if err != nil {
+			return errors.New("TCaplusGetReq.Condition string content pack error\n" + err.Error())
+		}
+
+	}
 
 	return nil
 }
@@ -2283,6 +3751,22 @@ func (this *TCaplusGetReq) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
 
 	} else {
 		this.ExpireTime = 0
+
+	}
+	if cutVer >= TCaplusGetReqConditionVersion {
+
+		var ConditionSize uint32
+		err = binary.Read(r, binary.BigEndian, &ConditionSize)
+		if err != nil {
+			return errors.New("TCaplusGetReq.Condition string size unpack error\n" + err.Error())
+		}
+
+		ConditionBytes := make([]byte, ConditionSize)
+		err = binary.Read(r, binary.BigEndian, ConditionBytes)
+		if err != nil {
+			return errors.New("TCaplusGetReq.Condition string content unpack error\n" + err.Error())
+		}
+		this.Condition = string(ConditionBytes[:len(ConditionBytes)-1])
 
 	}
 	return err
@@ -2614,9 +4098,10 @@ func (this *TCaplusSysGetRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error 
 
 const (
 	TCaplusDeleteReqBaseVersion              uint32 = 1
-	TCaplusDeleteReqCurrentVersion           uint32 = 108
+	TCaplusDeleteReqCurrentVersion           uint32 = 125
 	TCaplusDeleteReqFlagVersion              uint32 = 6
 	TCaplusDeleteReqCheckVersiontTypeVersion uint32 = 108
+	TCaplusDeleteReqConditionVersion         uint32 = 125
 )
 
 // TCaplusDeleteReq
@@ -2626,6 +4111,8 @@ type TCaplusDeleteReq struct {
 	Reserve int32 `tdr_field:"Reserve"`
 
 	CheckVersiontType byte `tdr_field:"CheckVersiontType"`
+
+	Condition string `tdr_field:"Condition"`
 }
 
 func NewTCaplusDeleteReq() *TCaplusDeleteReq {
@@ -2690,6 +4177,18 @@ func (this *TCaplusDeleteReq) PackTo(cutVer uint32, w *tdrcom.Writer) error {
 		}
 
 	}
+	if cutVer >= TCaplusDeleteReqConditionVersion {
+
+		err = binary.Write(w, binary.BigEndian, uint32(len(this.Condition))+1)
+		if err != nil {
+			return errors.New("TCaplusDeleteReq.Condition string size pack error\n" + err.Error())
+		}
+		err = binary.Write(w, binary.BigEndian, append([]byte(this.Condition), 0))
+		if err != nil {
+			return errors.New("TCaplusDeleteReq.Condition string content pack error\n" + err.Error())
+		}
+
+	}
 
 	return nil
 }
@@ -2735,6 +4234,22 @@ func (this *TCaplusDeleteReq) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error 
 
 	} else {
 		this.CheckVersiontType = 1
+
+	}
+	if cutVer >= TCaplusDeleteReqConditionVersion {
+
+		var ConditionSize uint32
+		err = binary.Read(r, binary.BigEndian, &ConditionSize)
+		if err != nil {
+			return errors.New("TCaplusDeleteReq.Condition string size unpack error\n" + err.Error())
+		}
+
+		ConditionBytes := make([]byte, ConditionSize)
+		err = binary.Read(r, binary.BigEndian, ConditionBytes)
+		if err != nil {
+			return errors.New("TCaplusDeleteReq.Condition string content unpack error\n" + err.Error())
+		}
+		this.Condition = string(ConditionBytes[:len(ConditionBytes)-1])
 
 	}
 	return err
@@ -3230,9 +4745,10 @@ func (this *SplitTableKeyBuff) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error
 
 const (
 	TCaplusBatchGetReqBaseVersion               uint32 = 1
-	TCaplusBatchGetReqCurrentVersion            uint32 = 91
+	TCaplusBatchGetReqCurrentVersion            uint32 = 125
 	TCaplusBatchGetReqExpireTimeVersion         uint32 = 20
 	TCaplusBatchGetReqSplitTableKeyBuffsVersion uint32 = 91
+	TCaplusBatchGetReqConditionVersion          uint32 = 125
 )
 
 // TCaplusBatchGetReq
@@ -3248,6 +4764,8 @@ type TCaplusBatchGetReq struct {
 	SplitTableKeyBuffs []*SplitTableKeyBuff `tdr_field:"SplitTableKeyBuffs" tdr_count:"1024" tdr_refer:"RecordNum"`
 
 	ValueInfo *TCaplusNameSet `tdr_field:"ValueInfo"`
+
+	Condition string `tdr_field:"Condition"`
 }
 
 func NewTCaplusBatchGetReq() *TCaplusBatchGetReq {
@@ -3362,6 +4880,19 @@ func (this *TCaplusBatchGetReq) PackTo(cutVer uint32, w *tdrcom.Writer) error {
 		return errors.New("TCaplusBatchGetReq.ValueInfo pack error\n" + err.Error())
 	}
 
+	if cutVer >= TCaplusBatchGetReqConditionVersion {
+
+		err = binary.Write(w, binary.BigEndian, uint32(len(this.Condition))+1)
+		if err != nil {
+			return errors.New("TCaplusBatchGetReq.Condition string size pack error\n" + err.Error())
+		}
+		err = binary.Write(w, binary.BigEndian, append([]byte(this.Condition), 0))
+		if err != nil {
+			return errors.New("TCaplusBatchGetReq.Condition string content pack error\n" + err.Error())
+		}
+
+	}
+
 	return nil
 }
 
@@ -3460,6 +4991,22 @@ func (this *TCaplusBatchGetReq) UnpackFrom(cutVer uint32, r *tdrcom.Reader) erro
 		return errors.New("TCaplusBatchGetReq.ValueInfo unpack error\n" + err.Error())
 	}
 
+	if cutVer >= TCaplusBatchGetReqConditionVersion {
+
+		var ConditionSize uint32
+		err = binary.Read(r, binary.BigEndian, &ConditionSize)
+		if err != nil {
+			return errors.New("TCaplusBatchGetReq.Condition string size unpack error\n" + err.Error())
+		}
+
+		ConditionBytes := make([]byte, ConditionSize)
+		err = binary.Read(r, binary.BigEndian, ConditionBytes)
+		if err != nil {
+			return errors.New("TCaplusBatchGetReq.Condition string content unpack error\n" + err.Error())
+		}
+		this.Condition = string(ConditionBytes[:len(ConditionBytes)-1])
+
+	}
 	return err
 }
 
@@ -3669,6 +5216,1983 @@ func (this *TCaplusBatchGetRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader) erro
 	err = binary.Read(r, binary.BigEndian, referBatchValueInfo)
 	if err != nil {
 		return errors.New("TCaplusBatchGetRes.BatchValueInfo pack error\n" + err.Error())
+	}
+
+	return err
+}
+
+const (
+	TCaplusBatchDeleteReqBaseVersion    uint32 = 118
+	TCaplusBatchDeleteReqCurrentVersion uint32 = 118
+)
+
+// TCaplusBatchDeleteReq
+type TCaplusBatchDeleteReq struct {
+	AllowMultiResponses byte `tdr_field:"AllowMultiResponses"`
+
+	Flag byte `tdr_field:"Flag"`
+
+	RecordNum uint32 `tdr_field:"RecordNum"`
+
+	KeyInfo []*TCaplusKeySet `tdr_field:"KeyInfo" tdr_count:"1024" tdr_refer:"RecordNum"`
+
+	CheckVersiontType byte `tdr_field:"CheckVersiontType"`
+
+	SplitTableKeyBuffs []*SplitTableKeyBuff `tdr_field:"SplitTableKeyBuffs" tdr_count:"1024" tdr_refer:"RecordNum"`
+}
+
+func NewTCaplusBatchDeleteReq() *TCaplusBatchDeleteReq {
+	obj := new(TCaplusBatchDeleteReq)
+	obj.Init()
+	return obj
+}
+
+func (this *TCaplusBatchDeleteReq) GetBaseVersion() uint32 {
+	return TCaplusBatchDeleteReqBaseVersion
+}
+
+func (this *TCaplusBatchDeleteReq) GetCurrentVersion() uint32 {
+	return TCaplusBatchDeleteReqCurrentVersion
+}
+
+func (this *TCaplusBatchDeleteReq) Init() {
+	this.AllowMultiResponses = 0
+
+	this.RecordNum = 0
+
+	this.CheckVersiontType = 1
+
+}
+
+func (this *TCaplusBatchDeleteReq) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("TCaplusBatchDeleteReq Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *TCaplusBatchDeleteReq) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > TCaplusBatchDeleteReqCurrentVersion {
+		cutVer = TCaplusBatchDeleteReqCurrentVersion
+	}
+	// check cut version
+	if cutVer < TCaplusBatchDeleteReqBaseVersion {
+		return errors.New("TCaplusBatchDeleteReq cut version must large than TCaplusBatchDeleteReqBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, this.AllowMultiResponses)
+	if err != nil {
+		return errors.New("TCaplusBatchDeleteReq.AllowMultiResponses pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.Flag)
+	if err != nil {
+		return errors.New("TCaplusBatchDeleteReq.Flag pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.RecordNum)
+	if err != nil {
+		return errors.New("TCaplusBatchDeleteReq.RecordNum pack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusBatchDeleteReq.KeyInfo's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusBatchDeleteReq.KeyInfo's refer RecordNum should <= count 1024")
+	}
+	if len(this.KeyInfo) < int(this.RecordNum) {
+		return errors.New("TCaplusBatchDeleteReq.KeyInfo's length should > RecordNum")
+	}
+	if this.RecordNum > 0 {
+		for i := 0; i < int(this.RecordNum); i++ {
+			err = this.KeyInfo[i].PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusBatchDeleteReq.KeyInfo pack error\n" + err.Error())
+			}
+
+		}
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.CheckVersiontType)
+	if err != nil {
+		return errors.New("TCaplusBatchDeleteReq.CheckVersiontType pack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusBatchDeleteReq.SplitTableKeyBuffs's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusBatchDeleteReq.SplitTableKeyBuffs's refer RecordNum should <= count 1024")
+	}
+	if len(this.SplitTableKeyBuffs) < int(this.RecordNum) {
+		return errors.New("TCaplusBatchDeleteReq.SplitTableKeyBuffs's length should > RecordNum")
+	}
+	if this.RecordNum > 0 {
+		for i := 0; i < int(this.RecordNum); i++ {
+			err = this.SplitTableKeyBuffs[i].PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusBatchDeleteReq.SplitTableKeyBuffs pack error\n" + err.Error())
+			}
+
+		}
+	}
+
+	return nil
+}
+
+func (this *TCaplusBatchDeleteReq) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("TCaplusBatchDeleteReq data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *TCaplusBatchDeleteReq) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > TCaplusBatchDeleteReqCurrentVersion {
+		cutVer = TCaplusBatchDeleteReqCurrentVersion
+	}
+	// check version
+	if cutVer < TCaplusBatchDeleteReqBaseVersion {
+		errors.New("TCaplusBatchDeleteReq cut version must large than TCaplusBatchDeleteReqBaseVersion\n")
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.AllowMultiResponses)
+	if err != nil {
+		return errors.New("TCaplusBatchDeleteReq.AllowMultiResponses unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.Flag)
+	if err != nil {
+		return errors.New("TCaplusBatchDeleteReq.Flag unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.RecordNum)
+	if err != nil {
+		return errors.New("TCaplusBatchDeleteReq.RecordNum unpack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusBatchDeleteReq.KeyInfo's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusBatchDeleteReq.KeyInfo's refer RecordNum should <= count 1024")
+	}
+
+	if this.KeyInfo == nil {
+		this.KeyInfo = make([]*TCaplusKeySet, int(this.RecordNum))
+		for i := 0; i < int(this.RecordNum); i++ {
+			this.KeyInfo[i] = NewTCaplusKeySet()
+		}
+	}
+
+	for i := 0; i < int(this.RecordNum); i++ {
+		err = this.KeyInfo[i].UnpackFrom(cutVer, r)
+		if err != nil {
+			return errors.New("TCaplusBatchDeleteReq.KeyInfo unpack error\n" + err.Error())
+		}
+
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.CheckVersiontType)
+	if err != nil {
+		return errors.New("TCaplusBatchDeleteReq.CheckVersiontType unpack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusBatchDeleteReq.SplitTableKeyBuffs's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusBatchDeleteReq.SplitTableKeyBuffs's refer RecordNum should <= count 1024")
+	}
+
+	if this.SplitTableKeyBuffs == nil {
+		this.SplitTableKeyBuffs = make([]*SplitTableKeyBuff, int(this.RecordNum))
+		for i := 0; i < int(this.RecordNum); i++ {
+			this.SplitTableKeyBuffs[i] = NewSplitTableKeyBuff()
+		}
+	}
+
+	for i := 0; i < int(this.RecordNum); i++ {
+		err = this.SplitTableKeyBuffs[i].UnpackFrom(cutVer, r)
+		if err != nil {
+			return errors.New("TCaplusBatchDeleteReq.SplitTableKeyBuffs unpack error\n" + err.Error())
+		}
+
+	}
+
+	return err
+}
+
+const (
+	TCaplusBatchDeleteResBaseVersion    uint32 = 118
+	TCaplusBatchDeleteResCurrentVersion uint32 = 118
+)
+
+// TCaplusBatchDeleteRes
+type TCaplusBatchDeleteRes struct {
+	Result int32 `tdr_field:"Result"`
+
+	TotalNum uint32 `tdr_field:"TotalNum"`
+
+	RecordNum uint32 `tdr_field:"RecordNum"`
+
+	LeftNum uint32 `tdr_field:"LeftNum"`
+
+	BatchValueLen int32 `tdr_field:"BatchValueLen"`
+
+	RecordResult []int32 `tdr_field:"RecordResult" tdr_count:"1024" tdr_refer:"RecordNum"`
+
+	BatchValueInfo []byte `tdr_field:"BatchValueInfo" tdr_count:"10300000" tdr_refer:"BatchValueLen"`
+}
+
+func NewTCaplusBatchDeleteRes() *TCaplusBatchDeleteRes {
+	obj := new(TCaplusBatchDeleteRes)
+	obj.Init()
+	return obj
+}
+
+func (this *TCaplusBatchDeleteRes) GetBaseVersion() uint32 {
+	return TCaplusBatchDeleteResBaseVersion
+}
+
+func (this *TCaplusBatchDeleteRes) GetCurrentVersion() uint32 {
+	return TCaplusBatchDeleteResCurrentVersion
+}
+
+func (this *TCaplusBatchDeleteRes) Init() {
+
+	this.TotalNum = 0
+
+	this.RecordNum = 0
+
+	this.LeftNum = 0
+
+	this.BatchValueLen = 0
+
+}
+
+func (this *TCaplusBatchDeleteRes) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("TCaplusBatchDeleteRes Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *TCaplusBatchDeleteRes) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > TCaplusBatchDeleteResCurrentVersion {
+		cutVer = TCaplusBatchDeleteResCurrentVersion
+	}
+	// check cut version
+	if cutVer < TCaplusBatchDeleteResBaseVersion {
+		return errors.New("TCaplusBatchDeleteRes cut version must large than TCaplusBatchDeleteResBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, this.Result)
+	if err != nil {
+		return errors.New("TCaplusBatchDeleteRes.Result pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.TotalNum)
+	if err != nil {
+		return errors.New("TCaplusBatchDeleteRes.TotalNum pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.RecordNum)
+	if err != nil {
+		return errors.New("TCaplusBatchDeleteRes.RecordNum pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.LeftNum)
+	if err != nil {
+		return errors.New("TCaplusBatchDeleteRes.LeftNum pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.BatchValueLen)
+	if err != nil {
+		return errors.New("TCaplusBatchDeleteRes.BatchValueLen pack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusBatchDeleteRes.RecordResult's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusBatchDeleteRes.RecordResult's refer RecordNum should <= count 1024")
+	}
+	if len(this.RecordResult) < int(this.RecordNum) {
+		return errors.New("TCaplusBatchDeleteRes.RecordResult's length should > RecordNum")
+	}
+	if this.RecordNum > 0 {
+		referRecordResult := this.RecordResult[:this.RecordNum]
+		err = binary.Write(w, binary.BigEndian, referRecordResult)
+		if err != nil {
+			return errors.New("TCaplusBatchDeleteRes.RecordResult pack error\n" + err.Error())
+		}
+	}
+
+	if this.BatchValueLen < 0 {
+		return errors.New("TCaplusBatchDeleteRes.BatchValueInfo's refer BatchValueLen should >= 0")
+	}
+	if this.BatchValueLen > 10300000 {
+		return errors.New("TCaplusBatchDeleteRes.BatchValueInfo's refer BatchValueLen should <= count 10300000")
+	}
+	if len(this.BatchValueInfo) < int(this.BatchValueLen) {
+		return errors.New("TCaplusBatchDeleteRes.BatchValueInfo's length should > BatchValueLen")
+	}
+	if this.BatchValueLen > 0 {
+		referBatchValueInfo := this.BatchValueInfo[:this.BatchValueLen]
+		err = binary.Write(w, binary.BigEndian, referBatchValueInfo)
+		if err != nil {
+			return errors.New("TCaplusBatchDeleteRes.BatchValueInfo pack error\n" + err.Error())
+		}
+	}
+
+	return nil
+}
+
+func (this *TCaplusBatchDeleteRes) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("TCaplusBatchDeleteRes data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *TCaplusBatchDeleteRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > TCaplusBatchDeleteResCurrentVersion {
+		cutVer = TCaplusBatchDeleteResCurrentVersion
+	}
+	// check version
+	if cutVer < TCaplusBatchDeleteResBaseVersion {
+		errors.New("TCaplusBatchDeleteRes cut version must large than TCaplusBatchDeleteResBaseVersion\n")
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.Result)
+	if err != nil {
+		return errors.New("TCaplusBatchDeleteRes.Result unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.TotalNum)
+	if err != nil {
+		return errors.New("TCaplusBatchDeleteRes.TotalNum unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.RecordNum)
+	if err != nil {
+		return errors.New("TCaplusBatchDeleteRes.RecordNum unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.LeftNum)
+	if err != nil {
+		return errors.New("TCaplusBatchDeleteRes.LeftNum unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.BatchValueLen)
+	if err != nil {
+		return errors.New("TCaplusBatchDeleteRes.BatchValueLen unpack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusBatchDeleteRes.RecordResult's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusBatchDeleteRes.RecordResult's refer RecordNum should <= count 1024")
+	}
+
+	if this.RecordResult == nil {
+		this.RecordResult = make([]int32, int(this.RecordNum))
+	}
+
+	referRecordResult := this.RecordResult[:this.RecordNum]
+	err = binary.Read(r, binary.BigEndian, referRecordResult)
+	if err != nil {
+		return errors.New("TCaplusBatchDeleteRes.RecordResult pack error\n" + err.Error())
+	}
+
+	if this.BatchValueLen < 0 {
+		return errors.New("TCaplusBatchDeleteRes.BatchValueInfo's refer BatchValueLen should >= 0")
+	}
+	if this.BatchValueLen > 10300000 {
+		return errors.New("TCaplusBatchDeleteRes.BatchValueInfo's refer BatchValueLen should <= count 10300000")
+	}
+
+	if this.BatchValueInfo == nil {
+		this.BatchValueInfo = make([]byte, int(this.BatchValueLen))
+	}
+
+	referBatchValueInfo := this.BatchValueInfo[:this.BatchValueLen]
+	err = binary.Read(r, binary.BigEndian, referBatchValueInfo)
+	if err != nil {
+		return errors.New("TCaplusBatchDeleteRes.BatchValueInfo pack error\n" + err.Error())
+	}
+
+	return err
+}
+
+const (
+	TCaplusBatchReplaceReqBaseVersion    uint32 = 118
+	TCaplusBatchReplaceReqCurrentVersion uint32 = 118
+)
+
+// TCaplusBatchReplaceReq
+type TCaplusBatchReplaceReq struct {
+	AllowMultiResponses byte `tdr_field:"AllowMultiResponses"`
+
+	Flag byte `tdr_field:"Flag"`
+
+	RecordNum uint32 `tdr_field:"RecordNum"`
+
+	KeyInfo []*TCaplusKeySet `tdr_field:"KeyInfo" tdr_count:"1024" tdr_refer:"RecordNum"`
+
+	CheckVersiontType byte `tdr_field:"CheckVersiontType"`
+
+	FieldName *TCaplusNameSet `tdr_field:"FieldName"`
+
+	ValueIndex []*FieldIndex `tdr_field:"ValueIndex" tdr_count:"1024" tdr_refer:"RecordNum"`
+
+	ValueLen int32 `tdr_field:"ValueLen"`
+
+	ValueInfo []byte `tdr_field:"ValueInfo" tdr_count:"10300000" tdr_refer:"ValueLen"`
+
+	SplitTableKeyBuffs []*SplitTableKeyBuff `tdr_field:"SplitTableKeyBuffs" tdr_count:"1024" tdr_refer:"RecordNum"`
+}
+
+func NewTCaplusBatchReplaceReq() *TCaplusBatchReplaceReq {
+	obj := new(TCaplusBatchReplaceReq)
+	obj.Init()
+	return obj
+}
+
+func (this *TCaplusBatchReplaceReq) GetBaseVersion() uint32 {
+	return TCaplusBatchReplaceReqBaseVersion
+}
+
+func (this *TCaplusBatchReplaceReq) GetCurrentVersion() uint32 {
+	return TCaplusBatchReplaceReqCurrentVersion
+}
+
+func (this *TCaplusBatchReplaceReq) Init() {
+	this.AllowMultiResponses = 0
+
+	this.RecordNum = 0
+
+	this.CheckVersiontType = 1
+
+	this.FieldName = NewTCaplusNameSet()
+
+	this.ValueLen = 0
+
+}
+
+func (this *TCaplusBatchReplaceReq) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("TCaplusBatchReplaceReq Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *TCaplusBatchReplaceReq) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > TCaplusBatchReplaceReqCurrentVersion {
+		cutVer = TCaplusBatchReplaceReqCurrentVersion
+	}
+	// check cut version
+	if cutVer < TCaplusBatchReplaceReqBaseVersion {
+		return errors.New("TCaplusBatchReplaceReq cut version must large than TCaplusBatchReplaceReqBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, this.AllowMultiResponses)
+	if err != nil {
+		return errors.New("TCaplusBatchReplaceReq.AllowMultiResponses pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.Flag)
+	if err != nil {
+		return errors.New("TCaplusBatchReplaceReq.Flag pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.RecordNum)
+	if err != nil {
+		return errors.New("TCaplusBatchReplaceReq.RecordNum pack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusBatchReplaceReq.KeyInfo's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusBatchReplaceReq.KeyInfo's refer RecordNum should <= count 1024")
+	}
+	if len(this.KeyInfo) < int(this.RecordNum) {
+		return errors.New("TCaplusBatchReplaceReq.KeyInfo's length should > RecordNum")
+	}
+	if this.RecordNum > 0 {
+		for i := 0; i < int(this.RecordNum); i++ {
+			err = this.KeyInfo[i].PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusBatchReplaceReq.KeyInfo pack error\n" + err.Error())
+			}
+
+		}
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.CheckVersiontType)
+	if err != nil {
+		return errors.New("TCaplusBatchReplaceReq.CheckVersiontType pack error\n" + err.Error())
+	}
+
+	err = this.FieldName.PackTo(cutVer, w)
+	if err != nil {
+		return errors.New("TCaplusBatchReplaceReq.FieldName pack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusBatchReplaceReq.ValueIndex's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusBatchReplaceReq.ValueIndex's refer RecordNum should <= count 1024")
+	}
+	if len(this.ValueIndex) < int(this.RecordNum) {
+		return errors.New("TCaplusBatchReplaceReq.ValueIndex's length should > RecordNum")
+	}
+	if this.RecordNum > 0 {
+		for i := 0; i < int(this.RecordNum); i++ {
+			err = this.ValueIndex[i].PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusBatchReplaceReq.ValueIndex pack error\n" + err.Error())
+			}
+
+		}
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.ValueLen)
+	if err != nil {
+		return errors.New("TCaplusBatchReplaceReq.ValueLen pack error\n" + err.Error())
+	}
+
+	if this.ValueLen < 0 {
+		return errors.New("TCaplusBatchReplaceReq.ValueInfo's refer ValueLen should >= 0")
+	}
+	if this.ValueLen > 10300000 {
+		return errors.New("TCaplusBatchReplaceReq.ValueInfo's refer ValueLen should <= count 10300000")
+	}
+	if len(this.ValueInfo) < int(this.ValueLen) {
+		return errors.New("TCaplusBatchReplaceReq.ValueInfo's length should > ValueLen")
+	}
+	if this.ValueLen > 0 {
+		referValueInfo := this.ValueInfo[:this.ValueLen]
+		err = binary.Write(w, binary.BigEndian, referValueInfo)
+		if err != nil {
+			return errors.New("TCaplusBatchReplaceReq.ValueInfo pack error\n" + err.Error())
+		}
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusBatchReplaceReq.SplitTableKeyBuffs's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusBatchReplaceReq.SplitTableKeyBuffs's refer RecordNum should <= count 1024")
+	}
+	if len(this.SplitTableKeyBuffs) < int(this.RecordNum) {
+		return errors.New("TCaplusBatchReplaceReq.SplitTableKeyBuffs's length should > RecordNum")
+	}
+	if this.RecordNum > 0 {
+		for i := 0; i < int(this.RecordNum); i++ {
+			err = this.SplitTableKeyBuffs[i].PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusBatchReplaceReq.SplitTableKeyBuffs pack error\n" + err.Error())
+			}
+
+		}
+	}
+
+	return nil
+}
+
+func (this *TCaplusBatchReplaceReq) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("TCaplusBatchReplaceReq data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *TCaplusBatchReplaceReq) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > TCaplusBatchReplaceReqCurrentVersion {
+		cutVer = TCaplusBatchReplaceReqCurrentVersion
+	}
+	// check version
+	if cutVer < TCaplusBatchReplaceReqBaseVersion {
+		errors.New("TCaplusBatchReplaceReq cut version must large than TCaplusBatchReplaceReqBaseVersion\n")
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.AllowMultiResponses)
+	if err != nil {
+		return errors.New("TCaplusBatchReplaceReq.AllowMultiResponses unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.Flag)
+	if err != nil {
+		return errors.New("TCaplusBatchReplaceReq.Flag unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.RecordNum)
+	if err != nil {
+		return errors.New("TCaplusBatchReplaceReq.RecordNum unpack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusBatchReplaceReq.KeyInfo's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusBatchReplaceReq.KeyInfo's refer RecordNum should <= count 1024")
+	}
+
+	if this.KeyInfo == nil {
+		this.KeyInfo = make([]*TCaplusKeySet, int(this.RecordNum))
+		for i := 0; i < int(this.RecordNum); i++ {
+			this.KeyInfo[i] = NewTCaplusKeySet()
+		}
+	}
+
+	for i := 0; i < int(this.RecordNum); i++ {
+		err = this.KeyInfo[i].UnpackFrom(cutVer, r)
+		if err != nil {
+			return errors.New("TCaplusBatchReplaceReq.KeyInfo unpack error\n" + err.Error())
+		}
+
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.CheckVersiontType)
+	if err != nil {
+		return errors.New("TCaplusBatchReplaceReq.CheckVersiontType unpack error\n" + err.Error())
+	}
+
+	err = this.FieldName.UnpackFrom(cutVer, r)
+	if err != nil {
+		return errors.New("TCaplusBatchReplaceReq.FieldName unpack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusBatchReplaceReq.ValueIndex's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusBatchReplaceReq.ValueIndex's refer RecordNum should <= count 1024")
+	}
+
+	if this.ValueIndex == nil {
+		this.ValueIndex = make([]*FieldIndex, int(this.RecordNum))
+		for i := 0; i < int(this.RecordNum); i++ {
+			this.ValueIndex[i] = NewFieldIndex()
+		}
+	}
+
+	for i := 0; i < int(this.RecordNum); i++ {
+		err = this.ValueIndex[i].UnpackFrom(cutVer, r)
+		if err != nil {
+			return errors.New("TCaplusBatchReplaceReq.ValueIndex unpack error\n" + err.Error())
+		}
+
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.ValueLen)
+	if err != nil {
+		return errors.New("TCaplusBatchReplaceReq.ValueLen unpack error\n" + err.Error())
+	}
+
+	if this.ValueLen < 0 {
+		return errors.New("TCaplusBatchReplaceReq.ValueInfo's refer ValueLen should >= 0")
+	}
+	if this.ValueLen > 10300000 {
+		return errors.New("TCaplusBatchReplaceReq.ValueInfo's refer ValueLen should <= count 10300000")
+	}
+
+	if this.ValueInfo == nil {
+		this.ValueInfo = make([]byte, int(this.ValueLen))
+	}
+
+	referValueInfo := this.ValueInfo[:this.ValueLen]
+	err = binary.Read(r, binary.BigEndian, referValueInfo)
+	if err != nil {
+		return errors.New("TCaplusBatchReplaceReq.ValueInfo pack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusBatchReplaceReq.SplitTableKeyBuffs's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusBatchReplaceReq.SplitTableKeyBuffs's refer RecordNum should <= count 1024")
+	}
+
+	if this.SplitTableKeyBuffs == nil {
+		this.SplitTableKeyBuffs = make([]*SplitTableKeyBuff, int(this.RecordNum))
+		for i := 0; i < int(this.RecordNum); i++ {
+			this.SplitTableKeyBuffs[i] = NewSplitTableKeyBuff()
+		}
+	}
+
+	for i := 0; i < int(this.RecordNum); i++ {
+		err = this.SplitTableKeyBuffs[i].UnpackFrom(cutVer, r)
+		if err != nil {
+			return errors.New("TCaplusBatchReplaceReq.SplitTableKeyBuffs unpack error\n" + err.Error())
+		}
+
+	}
+
+	return err
+}
+
+const (
+	TCaplusBatchReplaceResBaseVersion    uint32 = 118
+	TCaplusBatchReplaceResCurrentVersion uint32 = 118
+)
+
+// TCaplusBatchReplaceRes
+type TCaplusBatchReplaceRes struct {
+	Result int32 `tdr_field:"Result"`
+
+	TotalNum uint32 `tdr_field:"TotalNum"`
+
+	RecordNum uint32 `tdr_field:"RecordNum"`
+
+	LeftNum uint32 `tdr_field:"LeftNum"`
+
+	BatchValueLen int32 `tdr_field:"BatchValueLen"`
+
+	RecordResult []int32 `tdr_field:"RecordResult" tdr_count:"1024" tdr_refer:"RecordNum"`
+
+	BatchValueInfo []byte `tdr_field:"BatchValueInfo" tdr_count:"10300000" tdr_refer:"BatchValueLen"`
+}
+
+func NewTCaplusBatchReplaceRes() *TCaplusBatchReplaceRes {
+	obj := new(TCaplusBatchReplaceRes)
+	obj.Init()
+	return obj
+}
+
+func (this *TCaplusBatchReplaceRes) GetBaseVersion() uint32 {
+	return TCaplusBatchReplaceResBaseVersion
+}
+
+func (this *TCaplusBatchReplaceRes) GetCurrentVersion() uint32 {
+	return TCaplusBatchReplaceResCurrentVersion
+}
+
+func (this *TCaplusBatchReplaceRes) Init() {
+
+	this.TotalNum = 0
+
+	this.RecordNum = 0
+
+	this.LeftNum = 0
+
+	this.BatchValueLen = 0
+
+}
+
+func (this *TCaplusBatchReplaceRes) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("TCaplusBatchReplaceRes Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *TCaplusBatchReplaceRes) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > TCaplusBatchReplaceResCurrentVersion {
+		cutVer = TCaplusBatchReplaceResCurrentVersion
+	}
+	// check cut version
+	if cutVer < TCaplusBatchReplaceResBaseVersion {
+		return errors.New("TCaplusBatchReplaceRes cut version must large than TCaplusBatchReplaceResBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, this.Result)
+	if err != nil {
+		return errors.New("TCaplusBatchReplaceRes.Result pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.TotalNum)
+	if err != nil {
+		return errors.New("TCaplusBatchReplaceRes.TotalNum pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.RecordNum)
+	if err != nil {
+		return errors.New("TCaplusBatchReplaceRes.RecordNum pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.LeftNum)
+	if err != nil {
+		return errors.New("TCaplusBatchReplaceRes.LeftNum pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.BatchValueLen)
+	if err != nil {
+		return errors.New("TCaplusBatchReplaceRes.BatchValueLen pack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusBatchReplaceRes.RecordResult's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusBatchReplaceRes.RecordResult's refer RecordNum should <= count 1024")
+	}
+	if len(this.RecordResult) < int(this.RecordNum) {
+		return errors.New("TCaplusBatchReplaceRes.RecordResult's length should > RecordNum")
+	}
+	if this.RecordNum > 0 {
+		referRecordResult := this.RecordResult[:this.RecordNum]
+		err = binary.Write(w, binary.BigEndian, referRecordResult)
+		if err != nil {
+			return errors.New("TCaplusBatchReplaceRes.RecordResult pack error\n" + err.Error())
+		}
+	}
+
+	if this.BatchValueLen < 0 {
+		return errors.New("TCaplusBatchReplaceRes.BatchValueInfo's refer BatchValueLen should >= 0")
+	}
+	if this.BatchValueLen > 10300000 {
+		return errors.New("TCaplusBatchReplaceRes.BatchValueInfo's refer BatchValueLen should <= count 10300000")
+	}
+	if len(this.BatchValueInfo) < int(this.BatchValueLen) {
+		return errors.New("TCaplusBatchReplaceRes.BatchValueInfo's length should > BatchValueLen")
+	}
+	if this.BatchValueLen > 0 {
+		referBatchValueInfo := this.BatchValueInfo[:this.BatchValueLen]
+		err = binary.Write(w, binary.BigEndian, referBatchValueInfo)
+		if err != nil {
+			return errors.New("TCaplusBatchReplaceRes.BatchValueInfo pack error\n" + err.Error())
+		}
+	}
+
+	return nil
+}
+
+func (this *TCaplusBatchReplaceRes) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("TCaplusBatchReplaceRes data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *TCaplusBatchReplaceRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > TCaplusBatchReplaceResCurrentVersion {
+		cutVer = TCaplusBatchReplaceResCurrentVersion
+	}
+	// check version
+	if cutVer < TCaplusBatchReplaceResBaseVersion {
+		errors.New("TCaplusBatchReplaceRes cut version must large than TCaplusBatchReplaceResBaseVersion\n")
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.Result)
+	if err != nil {
+		return errors.New("TCaplusBatchReplaceRes.Result unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.TotalNum)
+	if err != nil {
+		return errors.New("TCaplusBatchReplaceRes.TotalNum unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.RecordNum)
+	if err != nil {
+		return errors.New("TCaplusBatchReplaceRes.RecordNum unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.LeftNum)
+	if err != nil {
+		return errors.New("TCaplusBatchReplaceRes.LeftNum unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.BatchValueLen)
+	if err != nil {
+		return errors.New("TCaplusBatchReplaceRes.BatchValueLen unpack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusBatchReplaceRes.RecordResult's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusBatchReplaceRes.RecordResult's refer RecordNum should <= count 1024")
+	}
+
+	if this.RecordResult == nil {
+		this.RecordResult = make([]int32, int(this.RecordNum))
+	}
+
+	referRecordResult := this.RecordResult[:this.RecordNum]
+	err = binary.Read(r, binary.BigEndian, referRecordResult)
+	if err != nil {
+		return errors.New("TCaplusBatchReplaceRes.RecordResult pack error\n" + err.Error())
+	}
+
+	if this.BatchValueLen < 0 {
+		return errors.New("TCaplusBatchReplaceRes.BatchValueInfo's refer BatchValueLen should >= 0")
+	}
+	if this.BatchValueLen > 10300000 {
+		return errors.New("TCaplusBatchReplaceRes.BatchValueInfo's refer BatchValueLen should <= count 10300000")
+	}
+
+	if this.BatchValueInfo == nil {
+		this.BatchValueInfo = make([]byte, int(this.BatchValueLen))
+	}
+
+	referBatchValueInfo := this.BatchValueInfo[:this.BatchValueLen]
+	err = binary.Read(r, binary.BigEndian, referBatchValueInfo)
+	if err != nil {
+		return errors.New("TCaplusBatchReplaceRes.BatchValueInfo pack error\n" + err.Error())
+	}
+
+	return err
+}
+
+const (
+	TCaplusBatchUpdateReqBaseVersion    uint32 = 118
+	TCaplusBatchUpdateReqCurrentVersion uint32 = 118
+)
+
+// TCaplusBatchUpdateReq
+type TCaplusBatchUpdateReq struct {
+	AllowMultiResponses byte `tdr_field:"AllowMultiResponses"`
+
+	Flag byte `tdr_field:"Flag"`
+
+	RecordNum uint32 `tdr_field:"RecordNum"`
+
+	KeyInfo []*TCaplusKeySet `tdr_field:"KeyInfo" tdr_count:"1024" tdr_refer:"RecordNum"`
+
+	CheckVersiontType byte `tdr_field:"CheckVersiontType"`
+
+	FieldName *TCaplusNameSet `tdr_field:"FieldName"`
+
+	ValueIndex []*FieldIndex `tdr_field:"ValueIndex" tdr_count:"1024" tdr_refer:"RecordNum"`
+
+	ValueLen int32 `tdr_field:"ValueLen"`
+
+	ValueInfo []byte `tdr_field:"ValueInfo" tdr_count:"10300000" tdr_refer:"ValueLen"`
+
+	SplitTableKeyBuffs []*SplitTableKeyBuff `tdr_field:"SplitTableKeyBuffs" tdr_count:"1024" tdr_refer:"RecordNum"`
+}
+
+func NewTCaplusBatchUpdateReq() *TCaplusBatchUpdateReq {
+	obj := new(TCaplusBatchUpdateReq)
+	obj.Init()
+	return obj
+}
+
+func (this *TCaplusBatchUpdateReq) GetBaseVersion() uint32 {
+	return TCaplusBatchUpdateReqBaseVersion
+}
+
+func (this *TCaplusBatchUpdateReq) GetCurrentVersion() uint32 {
+	return TCaplusBatchUpdateReqCurrentVersion
+}
+
+func (this *TCaplusBatchUpdateReq) Init() {
+	this.AllowMultiResponses = 0
+
+	this.RecordNum = 0
+
+	this.CheckVersiontType = 1
+
+	this.FieldName = NewTCaplusNameSet()
+
+	this.ValueLen = 0
+
+}
+
+func (this *TCaplusBatchUpdateReq) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("TCaplusBatchUpdateReq Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *TCaplusBatchUpdateReq) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > TCaplusBatchUpdateReqCurrentVersion {
+		cutVer = TCaplusBatchUpdateReqCurrentVersion
+	}
+	// check cut version
+	if cutVer < TCaplusBatchUpdateReqBaseVersion {
+		return errors.New("TCaplusBatchUpdateReq cut version must large than TCaplusBatchUpdateReqBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, this.AllowMultiResponses)
+	if err != nil {
+		return errors.New("TCaplusBatchUpdateReq.AllowMultiResponses pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.Flag)
+	if err != nil {
+		return errors.New("TCaplusBatchUpdateReq.Flag pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.RecordNum)
+	if err != nil {
+		return errors.New("TCaplusBatchUpdateReq.RecordNum pack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusBatchUpdateReq.KeyInfo's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusBatchUpdateReq.KeyInfo's refer RecordNum should <= count 1024")
+	}
+	if len(this.KeyInfo) < int(this.RecordNum) {
+		return errors.New("TCaplusBatchUpdateReq.KeyInfo's length should > RecordNum")
+	}
+	if this.RecordNum > 0 {
+		for i := 0; i < int(this.RecordNum); i++ {
+			err = this.KeyInfo[i].PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusBatchUpdateReq.KeyInfo pack error\n" + err.Error())
+			}
+
+		}
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.CheckVersiontType)
+	if err != nil {
+		return errors.New("TCaplusBatchUpdateReq.CheckVersiontType pack error\n" + err.Error())
+	}
+
+	err = this.FieldName.PackTo(cutVer, w)
+	if err != nil {
+		return errors.New("TCaplusBatchUpdateReq.FieldName pack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusBatchUpdateReq.ValueIndex's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusBatchUpdateReq.ValueIndex's refer RecordNum should <= count 1024")
+	}
+	if len(this.ValueIndex) < int(this.RecordNum) {
+		return errors.New("TCaplusBatchUpdateReq.ValueIndex's length should > RecordNum")
+	}
+	if this.RecordNum > 0 {
+		for i := 0; i < int(this.RecordNum); i++ {
+			err = this.ValueIndex[i].PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusBatchUpdateReq.ValueIndex pack error\n" + err.Error())
+			}
+
+		}
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.ValueLen)
+	if err != nil {
+		return errors.New("TCaplusBatchUpdateReq.ValueLen pack error\n" + err.Error())
+	}
+
+	if this.ValueLen < 0 {
+		return errors.New("TCaplusBatchUpdateReq.ValueInfo's refer ValueLen should >= 0")
+	}
+	if this.ValueLen > 10300000 {
+		return errors.New("TCaplusBatchUpdateReq.ValueInfo's refer ValueLen should <= count 10300000")
+	}
+	if len(this.ValueInfo) < int(this.ValueLen) {
+		return errors.New("TCaplusBatchUpdateReq.ValueInfo's length should > ValueLen")
+	}
+	if this.ValueLen > 0 {
+		referValueInfo := this.ValueInfo[:this.ValueLen]
+		err = binary.Write(w, binary.BigEndian, referValueInfo)
+		if err != nil {
+			return errors.New("TCaplusBatchUpdateReq.ValueInfo pack error\n" + err.Error())
+		}
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusBatchUpdateReq.SplitTableKeyBuffs's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusBatchUpdateReq.SplitTableKeyBuffs's refer RecordNum should <= count 1024")
+	}
+	if len(this.SplitTableKeyBuffs) < int(this.RecordNum) {
+		return errors.New("TCaplusBatchUpdateReq.SplitTableKeyBuffs's length should > RecordNum")
+	}
+	if this.RecordNum > 0 {
+		for i := 0; i < int(this.RecordNum); i++ {
+			err = this.SplitTableKeyBuffs[i].PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusBatchUpdateReq.SplitTableKeyBuffs pack error\n" + err.Error())
+			}
+
+		}
+	}
+
+	return nil
+}
+
+func (this *TCaplusBatchUpdateReq) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("TCaplusBatchUpdateReq data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *TCaplusBatchUpdateReq) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > TCaplusBatchUpdateReqCurrentVersion {
+		cutVer = TCaplusBatchUpdateReqCurrentVersion
+	}
+	// check version
+	if cutVer < TCaplusBatchUpdateReqBaseVersion {
+		errors.New("TCaplusBatchUpdateReq cut version must large than TCaplusBatchUpdateReqBaseVersion\n")
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.AllowMultiResponses)
+	if err != nil {
+		return errors.New("TCaplusBatchUpdateReq.AllowMultiResponses unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.Flag)
+	if err != nil {
+		return errors.New("TCaplusBatchUpdateReq.Flag unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.RecordNum)
+	if err != nil {
+		return errors.New("TCaplusBatchUpdateReq.RecordNum unpack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusBatchUpdateReq.KeyInfo's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusBatchUpdateReq.KeyInfo's refer RecordNum should <= count 1024")
+	}
+
+	if this.KeyInfo == nil {
+		this.KeyInfo = make([]*TCaplusKeySet, int(this.RecordNum))
+		for i := 0; i < int(this.RecordNum); i++ {
+			this.KeyInfo[i] = NewTCaplusKeySet()
+		}
+	}
+
+	for i := 0; i < int(this.RecordNum); i++ {
+		err = this.KeyInfo[i].UnpackFrom(cutVer, r)
+		if err != nil {
+			return errors.New("TCaplusBatchUpdateReq.KeyInfo unpack error\n" + err.Error())
+		}
+
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.CheckVersiontType)
+	if err != nil {
+		return errors.New("TCaplusBatchUpdateReq.CheckVersiontType unpack error\n" + err.Error())
+	}
+
+	err = this.FieldName.UnpackFrom(cutVer, r)
+	if err != nil {
+		return errors.New("TCaplusBatchUpdateReq.FieldName unpack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusBatchUpdateReq.ValueIndex's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusBatchUpdateReq.ValueIndex's refer RecordNum should <= count 1024")
+	}
+
+	if this.ValueIndex == nil {
+		this.ValueIndex = make([]*FieldIndex, int(this.RecordNum))
+		for i := 0; i < int(this.RecordNum); i++ {
+			this.ValueIndex[i] = NewFieldIndex()
+		}
+	}
+
+	for i := 0; i < int(this.RecordNum); i++ {
+		err = this.ValueIndex[i].UnpackFrom(cutVer, r)
+		if err != nil {
+			return errors.New("TCaplusBatchUpdateReq.ValueIndex unpack error\n" + err.Error())
+		}
+
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.ValueLen)
+	if err != nil {
+		return errors.New("TCaplusBatchUpdateReq.ValueLen unpack error\n" + err.Error())
+	}
+
+	if this.ValueLen < 0 {
+		return errors.New("TCaplusBatchUpdateReq.ValueInfo's refer ValueLen should >= 0")
+	}
+	if this.ValueLen > 10300000 {
+		return errors.New("TCaplusBatchUpdateReq.ValueInfo's refer ValueLen should <= count 10300000")
+	}
+
+	if this.ValueInfo == nil {
+		this.ValueInfo = make([]byte, int(this.ValueLen))
+	}
+
+	referValueInfo := this.ValueInfo[:this.ValueLen]
+	err = binary.Read(r, binary.BigEndian, referValueInfo)
+	if err != nil {
+		return errors.New("TCaplusBatchUpdateReq.ValueInfo pack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusBatchUpdateReq.SplitTableKeyBuffs's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusBatchUpdateReq.SplitTableKeyBuffs's refer RecordNum should <= count 1024")
+	}
+
+	if this.SplitTableKeyBuffs == nil {
+		this.SplitTableKeyBuffs = make([]*SplitTableKeyBuff, int(this.RecordNum))
+		for i := 0; i < int(this.RecordNum); i++ {
+			this.SplitTableKeyBuffs[i] = NewSplitTableKeyBuff()
+		}
+	}
+
+	for i := 0; i < int(this.RecordNum); i++ {
+		err = this.SplitTableKeyBuffs[i].UnpackFrom(cutVer, r)
+		if err != nil {
+			return errors.New("TCaplusBatchUpdateReq.SplitTableKeyBuffs unpack error\n" + err.Error())
+		}
+
+	}
+
+	return err
+}
+
+const (
+	TCaplusBatchUpdateResBaseVersion    uint32 = 118
+	TCaplusBatchUpdateResCurrentVersion uint32 = 118
+)
+
+// TCaplusBatchUpdateRes
+type TCaplusBatchUpdateRes struct {
+	Result int32 `tdr_field:"Result"`
+
+	TotalNum uint32 `tdr_field:"TotalNum"`
+
+	RecordNum uint32 `tdr_field:"RecordNum"`
+
+	LeftNum uint32 `tdr_field:"LeftNum"`
+
+	BatchValueLen int32 `tdr_field:"BatchValueLen"`
+
+	RecordResult []int32 `tdr_field:"RecordResult" tdr_count:"1024" tdr_refer:"RecordNum"`
+
+	BatchValueInfo []byte `tdr_field:"BatchValueInfo" tdr_count:"10300000" tdr_refer:"BatchValueLen"`
+}
+
+func NewTCaplusBatchUpdateRes() *TCaplusBatchUpdateRes {
+	obj := new(TCaplusBatchUpdateRes)
+	obj.Init()
+	return obj
+}
+
+func (this *TCaplusBatchUpdateRes) GetBaseVersion() uint32 {
+	return TCaplusBatchUpdateResBaseVersion
+}
+
+func (this *TCaplusBatchUpdateRes) GetCurrentVersion() uint32 {
+	return TCaplusBatchUpdateResCurrentVersion
+}
+
+func (this *TCaplusBatchUpdateRes) Init() {
+
+	this.TotalNum = 0
+
+	this.RecordNum = 0
+
+	this.LeftNum = 0
+
+	this.BatchValueLen = 0
+
+}
+
+func (this *TCaplusBatchUpdateRes) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("TCaplusBatchUpdateRes Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *TCaplusBatchUpdateRes) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > TCaplusBatchUpdateResCurrentVersion {
+		cutVer = TCaplusBatchUpdateResCurrentVersion
+	}
+	// check cut version
+	if cutVer < TCaplusBatchUpdateResBaseVersion {
+		return errors.New("TCaplusBatchUpdateRes cut version must large than TCaplusBatchUpdateResBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, this.Result)
+	if err != nil {
+		return errors.New("TCaplusBatchUpdateRes.Result pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.TotalNum)
+	if err != nil {
+		return errors.New("TCaplusBatchUpdateRes.TotalNum pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.RecordNum)
+	if err != nil {
+		return errors.New("TCaplusBatchUpdateRes.RecordNum pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.LeftNum)
+	if err != nil {
+		return errors.New("TCaplusBatchUpdateRes.LeftNum pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.BatchValueLen)
+	if err != nil {
+		return errors.New("TCaplusBatchUpdateRes.BatchValueLen pack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusBatchUpdateRes.RecordResult's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusBatchUpdateRes.RecordResult's refer RecordNum should <= count 1024")
+	}
+	if len(this.RecordResult) < int(this.RecordNum) {
+		return errors.New("TCaplusBatchUpdateRes.RecordResult's length should > RecordNum")
+	}
+	if this.RecordNum > 0 {
+		referRecordResult := this.RecordResult[:this.RecordNum]
+		err = binary.Write(w, binary.BigEndian, referRecordResult)
+		if err != nil {
+			return errors.New("TCaplusBatchUpdateRes.RecordResult pack error\n" + err.Error())
+		}
+	}
+
+	if this.BatchValueLen < 0 {
+		return errors.New("TCaplusBatchUpdateRes.BatchValueInfo's refer BatchValueLen should >= 0")
+	}
+	if this.BatchValueLen > 10300000 {
+		return errors.New("TCaplusBatchUpdateRes.BatchValueInfo's refer BatchValueLen should <= count 10300000")
+	}
+	if len(this.BatchValueInfo) < int(this.BatchValueLen) {
+		return errors.New("TCaplusBatchUpdateRes.BatchValueInfo's length should > BatchValueLen")
+	}
+	if this.BatchValueLen > 0 {
+		referBatchValueInfo := this.BatchValueInfo[:this.BatchValueLen]
+		err = binary.Write(w, binary.BigEndian, referBatchValueInfo)
+		if err != nil {
+			return errors.New("TCaplusBatchUpdateRes.BatchValueInfo pack error\n" + err.Error())
+		}
+	}
+
+	return nil
+}
+
+func (this *TCaplusBatchUpdateRes) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("TCaplusBatchUpdateRes data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *TCaplusBatchUpdateRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > TCaplusBatchUpdateResCurrentVersion {
+		cutVer = TCaplusBatchUpdateResCurrentVersion
+	}
+	// check version
+	if cutVer < TCaplusBatchUpdateResBaseVersion {
+		errors.New("TCaplusBatchUpdateRes cut version must large than TCaplusBatchUpdateResBaseVersion\n")
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.Result)
+	if err != nil {
+		return errors.New("TCaplusBatchUpdateRes.Result unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.TotalNum)
+	if err != nil {
+		return errors.New("TCaplusBatchUpdateRes.TotalNum unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.RecordNum)
+	if err != nil {
+		return errors.New("TCaplusBatchUpdateRes.RecordNum unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.LeftNum)
+	if err != nil {
+		return errors.New("TCaplusBatchUpdateRes.LeftNum unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.BatchValueLen)
+	if err != nil {
+		return errors.New("TCaplusBatchUpdateRes.BatchValueLen unpack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusBatchUpdateRes.RecordResult's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusBatchUpdateRes.RecordResult's refer RecordNum should <= count 1024")
+	}
+
+	if this.RecordResult == nil {
+		this.RecordResult = make([]int32, int(this.RecordNum))
+	}
+
+	referRecordResult := this.RecordResult[:this.RecordNum]
+	err = binary.Read(r, binary.BigEndian, referRecordResult)
+	if err != nil {
+		return errors.New("TCaplusBatchUpdateRes.RecordResult pack error\n" + err.Error())
+	}
+
+	if this.BatchValueLen < 0 {
+		return errors.New("TCaplusBatchUpdateRes.BatchValueInfo's refer BatchValueLen should >= 0")
+	}
+	if this.BatchValueLen > 10300000 {
+		return errors.New("TCaplusBatchUpdateRes.BatchValueInfo's refer BatchValueLen should <= count 10300000")
+	}
+
+	if this.BatchValueInfo == nil {
+		this.BatchValueInfo = make([]byte, int(this.BatchValueLen))
+	}
+
+	referBatchValueInfo := this.BatchValueInfo[:this.BatchValueLen]
+	err = binary.Read(r, binary.BigEndian, referBatchValueInfo)
+	if err != nil {
+		return errors.New("TCaplusBatchUpdateRes.BatchValueInfo pack error\n" + err.Error())
+	}
+
+	return err
+}
+
+const (
+	TCaplusBatchInsertReqBaseVersion    uint32 = 118
+	TCaplusBatchInsertReqCurrentVersion uint32 = 118
+)
+
+// TCaplusBatchInsertReq
+type TCaplusBatchInsertReq struct {
+	AllowMultiResponses byte `tdr_field:"AllowMultiResponses"`
+
+	Flag byte `tdr_field:"Flag"`
+
+	RecordNum uint32 `tdr_field:"RecordNum"`
+
+	KeyInfo []*TCaplusKeySet `tdr_field:"KeyInfo" tdr_count:"1024" tdr_refer:"RecordNum"`
+
+	ValueIndex []*FieldIndex `tdr_field:"ValueIndex" tdr_count:"1024" tdr_refer:"RecordNum"`
+
+	ValueLen int32 `tdr_field:"ValueLen"`
+
+	ValueInfo []byte `tdr_field:"ValueInfo" tdr_count:"10300000" tdr_refer:"ValueLen"`
+
+	SplitTableKeyBuffs []*SplitTableKeyBuff `tdr_field:"SplitTableKeyBuffs" tdr_count:"1024" tdr_refer:"RecordNum"`
+}
+
+func NewTCaplusBatchInsertReq() *TCaplusBatchInsertReq {
+	obj := new(TCaplusBatchInsertReq)
+	obj.Init()
+	return obj
+}
+
+func (this *TCaplusBatchInsertReq) GetBaseVersion() uint32 {
+	return TCaplusBatchInsertReqBaseVersion
+}
+
+func (this *TCaplusBatchInsertReq) GetCurrentVersion() uint32 {
+	return TCaplusBatchInsertReqCurrentVersion
+}
+
+func (this *TCaplusBatchInsertReq) Init() {
+	this.AllowMultiResponses = 0
+
+	this.RecordNum = 0
+
+	this.ValueLen = 0
+
+}
+
+func (this *TCaplusBatchInsertReq) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("TCaplusBatchInsertReq Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *TCaplusBatchInsertReq) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > TCaplusBatchInsertReqCurrentVersion {
+		cutVer = TCaplusBatchInsertReqCurrentVersion
+	}
+	// check cut version
+	if cutVer < TCaplusBatchInsertReqBaseVersion {
+		return errors.New("TCaplusBatchInsertReq cut version must large than TCaplusBatchInsertReqBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, this.AllowMultiResponses)
+	if err != nil {
+		return errors.New("TCaplusBatchInsertReq.AllowMultiResponses pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.Flag)
+	if err != nil {
+		return errors.New("TCaplusBatchInsertReq.Flag pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.RecordNum)
+	if err != nil {
+		return errors.New("TCaplusBatchInsertReq.RecordNum pack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusBatchInsertReq.KeyInfo's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusBatchInsertReq.KeyInfo's refer RecordNum should <= count 1024")
+	}
+	if len(this.KeyInfo) < int(this.RecordNum) {
+		return errors.New("TCaplusBatchInsertReq.KeyInfo's length should > RecordNum")
+	}
+	if this.RecordNum > 0 {
+		for i := 0; i < int(this.RecordNum); i++ {
+			err = this.KeyInfo[i].PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusBatchInsertReq.KeyInfo pack error\n" + err.Error())
+			}
+
+		}
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusBatchInsertReq.ValueIndex's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusBatchInsertReq.ValueIndex's refer RecordNum should <= count 1024")
+	}
+	if len(this.ValueIndex) < int(this.RecordNum) {
+		return errors.New("TCaplusBatchInsertReq.ValueIndex's length should > RecordNum")
+	}
+	if this.RecordNum > 0 {
+		for i := 0; i < int(this.RecordNum); i++ {
+			err = this.ValueIndex[i].PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusBatchInsertReq.ValueIndex pack error\n" + err.Error())
+			}
+
+		}
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.ValueLen)
+	if err != nil {
+		return errors.New("TCaplusBatchInsertReq.ValueLen pack error\n" + err.Error())
+	}
+
+	if this.ValueLen < 0 {
+		return errors.New("TCaplusBatchInsertReq.ValueInfo's refer ValueLen should >= 0")
+	}
+	if this.ValueLen > 10300000 {
+		return errors.New("TCaplusBatchInsertReq.ValueInfo's refer ValueLen should <= count 10300000")
+	}
+	if len(this.ValueInfo) < int(this.ValueLen) {
+		return errors.New("TCaplusBatchInsertReq.ValueInfo's length should > ValueLen")
+	}
+	if this.ValueLen > 0 {
+		referValueInfo := this.ValueInfo[:this.ValueLen]
+		err = binary.Write(w, binary.BigEndian, referValueInfo)
+		if err != nil {
+			return errors.New("TCaplusBatchInsertReq.ValueInfo pack error\n" + err.Error())
+		}
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusBatchInsertReq.SplitTableKeyBuffs's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusBatchInsertReq.SplitTableKeyBuffs's refer RecordNum should <= count 1024")
+	}
+	if len(this.SplitTableKeyBuffs) < int(this.RecordNum) {
+		return errors.New("TCaplusBatchInsertReq.SplitTableKeyBuffs's length should > RecordNum")
+	}
+	if this.RecordNum > 0 {
+		for i := 0; i < int(this.RecordNum); i++ {
+			err = this.SplitTableKeyBuffs[i].PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusBatchInsertReq.SplitTableKeyBuffs pack error\n" + err.Error())
+			}
+
+		}
+	}
+
+	return nil
+}
+
+func (this *TCaplusBatchInsertReq) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("TCaplusBatchInsertReq data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *TCaplusBatchInsertReq) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > TCaplusBatchInsertReqCurrentVersion {
+		cutVer = TCaplusBatchInsertReqCurrentVersion
+	}
+	// check version
+	if cutVer < TCaplusBatchInsertReqBaseVersion {
+		errors.New("TCaplusBatchInsertReq cut version must large than TCaplusBatchInsertReqBaseVersion\n")
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.AllowMultiResponses)
+	if err != nil {
+		return errors.New("TCaplusBatchInsertReq.AllowMultiResponses unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.Flag)
+	if err != nil {
+		return errors.New("TCaplusBatchInsertReq.Flag unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.RecordNum)
+	if err != nil {
+		return errors.New("TCaplusBatchInsertReq.RecordNum unpack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusBatchInsertReq.KeyInfo's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusBatchInsertReq.KeyInfo's refer RecordNum should <= count 1024")
+	}
+
+	if this.KeyInfo == nil {
+		this.KeyInfo = make([]*TCaplusKeySet, int(this.RecordNum))
+		for i := 0; i < int(this.RecordNum); i++ {
+			this.KeyInfo[i] = NewTCaplusKeySet()
+		}
+	}
+
+	for i := 0; i < int(this.RecordNum); i++ {
+		err = this.KeyInfo[i].UnpackFrom(cutVer, r)
+		if err != nil {
+			return errors.New("TCaplusBatchInsertReq.KeyInfo unpack error\n" + err.Error())
+		}
+
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusBatchInsertReq.ValueIndex's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusBatchInsertReq.ValueIndex's refer RecordNum should <= count 1024")
+	}
+
+	if this.ValueIndex == nil {
+		this.ValueIndex = make([]*FieldIndex, int(this.RecordNum))
+		for i := 0; i < int(this.RecordNum); i++ {
+			this.ValueIndex[i] = NewFieldIndex()
+		}
+	}
+
+	for i := 0; i < int(this.RecordNum); i++ {
+		err = this.ValueIndex[i].UnpackFrom(cutVer, r)
+		if err != nil {
+			return errors.New("TCaplusBatchInsertReq.ValueIndex unpack error\n" + err.Error())
+		}
+
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.ValueLen)
+	if err != nil {
+		return errors.New("TCaplusBatchInsertReq.ValueLen unpack error\n" + err.Error())
+	}
+
+	if this.ValueLen < 0 {
+		return errors.New("TCaplusBatchInsertReq.ValueInfo's refer ValueLen should >= 0")
+	}
+	if this.ValueLen > 10300000 {
+		return errors.New("TCaplusBatchInsertReq.ValueInfo's refer ValueLen should <= count 10300000")
+	}
+
+	if this.ValueInfo == nil {
+		this.ValueInfo = make([]byte, int(this.ValueLen))
+	}
+
+	referValueInfo := this.ValueInfo[:this.ValueLen]
+	err = binary.Read(r, binary.BigEndian, referValueInfo)
+	if err != nil {
+		return errors.New("TCaplusBatchInsertReq.ValueInfo pack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusBatchInsertReq.SplitTableKeyBuffs's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusBatchInsertReq.SplitTableKeyBuffs's refer RecordNum should <= count 1024")
+	}
+
+	if this.SplitTableKeyBuffs == nil {
+		this.SplitTableKeyBuffs = make([]*SplitTableKeyBuff, int(this.RecordNum))
+		for i := 0; i < int(this.RecordNum); i++ {
+			this.SplitTableKeyBuffs[i] = NewSplitTableKeyBuff()
+		}
+	}
+
+	for i := 0; i < int(this.RecordNum); i++ {
+		err = this.SplitTableKeyBuffs[i].UnpackFrom(cutVer, r)
+		if err != nil {
+			return errors.New("TCaplusBatchInsertReq.SplitTableKeyBuffs unpack error\n" + err.Error())
+		}
+
+	}
+
+	return err
+}
+
+const (
+	TCaplusBatchInsertResBaseVersion    uint32 = 118
+	TCaplusBatchInsertResCurrentVersion uint32 = 118
+)
+
+// TCaplusBatchInsertRes
+type TCaplusBatchInsertRes struct {
+	Result int32 `tdr_field:"Result"`
+
+	TotalNum uint32 `tdr_field:"TotalNum"`
+
+	RecordNum uint32 `tdr_field:"RecordNum"`
+
+	LeftNum uint32 `tdr_field:"LeftNum"`
+
+	BatchValueLen int32 `tdr_field:"BatchValueLen"`
+
+	RecordResult []int32 `tdr_field:"RecordResult" tdr_count:"1024" tdr_refer:"RecordNum"`
+
+	BatchValueInfo []byte `tdr_field:"BatchValueInfo" tdr_count:"10300000" tdr_refer:"BatchValueLen"`
+}
+
+func NewTCaplusBatchInsertRes() *TCaplusBatchInsertRes {
+	obj := new(TCaplusBatchInsertRes)
+	obj.Init()
+	return obj
+}
+
+func (this *TCaplusBatchInsertRes) GetBaseVersion() uint32 {
+	return TCaplusBatchInsertResBaseVersion
+}
+
+func (this *TCaplusBatchInsertRes) GetCurrentVersion() uint32 {
+	return TCaplusBatchInsertResCurrentVersion
+}
+
+func (this *TCaplusBatchInsertRes) Init() {
+
+	this.TotalNum = 0
+
+	this.RecordNum = 0
+
+	this.LeftNum = 0
+
+	this.BatchValueLen = 0
+
+}
+
+func (this *TCaplusBatchInsertRes) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("TCaplusBatchInsertRes Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *TCaplusBatchInsertRes) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > TCaplusBatchInsertResCurrentVersion {
+		cutVer = TCaplusBatchInsertResCurrentVersion
+	}
+	// check cut version
+	if cutVer < TCaplusBatchInsertResBaseVersion {
+		return errors.New("TCaplusBatchInsertRes cut version must large than TCaplusBatchInsertResBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, this.Result)
+	if err != nil {
+		return errors.New("TCaplusBatchInsertRes.Result pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.TotalNum)
+	if err != nil {
+		return errors.New("TCaplusBatchInsertRes.TotalNum pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.RecordNum)
+	if err != nil {
+		return errors.New("TCaplusBatchInsertRes.RecordNum pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.LeftNum)
+	if err != nil {
+		return errors.New("TCaplusBatchInsertRes.LeftNum pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.BatchValueLen)
+	if err != nil {
+		return errors.New("TCaplusBatchInsertRes.BatchValueLen pack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusBatchInsertRes.RecordResult's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusBatchInsertRes.RecordResult's refer RecordNum should <= count 1024")
+	}
+	if len(this.RecordResult) < int(this.RecordNum) {
+		return errors.New("TCaplusBatchInsertRes.RecordResult's length should > RecordNum")
+	}
+	if this.RecordNum > 0 {
+		referRecordResult := this.RecordResult[:this.RecordNum]
+		err = binary.Write(w, binary.BigEndian, referRecordResult)
+		if err != nil {
+			return errors.New("TCaplusBatchInsertRes.RecordResult pack error\n" + err.Error())
+		}
+	}
+
+	if this.BatchValueLen < 0 {
+		return errors.New("TCaplusBatchInsertRes.BatchValueInfo's refer BatchValueLen should >= 0")
+	}
+	if this.BatchValueLen > 10300000 {
+		return errors.New("TCaplusBatchInsertRes.BatchValueInfo's refer BatchValueLen should <= count 10300000")
+	}
+	if len(this.BatchValueInfo) < int(this.BatchValueLen) {
+		return errors.New("TCaplusBatchInsertRes.BatchValueInfo's length should > BatchValueLen")
+	}
+	if this.BatchValueLen > 0 {
+		referBatchValueInfo := this.BatchValueInfo[:this.BatchValueLen]
+		err = binary.Write(w, binary.BigEndian, referBatchValueInfo)
+		if err != nil {
+			return errors.New("TCaplusBatchInsertRes.BatchValueInfo pack error\n" + err.Error())
+		}
+	}
+
+	return nil
+}
+
+func (this *TCaplusBatchInsertRes) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("TCaplusBatchInsertRes data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *TCaplusBatchInsertRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > TCaplusBatchInsertResCurrentVersion {
+		cutVer = TCaplusBatchInsertResCurrentVersion
+	}
+	// check version
+	if cutVer < TCaplusBatchInsertResBaseVersion {
+		errors.New("TCaplusBatchInsertRes cut version must large than TCaplusBatchInsertResBaseVersion\n")
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.Result)
+	if err != nil {
+		return errors.New("TCaplusBatchInsertRes.Result unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.TotalNum)
+	if err != nil {
+		return errors.New("TCaplusBatchInsertRes.TotalNum unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.RecordNum)
+	if err != nil {
+		return errors.New("TCaplusBatchInsertRes.RecordNum unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.LeftNum)
+	if err != nil {
+		return errors.New("TCaplusBatchInsertRes.LeftNum unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.BatchValueLen)
+	if err != nil {
+		return errors.New("TCaplusBatchInsertRes.BatchValueLen unpack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusBatchInsertRes.RecordResult's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusBatchInsertRes.RecordResult's refer RecordNum should <= count 1024")
+	}
+
+	if this.RecordResult == nil {
+		this.RecordResult = make([]int32, int(this.RecordNum))
+	}
+
+	referRecordResult := this.RecordResult[:this.RecordNum]
+	err = binary.Read(r, binary.BigEndian, referRecordResult)
+	if err != nil {
+		return errors.New("TCaplusBatchInsertRes.RecordResult pack error\n" + err.Error())
+	}
+
+	if this.BatchValueLen < 0 {
+		return errors.New("TCaplusBatchInsertRes.BatchValueInfo's refer BatchValueLen should >= 0")
+	}
+	if this.BatchValueLen > 10300000 {
+		return errors.New("TCaplusBatchInsertRes.BatchValueInfo's refer BatchValueLen should <= count 10300000")
+	}
+
+	if this.BatchValueInfo == nil {
+		this.BatchValueInfo = make([]byte, int(this.BatchValueLen))
+	}
+
+	referBatchValueInfo := this.BatchValueInfo[:this.BatchValueLen]
+	err = binary.Read(r, binary.BigEndian, referBatchValueInfo)
+	if err != nil {
+		return errors.New("TCaplusBatchInsertRes.BatchValueInfo pack error\n" + err.Error())
 	}
 
 	return err
@@ -4490,8 +8014,9 @@ func (this *TCaplusProtobufBatchFieldGetRes) UnpackFrom(cutVer uint32, r *tdrcom
 }
 
 const (
-	TCaplusListGetAllReqBaseVersion    uint32 = 1
-	TCaplusListGetAllReqCurrentVersion uint32 = 1
+	TCaplusListGetAllReqBaseVersion      uint32 = 1
+	TCaplusListGetAllReqCurrentVersion   uint32 = 125
+	TCaplusListGetAllReqConditionVersion uint32 = 125
 )
 
 // TCaplusListGetAllReq
@@ -4503,6 +8028,8 @@ type TCaplusListGetAllReq struct {
 	StartSubscript int32 `tdr_field:"StartSubscript"`
 
 	ElementValueNames *TCaplusNameSet `tdr_field:"ElementValueNames"`
+
+	Condition string `tdr_field:"Condition"`
 }
 
 func NewTCaplusListGetAllReq() *TCaplusListGetAllReq {
@@ -4571,6 +8098,19 @@ func (this *TCaplusListGetAllReq) PackTo(cutVer uint32, w *tdrcom.Writer) error 
 		return errors.New("TCaplusListGetAllReq.ElementValueNames pack error\n" + err.Error())
 	}
 
+	if cutVer >= TCaplusListGetAllReqConditionVersion {
+
+		err = binary.Write(w, binary.BigEndian, uint32(len(this.Condition))+1)
+		if err != nil {
+			return errors.New("TCaplusListGetAllReq.Condition string size pack error\n" + err.Error())
+		}
+		err = binary.Write(w, binary.BigEndian, append([]byte(this.Condition), 0))
+		if err != nil {
+			return errors.New("TCaplusListGetAllReq.Condition string content pack error\n" + err.Error())
+		}
+
+	}
+
 	return nil
 }
 
@@ -4612,12 +8152,28 @@ func (this *TCaplusListGetAllReq) UnpackFrom(cutVer uint32, r *tdrcom.Reader) er
 		return errors.New("TCaplusListGetAllReq.ElementValueNames unpack error\n" + err.Error())
 	}
 
+	if cutVer >= TCaplusListGetAllReqConditionVersion {
+
+		var ConditionSize uint32
+		err = binary.Read(r, binary.BigEndian, &ConditionSize)
+		if err != nil {
+			return errors.New("TCaplusListGetAllReq.Condition string size unpack error\n" + err.Error())
+		}
+
+		ConditionBytes := make([]byte, ConditionSize)
+		err = binary.Read(r, binary.BigEndian, ConditionBytes)
+		if err != nil {
+			return errors.New("TCaplusListGetAllReq.Condition string content unpack error\n" + err.Error())
+		}
+		this.Condition = string(ConditionBytes[:len(ConditionBytes)-1])
+
+	}
 	return err
 }
 
 const (
 	TCaplusListGetAllResBaseVersion           uint32 = 1
-	TCaplusListGetAllResCurrentVersion        uint32 = 113
+	TCaplusListGetAllResCurrentVersion        uint32 = 119
 	TCaplusListGetAllResBiggestIdxVersion     uint32 = 8
 	TCaplusListGetAllResEmptyIndexFlagVersion uint32 = 113
 )
@@ -4784,8 +8340,9 @@ func (this *TCaplusListGetAllRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader) er
 
 const (
 	TCaplusListDeleteAllReqBaseVersion              uint32 = 1
-	TCaplusListDeleteAllReqCurrentVersion           uint32 = 108
+	TCaplusListDeleteAllReqCurrentVersion           uint32 = 125
 	TCaplusListDeleteAllReqCheckVersiontTypeVersion uint32 = 108
+	TCaplusListDeleteAllReqConditionVersion         uint32 = 125
 )
 
 // TCaplusListDeleteAllReq
@@ -4793,6 +8350,8 @@ type TCaplusListDeleteAllReq struct {
 	Reserve int32 `tdr_field:"Reserve"`
 
 	CheckVersiontType byte `tdr_field:"CheckVersiontType"`
+
+	Condition string `tdr_field:"Condition"`
 }
 
 func NewTCaplusListDeleteAllReq() *TCaplusListDeleteAllReq {
@@ -4849,6 +8408,18 @@ func (this *TCaplusListDeleteAllReq) PackTo(cutVer uint32, w *tdrcom.Writer) err
 		}
 
 	}
+	if cutVer >= TCaplusListDeleteAllReqConditionVersion {
+
+		err = binary.Write(w, binary.BigEndian, uint32(len(this.Condition))+1)
+		if err != nil {
+			return errors.New("TCaplusListDeleteAllReq.Condition string size pack error\n" + err.Error())
+		}
+		err = binary.Write(w, binary.BigEndian, append([]byte(this.Condition), 0))
+		if err != nil {
+			return errors.New("TCaplusListDeleteAllReq.Condition string content pack error\n" + err.Error())
+		}
+
+	}
 
 	return nil
 }
@@ -4887,12 +8458,29 @@ func (this *TCaplusListDeleteAllReq) UnpackFrom(cutVer uint32, r *tdrcom.Reader)
 		this.CheckVersiontType = 1
 
 	}
+	if cutVer >= TCaplusListDeleteAllReqConditionVersion {
+
+		var ConditionSize uint32
+		err = binary.Read(r, binary.BigEndian, &ConditionSize)
+		if err != nil {
+			return errors.New("TCaplusListDeleteAllReq.Condition string size unpack error\n" + err.Error())
+		}
+
+		ConditionBytes := make([]byte, ConditionSize)
+		err = binary.Read(r, binary.BigEndian, ConditionBytes)
+		if err != nil {
+			return errors.New("TCaplusListDeleteAllReq.Condition string content unpack error\n" + err.Error())
+		}
+		this.Condition = string(ConditionBytes[:len(ConditionBytes)-1])
+
+	}
 	return err
 }
 
 const (
-	TCaplusListDeleteAllResBaseVersion    uint32 = 1
-	TCaplusListDeleteAllResCurrentVersion uint32 = 1
+	TCaplusListDeleteAllResBaseVersion                    uint32 = 1
+	TCaplusListDeleteAllResCurrentVersion                 uint32 = 125
+	TCaplusListDeleteAllResTotalElementNumOnServerVersion uint32 = 125
 )
 
 // TCaplusListDeleteAllRes
@@ -4900,6 +8488,8 @@ type TCaplusListDeleteAllRes struct {
 	Result int32 `tdr_field:"Result"`
 
 	AffectedElementNum int32 `tdr_field:"AffectedElementNum"`
+
+	TotalElementNumOnServer int32 `tdr_field:"TotalElementNumOnServer"`
 }
 
 func NewTCaplusListDeleteAllRes() *TCaplusListDeleteAllRes {
@@ -4919,6 +8509,8 @@ func (this *TCaplusListDeleteAllRes) GetCurrentVersion() uint32 {
 func (this *TCaplusListDeleteAllRes) Init() {
 
 	this.AffectedElementNum = 0
+
+	this.TotalElementNumOnServer = -1
 
 }
 
@@ -4953,6 +8545,15 @@ func (this *TCaplusListDeleteAllRes) PackTo(cutVer uint32, w *tdrcom.Writer) err
 		return errors.New("TCaplusListDeleteAllRes.AffectedElementNum pack error\n" + err.Error())
 	}
 
+	if cutVer >= TCaplusListDeleteAllResTotalElementNumOnServerVersion {
+
+		err = binary.Write(w, binary.BigEndian, this.TotalElementNumOnServer)
+		if err != nil {
+			return errors.New("TCaplusListDeleteAllRes.TotalElementNumOnServer pack error\n" + err.Error())
+		}
+
+	}
+
 	return nil
 }
 
@@ -4984,15 +8585,27 @@ func (this *TCaplusListDeleteAllRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader)
 		return errors.New("TCaplusListDeleteAllRes.AffectedElementNum unpack error\n" + err.Error())
 	}
 
+	if cutVer >= TCaplusListDeleteAllResTotalElementNumOnServerVersion {
+
+		err = binary.Read(r, binary.BigEndian, &this.TotalElementNumOnServer)
+		if err != nil {
+			return errors.New("TCaplusListDeleteAllRes.TotalElementNumOnServer unpack error\n" + err.Error())
+		}
+
+	} else {
+		this.TotalElementNumOnServer = -1
+
+	}
 	return err
 }
 
 const (
 	TCaplusListDeleteBatchReqBaseVersion                uint32 = 10
-	TCaplusListDeleteBatchReqCurrentVersion             uint32 = 59
+	TCaplusListDeleteBatchReqCurrentVersion             uint32 = 125
 	TCaplusListDeleteBatchReqAllowMultiResponsesVersion uint32 = 59
 	TCaplusListDeleteBatchReqFlagVersion                uint32 = 59
 	TCaplusListDeleteBatchReqCheckVersiontTypeVersion   uint32 = 13
+	TCaplusListDeleteBatchReqConditionVersion           uint32 = 125
 )
 
 // TCaplusListDeleteBatchReq
@@ -5006,6 +8619,8 @@ type TCaplusListDeleteBatchReq struct {
 	Flag byte `tdr_field:"Flag"`
 
 	CheckVersiontType byte `tdr_field:"CheckVersiontType"`
+
+	Condition string `tdr_field:"Condition"`
 }
 
 func NewTCaplusListDeleteBatchReq() *TCaplusListDeleteBatchReq {
@@ -5098,6 +8713,18 @@ func (this *TCaplusListDeleteBatchReq) PackTo(cutVer uint32, w *tdrcom.Writer) e
 		}
 
 	}
+	if cutVer >= TCaplusListDeleteBatchReqConditionVersion {
+
+		err = binary.Write(w, binary.BigEndian, uint32(len(this.Condition))+1)
+		if err != nil {
+			return errors.New("TCaplusListDeleteBatchReq.Condition string size pack error\n" + err.Error())
+		}
+		err = binary.Write(w, binary.BigEndian, append([]byte(this.Condition), 0))
+		if err != nil {
+			return errors.New("TCaplusListDeleteBatchReq.Condition string content pack error\n" + err.Error())
+		}
+
+	}
 
 	return nil
 }
@@ -5173,12 +8800,28 @@ func (this *TCaplusListDeleteBatchReq) UnpackFrom(cutVer uint32, r *tdrcom.Reade
 		this.CheckVersiontType = 1
 
 	}
+	if cutVer >= TCaplusListDeleteBatchReqConditionVersion {
+
+		var ConditionSize uint32
+		err = binary.Read(r, binary.BigEndian, &ConditionSize)
+		if err != nil {
+			return errors.New("TCaplusListDeleteBatchReq.Condition string size unpack error\n" + err.Error())
+		}
+
+		ConditionBytes := make([]byte, ConditionSize)
+		err = binary.Read(r, binary.BigEndian, ConditionBytes)
+		if err != nil {
+			return errors.New("TCaplusListDeleteBatchReq.Condition string content unpack error\n" + err.Error())
+		}
+		this.Condition = string(ConditionBytes[:len(ConditionBytes)-1])
+
+	}
 	return err
 }
 
 const (
 	TCaplusListDeleteBatchResBaseVersion              uint32 = 10
-	TCaplusListDeleteBatchResCurrentVersion           uint32 = 59
+	TCaplusListDeleteBatchResCurrentVersion           uint32 = 119
 	TCaplusListDeleteBatchResElementIndexArrayVersion uint32 = 14
 	TCaplusListDeleteBatchResFlagVersion              uint32 = 59
 	TCaplusListDeleteBatchResResultInfoVersion        uint32 = 59
@@ -5362,6 +9005,1405 @@ func (this *TCaplusListDeleteBatchRes) UnpackFrom(cutVer uint32, r *tdrcom.Reade
 		this.ResultInfo.Init()
 
 	}
+	return err
+}
+
+const (
+	TCaplusListGetBatchReqBaseVersion    uint32 = 118
+	TCaplusListGetBatchReqCurrentVersion uint32 = 118
+)
+
+// TCaplusListGetBatchReq
+type TCaplusListGetBatchReq struct {
+	AllowMultiResponses byte `tdr_field:"AllowMultiResponses"`
+
+	ElementNum uint32 `tdr_field:"ElementNum"`
+
+	ElementIndexArray []int32 `tdr_field:"ElementIndexArray" tdr_count:"10240" tdr_refer:"ElementNum"`
+
+	ElementValueNames *TCaplusNameSet `tdr_field:"ElementValueNames"`
+}
+
+func NewTCaplusListGetBatchReq() *TCaplusListGetBatchReq {
+	obj := new(TCaplusListGetBatchReq)
+	obj.Init()
+	return obj
+}
+
+func (this *TCaplusListGetBatchReq) GetBaseVersion() uint32 {
+	return TCaplusListGetBatchReqBaseVersion
+}
+
+func (this *TCaplusListGetBatchReq) GetCurrentVersion() uint32 {
+	return TCaplusListGetBatchReqCurrentVersion
+}
+
+func (this *TCaplusListGetBatchReq) Init() {
+	this.AllowMultiResponses = 0
+
+	this.ElementNum = 0
+
+	this.ElementValueNames = NewTCaplusNameSet()
+
+}
+
+func (this *TCaplusListGetBatchReq) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("TCaplusListGetBatchReq Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *TCaplusListGetBatchReq) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > TCaplusListGetBatchReqCurrentVersion {
+		cutVer = TCaplusListGetBatchReqCurrentVersion
+	}
+	// check cut version
+	if cutVer < TCaplusListGetBatchReqBaseVersion {
+		return errors.New("TCaplusListGetBatchReq cut version must large than TCaplusListGetBatchReqBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, this.AllowMultiResponses)
+	if err != nil {
+		return errors.New("TCaplusListGetBatchReq.AllowMultiResponses pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.ElementNum)
+	if err != nil {
+		return errors.New("TCaplusListGetBatchReq.ElementNum pack error\n" + err.Error())
+	}
+
+	if this.ElementNum < 0 {
+		return errors.New("TCaplusListGetBatchReq.ElementIndexArray's refer ElementNum should >= 0")
+	}
+	if this.ElementNum > 10240 {
+		return errors.New("TCaplusListGetBatchReq.ElementIndexArray's refer ElementNum should <= count 10240")
+	}
+	if len(this.ElementIndexArray) < int(this.ElementNum) {
+		return errors.New("TCaplusListGetBatchReq.ElementIndexArray's length should > ElementNum")
+	}
+	if this.ElementNum > 0 {
+		referElementIndexArray := this.ElementIndexArray[:this.ElementNum]
+		err = binary.Write(w, binary.BigEndian, referElementIndexArray)
+		if err != nil {
+			return errors.New("TCaplusListGetBatchReq.ElementIndexArray pack error\n" + err.Error())
+		}
+	}
+
+	err = this.ElementValueNames.PackTo(cutVer, w)
+	if err != nil {
+		return errors.New("TCaplusListGetBatchReq.ElementValueNames pack error\n" + err.Error())
+	}
+
+	return nil
+}
+
+func (this *TCaplusListGetBatchReq) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("TCaplusListGetBatchReq data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *TCaplusListGetBatchReq) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > TCaplusListGetBatchReqCurrentVersion {
+		cutVer = TCaplusListGetBatchReqCurrentVersion
+	}
+	// check version
+	if cutVer < TCaplusListGetBatchReqBaseVersion {
+		errors.New("TCaplusListGetBatchReq cut version must large than TCaplusListGetBatchReqBaseVersion\n")
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.AllowMultiResponses)
+	if err != nil {
+		return errors.New("TCaplusListGetBatchReq.AllowMultiResponses unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.ElementNum)
+	if err != nil {
+		return errors.New("TCaplusListGetBatchReq.ElementNum unpack error\n" + err.Error())
+	}
+
+	if this.ElementNum < 0 {
+		return errors.New("TCaplusListGetBatchReq.ElementIndexArray's refer ElementNum should >= 0")
+	}
+	if this.ElementNum > 10240 {
+		return errors.New("TCaplusListGetBatchReq.ElementIndexArray's refer ElementNum should <= count 10240")
+	}
+
+	if this.ElementIndexArray == nil {
+		this.ElementIndexArray = make([]int32, int(this.ElementNum))
+	}
+
+	referElementIndexArray := this.ElementIndexArray[:this.ElementNum]
+	err = binary.Read(r, binary.BigEndian, referElementIndexArray)
+	if err != nil {
+		return errors.New("TCaplusListGetBatchReq.ElementIndexArray pack error\n" + err.Error())
+	}
+
+	err = this.ElementValueNames.UnpackFrom(cutVer, r)
+	if err != nil {
+		return errors.New("TCaplusListGetBatchReq.ElementValueNames unpack error\n" + err.Error())
+	}
+
+	return err
+}
+
+const (
+	TCaplusListGetBatchResBaseVersion    uint32 = 118
+	TCaplusListGetBatchResCurrentVersion uint32 = 119
+)
+
+// TCaplusListGetBatchRes
+type TCaplusListGetBatchRes struct {
+	Result int32 `tdr_field:"Result"`
+
+	TotalNum uint32 `tdr_field:"TotalNum"`
+
+	LeftNum uint32 `tdr_field:"LeftNum"`
+
+	ElementNum uint32 `tdr_field:"ElementNum"`
+
+	ElementIndexArray []int32 `tdr_field:"ElementIndexArray" tdr_count:"10240" tdr_refer:"ElementNum"`
+
+	ElementResult []int32 `tdr_field:"ElementResult" tdr_count:"10240" tdr_refer:"ElementNum"`
+
+	HasElementBuff []int32 `tdr_field:"HasElementBuff" tdr_count:"10240" tdr_refer:"ElementNum"`
+
+	ResultInfo *TCaplusListElementSet `tdr_field:"ResultInfo"`
+}
+
+func NewTCaplusListGetBatchRes() *TCaplusListGetBatchRes {
+	obj := new(TCaplusListGetBatchRes)
+	obj.Init()
+	return obj
+}
+
+func (this *TCaplusListGetBatchRes) GetBaseVersion() uint32 {
+	return TCaplusListGetBatchResBaseVersion
+}
+
+func (this *TCaplusListGetBatchRes) GetCurrentVersion() uint32 {
+	return TCaplusListGetBatchResCurrentVersion
+}
+
+func (this *TCaplusListGetBatchRes) Init() {
+
+	this.TotalNum = 0
+
+	this.LeftNum = 0
+
+	this.ElementNum = 0
+
+	this.ResultInfo = NewTCaplusListElementSet()
+
+}
+
+func (this *TCaplusListGetBatchRes) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("TCaplusListGetBatchRes Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *TCaplusListGetBatchRes) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > TCaplusListGetBatchResCurrentVersion {
+		cutVer = TCaplusListGetBatchResCurrentVersion
+	}
+	// check cut version
+	if cutVer < TCaplusListGetBatchResBaseVersion {
+		return errors.New("TCaplusListGetBatchRes cut version must large than TCaplusListGetBatchResBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, this.Result)
+	if err != nil {
+		return errors.New("TCaplusListGetBatchRes.Result pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.TotalNum)
+	if err != nil {
+		return errors.New("TCaplusListGetBatchRes.TotalNum pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.LeftNum)
+	if err != nil {
+		return errors.New("TCaplusListGetBatchRes.LeftNum pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.ElementNum)
+	if err != nil {
+		return errors.New("TCaplusListGetBatchRes.ElementNum pack error\n" + err.Error())
+	}
+
+	if this.ElementNum < 0 {
+		return errors.New("TCaplusListGetBatchRes.ElementIndexArray's refer ElementNum should >= 0")
+	}
+	if this.ElementNum > 10240 {
+		return errors.New("TCaplusListGetBatchRes.ElementIndexArray's refer ElementNum should <= count 10240")
+	}
+	if len(this.ElementIndexArray) < int(this.ElementNum) {
+		return errors.New("TCaplusListGetBatchRes.ElementIndexArray's length should > ElementNum")
+	}
+	if this.ElementNum > 0 {
+		referElementIndexArray := this.ElementIndexArray[:this.ElementNum]
+		err = binary.Write(w, binary.BigEndian, referElementIndexArray)
+		if err != nil {
+			return errors.New("TCaplusListGetBatchRes.ElementIndexArray pack error\n" + err.Error())
+		}
+	}
+
+	if this.ElementNum < 0 {
+		return errors.New("TCaplusListGetBatchRes.ElementResult's refer ElementNum should >= 0")
+	}
+	if this.ElementNum > 10240 {
+		return errors.New("TCaplusListGetBatchRes.ElementResult's refer ElementNum should <= count 10240")
+	}
+	if len(this.ElementResult) < int(this.ElementNum) {
+		return errors.New("TCaplusListGetBatchRes.ElementResult's length should > ElementNum")
+	}
+	if this.ElementNum > 0 {
+		referElementResult := this.ElementResult[:this.ElementNum]
+		err = binary.Write(w, binary.BigEndian, referElementResult)
+		if err != nil {
+			return errors.New("TCaplusListGetBatchRes.ElementResult pack error\n" + err.Error())
+		}
+	}
+
+	if this.ElementNum < 0 {
+		return errors.New("TCaplusListGetBatchRes.HasElementBuff's refer ElementNum should >= 0")
+	}
+	if this.ElementNum > 10240 {
+		return errors.New("TCaplusListGetBatchRes.HasElementBuff's refer ElementNum should <= count 10240")
+	}
+	if len(this.HasElementBuff) < int(this.ElementNum) {
+		return errors.New("TCaplusListGetBatchRes.HasElementBuff's length should > ElementNum")
+	}
+	if this.ElementNum > 0 {
+		referHasElementBuff := this.HasElementBuff[:this.ElementNum]
+		err = binary.Write(w, binary.BigEndian, referHasElementBuff)
+		if err != nil {
+			return errors.New("TCaplusListGetBatchRes.HasElementBuff pack error\n" + err.Error())
+		}
+	}
+
+	err = this.ResultInfo.PackTo(cutVer, w)
+	if err != nil {
+		return errors.New("TCaplusListGetBatchRes.ResultInfo pack error\n" + err.Error())
+	}
+
+	return nil
+}
+
+func (this *TCaplusListGetBatchRes) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("TCaplusListGetBatchRes data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *TCaplusListGetBatchRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > TCaplusListGetBatchResCurrentVersion {
+		cutVer = TCaplusListGetBatchResCurrentVersion
+	}
+	// check version
+	if cutVer < TCaplusListGetBatchResBaseVersion {
+		errors.New("TCaplusListGetBatchRes cut version must large than TCaplusListGetBatchResBaseVersion\n")
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.Result)
+	if err != nil {
+		return errors.New("TCaplusListGetBatchRes.Result unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.TotalNum)
+	if err != nil {
+		return errors.New("TCaplusListGetBatchRes.TotalNum unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.LeftNum)
+	if err != nil {
+		return errors.New("TCaplusListGetBatchRes.LeftNum unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.ElementNum)
+	if err != nil {
+		return errors.New("TCaplusListGetBatchRes.ElementNum unpack error\n" + err.Error())
+	}
+
+	if this.ElementNum < 0 {
+		return errors.New("TCaplusListGetBatchRes.ElementIndexArray's refer ElementNum should >= 0")
+	}
+	if this.ElementNum > 10240 {
+		return errors.New("TCaplusListGetBatchRes.ElementIndexArray's refer ElementNum should <= count 10240")
+	}
+
+	if this.ElementIndexArray == nil {
+		this.ElementIndexArray = make([]int32, int(this.ElementNum))
+	}
+
+	referElementIndexArray := this.ElementIndexArray[:this.ElementNum]
+	err = binary.Read(r, binary.BigEndian, referElementIndexArray)
+	if err != nil {
+		return errors.New("TCaplusListGetBatchRes.ElementIndexArray pack error\n" + err.Error())
+	}
+
+	if this.ElementNum < 0 {
+		return errors.New("TCaplusListGetBatchRes.ElementResult's refer ElementNum should >= 0")
+	}
+	if this.ElementNum > 10240 {
+		return errors.New("TCaplusListGetBatchRes.ElementResult's refer ElementNum should <= count 10240")
+	}
+
+	if this.ElementResult == nil {
+		this.ElementResult = make([]int32, int(this.ElementNum))
+	}
+
+	referElementResult := this.ElementResult[:this.ElementNum]
+	err = binary.Read(r, binary.BigEndian, referElementResult)
+	if err != nil {
+		return errors.New("TCaplusListGetBatchRes.ElementResult pack error\n" + err.Error())
+	}
+
+	if this.ElementNum < 0 {
+		return errors.New("TCaplusListGetBatchRes.HasElementBuff's refer ElementNum should >= 0")
+	}
+	if this.ElementNum > 10240 {
+		return errors.New("TCaplusListGetBatchRes.HasElementBuff's refer ElementNum should <= count 10240")
+	}
+
+	if this.HasElementBuff == nil {
+		this.HasElementBuff = make([]int32, int(this.ElementNum))
+	}
+
+	referHasElementBuff := this.HasElementBuff[:this.ElementNum]
+	err = binary.Read(r, binary.BigEndian, referHasElementBuff)
+	if err != nil {
+		return errors.New("TCaplusListGetBatchRes.HasElementBuff pack error\n" + err.Error())
+	}
+
+	err = this.ResultInfo.UnpackFrom(cutVer, r)
+	if err != nil {
+		return errors.New("TCaplusListGetBatchRes.ResultInfo unpack error\n" + err.Error())
+	}
+
+	return err
+}
+
+const (
+	TCaplusListAddAfterBatchReqBaseVersion    uint32 = 118
+	TCaplusListAddAfterBatchReqCurrentVersion uint32 = 118
+)
+
+// TCaplusListAddAfterBatchReq
+type TCaplusListAddAfterBatchReq struct {
+	AllowMultiResponses byte `tdr_field:"AllowMultiResponses"`
+
+	ShiftFlag byte `tdr_field:"ShiftFlag"`
+
+	ElementNum uint32 `tdr_field:"ElementNum"`
+
+	ElementIndexArray []int32 `tdr_field:"ElementIndexArray" tdr_count:"10240" tdr_refer:"ElementNum"`
+
+	ValueIndex []*FieldIndex `tdr_field:"ValueIndex" tdr_count:"1024" tdr_refer:"ElementNum"`
+
+	ValueLen int32 `tdr_field:"ValueLen"`
+
+	ValueInfo []byte `tdr_field:"ValueInfo" tdr_count:"10300000" tdr_refer:"ValueLen"`
+
+	CheckVersiontType byte `tdr_field:"CheckVersiontType"`
+}
+
+func NewTCaplusListAddAfterBatchReq() *TCaplusListAddAfterBatchReq {
+	obj := new(TCaplusListAddAfterBatchReq)
+	obj.Init()
+	return obj
+}
+
+func (this *TCaplusListAddAfterBatchReq) GetBaseVersion() uint32 {
+	return TCaplusListAddAfterBatchReqBaseVersion
+}
+
+func (this *TCaplusListAddAfterBatchReq) GetCurrentVersion() uint32 {
+	return TCaplusListAddAfterBatchReqCurrentVersion
+}
+
+func (this *TCaplusListAddAfterBatchReq) Init() {
+	this.AllowMultiResponses = 0
+
+	this.ShiftFlag = 1
+
+	this.ElementNum = 0
+
+	this.ValueLen = 0
+
+	this.CheckVersiontType = 1
+
+}
+
+func (this *TCaplusListAddAfterBatchReq) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("TCaplusListAddAfterBatchReq Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *TCaplusListAddAfterBatchReq) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > TCaplusListAddAfterBatchReqCurrentVersion {
+		cutVer = TCaplusListAddAfterBatchReqCurrentVersion
+	}
+	// check cut version
+	if cutVer < TCaplusListAddAfterBatchReqBaseVersion {
+		return errors.New("TCaplusListAddAfterBatchReq cut version must large than TCaplusListAddAfterBatchReqBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, this.AllowMultiResponses)
+	if err != nil {
+		return errors.New("TCaplusListAddAfterBatchReq.AllowMultiResponses pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.ShiftFlag)
+	if err != nil {
+		return errors.New("TCaplusListAddAfterBatchReq.ShiftFlag pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.ElementNum)
+	if err != nil {
+		return errors.New("TCaplusListAddAfterBatchReq.ElementNum pack error\n" + err.Error())
+	}
+
+	if this.ElementNum < 0 {
+		return errors.New("TCaplusListAddAfterBatchReq.ElementIndexArray's refer ElementNum should >= 0")
+	}
+	if this.ElementNum > 10240 {
+		return errors.New("TCaplusListAddAfterBatchReq.ElementIndexArray's refer ElementNum should <= count 10240")
+	}
+	if len(this.ElementIndexArray) < int(this.ElementNum) {
+		return errors.New("TCaplusListAddAfterBatchReq.ElementIndexArray's length should > ElementNum")
+	}
+	if this.ElementNum > 0 {
+		referElementIndexArray := this.ElementIndexArray[:this.ElementNum]
+		err = binary.Write(w, binary.BigEndian, referElementIndexArray)
+		if err != nil {
+			return errors.New("TCaplusListAddAfterBatchReq.ElementIndexArray pack error\n" + err.Error())
+		}
+	}
+
+	if this.ElementNum < 0 {
+		return errors.New("TCaplusListAddAfterBatchReq.ValueIndex's refer ElementNum should >= 0")
+	}
+	if this.ElementNum > 1024 {
+		return errors.New("TCaplusListAddAfterBatchReq.ValueIndex's refer ElementNum should <= count 1024")
+	}
+	if len(this.ValueIndex) < int(this.ElementNum) {
+		return errors.New("TCaplusListAddAfterBatchReq.ValueIndex's length should > ElementNum")
+	}
+	if this.ElementNum > 0 {
+		for i := 0; i < int(this.ElementNum); i++ {
+			err = this.ValueIndex[i].PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusListAddAfterBatchReq.ValueIndex pack error\n" + err.Error())
+			}
+
+		}
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.ValueLen)
+	if err != nil {
+		return errors.New("TCaplusListAddAfterBatchReq.ValueLen pack error\n" + err.Error())
+	}
+
+	if this.ValueLen < 0 {
+		return errors.New("TCaplusListAddAfterBatchReq.ValueInfo's refer ValueLen should >= 0")
+	}
+	if this.ValueLen > 10300000 {
+		return errors.New("TCaplusListAddAfterBatchReq.ValueInfo's refer ValueLen should <= count 10300000")
+	}
+	if len(this.ValueInfo) < int(this.ValueLen) {
+		return errors.New("TCaplusListAddAfterBatchReq.ValueInfo's length should > ValueLen")
+	}
+	if this.ValueLen > 0 {
+		referValueInfo := this.ValueInfo[:this.ValueLen]
+		err = binary.Write(w, binary.BigEndian, referValueInfo)
+		if err != nil {
+			return errors.New("TCaplusListAddAfterBatchReq.ValueInfo pack error\n" + err.Error())
+		}
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.CheckVersiontType)
+	if err != nil {
+		return errors.New("TCaplusListAddAfterBatchReq.CheckVersiontType pack error\n" + err.Error())
+	}
+
+	return nil
+}
+
+func (this *TCaplusListAddAfterBatchReq) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("TCaplusListAddAfterBatchReq data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *TCaplusListAddAfterBatchReq) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > TCaplusListAddAfterBatchReqCurrentVersion {
+		cutVer = TCaplusListAddAfterBatchReqCurrentVersion
+	}
+	// check version
+	if cutVer < TCaplusListAddAfterBatchReqBaseVersion {
+		errors.New("TCaplusListAddAfterBatchReq cut version must large than TCaplusListAddAfterBatchReqBaseVersion\n")
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.AllowMultiResponses)
+	if err != nil {
+		return errors.New("TCaplusListAddAfterBatchReq.AllowMultiResponses unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.ShiftFlag)
+	if err != nil {
+		return errors.New("TCaplusListAddAfterBatchReq.ShiftFlag unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.ElementNum)
+	if err != nil {
+		return errors.New("TCaplusListAddAfterBatchReq.ElementNum unpack error\n" + err.Error())
+	}
+
+	if this.ElementNum < 0 {
+		return errors.New("TCaplusListAddAfterBatchReq.ElementIndexArray's refer ElementNum should >= 0")
+	}
+	if this.ElementNum > 10240 {
+		return errors.New("TCaplusListAddAfterBatchReq.ElementIndexArray's refer ElementNum should <= count 10240")
+	}
+
+	if this.ElementIndexArray == nil {
+		this.ElementIndexArray = make([]int32, int(this.ElementNum))
+	}
+
+	referElementIndexArray := this.ElementIndexArray[:this.ElementNum]
+	err = binary.Read(r, binary.BigEndian, referElementIndexArray)
+	if err != nil {
+		return errors.New("TCaplusListAddAfterBatchReq.ElementIndexArray pack error\n" + err.Error())
+	}
+
+	if this.ElementNum < 0 {
+		return errors.New("TCaplusListAddAfterBatchReq.ValueIndex's refer ElementNum should >= 0")
+	}
+	if this.ElementNum > 1024 {
+		return errors.New("TCaplusListAddAfterBatchReq.ValueIndex's refer ElementNum should <= count 1024")
+	}
+
+	if this.ValueIndex == nil {
+		this.ValueIndex = make([]*FieldIndex, int(this.ElementNum))
+		for i := 0; i < int(this.ElementNum); i++ {
+			this.ValueIndex[i] = NewFieldIndex()
+		}
+	}
+
+	for i := 0; i < int(this.ElementNum); i++ {
+		err = this.ValueIndex[i].UnpackFrom(cutVer, r)
+		if err != nil {
+			return errors.New("TCaplusListAddAfterBatchReq.ValueIndex unpack error\n" + err.Error())
+		}
+
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.ValueLen)
+	if err != nil {
+		return errors.New("TCaplusListAddAfterBatchReq.ValueLen unpack error\n" + err.Error())
+	}
+
+	if this.ValueLen < 0 {
+		return errors.New("TCaplusListAddAfterBatchReq.ValueInfo's refer ValueLen should >= 0")
+	}
+	if this.ValueLen > 10300000 {
+		return errors.New("TCaplusListAddAfterBatchReq.ValueInfo's refer ValueLen should <= count 10300000")
+	}
+
+	if this.ValueInfo == nil {
+		this.ValueInfo = make([]byte, int(this.ValueLen))
+	}
+
+	referValueInfo := this.ValueInfo[:this.ValueLen]
+	err = binary.Read(r, binary.BigEndian, referValueInfo)
+	if err != nil {
+		return errors.New("TCaplusListAddAfterBatchReq.ValueInfo pack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.CheckVersiontType)
+	if err != nil {
+		return errors.New("TCaplusListAddAfterBatchReq.CheckVersiontType unpack error\n" + err.Error())
+	}
+
+	return err
+}
+
+const (
+	TCaplusListAddAfterBatchResBaseVersion    uint32 = 118
+	TCaplusListAddAfterBatchResCurrentVersion uint32 = 119
+)
+
+// TCaplusListAddAfterBatchRes
+type TCaplusListAddAfterBatchRes struct {
+	Result int32 `tdr_field:"Result"`
+
+	TotalNum uint32 `tdr_field:"TotalNum"`
+
+	LeftNum uint32 `tdr_field:"LeftNum"`
+
+	ElementNum uint32 `tdr_field:"ElementNum"`
+
+	ElementIndexArray []int32 `tdr_field:"ElementIndexArray" tdr_count:"10240" tdr_refer:"ElementNum"`
+
+	ElementResult []int32 `tdr_field:"ElementResult" tdr_count:"10240" tdr_refer:"ElementNum"`
+
+	HasElementBuff []int32 `tdr_field:"HasElementBuff" tdr_count:"10240" tdr_refer:"ElementNum"`
+
+	ResultInfo *TCaplusListElementSet `tdr_field:"ResultInfo"`
+}
+
+func NewTCaplusListAddAfterBatchRes() *TCaplusListAddAfterBatchRes {
+	obj := new(TCaplusListAddAfterBatchRes)
+	obj.Init()
+	return obj
+}
+
+func (this *TCaplusListAddAfterBatchRes) GetBaseVersion() uint32 {
+	return TCaplusListAddAfterBatchResBaseVersion
+}
+
+func (this *TCaplusListAddAfterBatchRes) GetCurrentVersion() uint32 {
+	return TCaplusListAddAfterBatchResCurrentVersion
+}
+
+func (this *TCaplusListAddAfterBatchRes) Init() {
+
+	this.TotalNum = 0
+
+	this.LeftNum = 0
+
+	this.ElementNum = 0
+
+	this.ResultInfo = NewTCaplusListElementSet()
+
+}
+
+func (this *TCaplusListAddAfterBatchRes) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("TCaplusListAddAfterBatchRes Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *TCaplusListAddAfterBatchRes) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > TCaplusListAddAfterBatchResCurrentVersion {
+		cutVer = TCaplusListAddAfterBatchResCurrentVersion
+	}
+	// check cut version
+	if cutVer < TCaplusListAddAfterBatchResBaseVersion {
+		return errors.New("TCaplusListAddAfterBatchRes cut version must large than TCaplusListAddAfterBatchResBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, this.Result)
+	if err != nil {
+		return errors.New("TCaplusListAddAfterBatchRes.Result pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.TotalNum)
+	if err != nil {
+		return errors.New("TCaplusListAddAfterBatchRes.TotalNum pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.LeftNum)
+	if err != nil {
+		return errors.New("TCaplusListAddAfterBatchRes.LeftNum pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.ElementNum)
+	if err != nil {
+		return errors.New("TCaplusListAddAfterBatchRes.ElementNum pack error\n" + err.Error())
+	}
+
+	if this.ElementNum < 0 {
+		return errors.New("TCaplusListAddAfterBatchRes.ElementIndexArray's refer ElementNum should >= 0")
+	}
+	if this.ElementNum > 10240 {
+		return errors.New("TCaplusListAddAfterBatchRes.ElementIndexArray's refer ElementNum should <= count 10240")
+	}
+	if len(this.ElementIndexArray) < int(this.ElementNum) {
+		return errors.New("TCaplusListAddAfterBatchRes.ElementIndexArray's length should > ElementNum")
+	}
+	if this.ElementNum > 0 {
+		referElementIndexArray := this.ElementIndexArray[:this.ElementNum]
+		err = binary.Write(w, binary.BigEndian, referElementIndexArray)
+		if err != nil {
+			return errors.New("TCaplusListAddAfterBatchRes.ElementIndexArray pack error\n" + err.Error())
+		}
+	}
+
+	if this.ElementNum < 0 {
+		return errors.New("TCaplusListAddAfterBatchRes.ElementResult's refer ElementNum should >= 0")
+	}
+	if this.ElementNum > 10240 {
+		return errors.New("TCaplusListAddAfterBatchRes.ElementResult's refer ElementNum should <= count 10240")
+	}
+	if len(this.ElementResult) < int(this.ElementNum) {
+		return errors.New("TCaplusListAddAfterBatchRes.ElementResult's length should > ElementNum")
+	}
+	if this.ElementNum > 0 {
+		referElementResult := this.ElementResult[:this.ElementNum]
+		err = binary.Write(w, binary.BigEndian, referElementResult)
+		if err != nil {
+			return errors.New("TCaplusListAddAfterBatchRes.ElementResult pack error\n" + err.Error())
+		}
+	}
+
+	if this.ElementNum < 0 {
+		return errors.New("TCaplusListAddAfterBatchRes.HasElementBuff's refer ElementNum should >= 0")
+	}
+	if this.ElementNum > 10240 {
+		return errors.New("TCaplusListAddAfterBatchRes.HasElementBuff's refer ElementNum should <= count 10240")
+	}
+	if len(this.HasElementBuff) < int(this.ElementNum) {
+		return errors.New("TCaplusListAddAfterBatchRes.HasElementBuff's length should > ElementNum")
+	}
+	if this.ElementNum > 0 {
+		referHasElementBuff := this.HasElementBuff[:this.ElementNum]
+		err = binary.Write(w, binary.BigEndian, referHasElementBuff)
+		if err != nil {
+			return errors.New("TCaplusListAddAfterBatchRes.HasElementBuff pack error\n" + err.Error())
+		}
+	}
+
+	err = this.ResultInfo.PackTo(cutVer, w)
+	if err != nil {
+		return errors.New("TCaplusListAddAfterBatchRes.ResultInfo pack error\n" + err.Error())
+	}
+
+	return nil
+}
+
+func (this *TCaplusListAddAfterBatchRes) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("TCaplusListAddAfterBatchRes data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *TCaplusListAddAfterBatchRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > TCaplusListAddAfterBatchResCurrentVersion {
+		cutVer = TCaplusListAddAfterBatchResCurrentVersion
+	}
+	// check version
+	if cutVer < TCaplusListAddAfterBatchResBaseVersion {
+		errors.New("TCaplusListAddAfterBatchRes cut version must large than TCaplusListAddAfterBatchResBaseVersion\n")
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.Result)
+	if err != nil {
+		return errors.New("TCaplusListAddAfterBatchRes.Result unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.TotalNum)
+	if err != nil {
+		return errors.New("TCaplusListAddAfterBatchRes.TotalNum unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.LeftNum)
+	if err != nil {
+		return errors.New("TCaplusListAddAfterBatchRes.LeftNum unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.ElementNum)
+	if err != nil {
+		return errors.New("TCaplusListAddAfterBatchRes.ElementNum unpack error\n" + err.Error())
+	}
+
+	if this.ElementNum < 0 {
+		return errors.New("TCaplusListAddAfterBatchRes.ElementIndexArray's refer ElementNum should >= 0")
+	}
+	if this.ElementNum > 10240 {
+		return errors.New("TCaplusListAddAfterBatchRes.ElementIndexArray's refer ElementNum should <= count 10240")
+	}
+
+	if this.ElementIndexArray == nil {
+		this.ElementIndexArray = make([]int32, int(this.ElementNum))
+	}
+
+	referElementIndexArray := this.ElementIndexArray[:this.ElementNum]
+	err = binary.Read(r, binary.BigEndian, referElementIndexArray)
+	if err != nil {
+		return errors.New("TCaplusListAddAfterBatchRes.ElementIndexArray pack error\n" + err.Error())
+	}
+
+	if this.ElementNum < 0 {
+		return errors.New("TCaplusListAddAfterBatchRes.ElementResult's refer ElementNum should >= 0")
+	}
+	if this.ElementNum > 10240 {
+		return errors.New("TCaplusListAddAfterBatchRes.ElementResult's refer ElementNum should <= count 10240")
+	}
+
+	if this.ElementResult == nil {
+		this.ElementResult = make([]int32, int(this.ElementNum))
+	}
+
+	referElementResult := this.ElementResult[:this.ElementNum]
+	err = binary.Read(r, binary.BigEndian, referElementResult)
+	if err != nil {
+		return errors.New("TCaplusListAddAfterBatchRes.ElementResult pack error\n" + err.Error())
+	}
+
+	if this.ElementNum < 0 {
+		return errors.New("TCaplusListAddAfterBatchRes.HasElementBuff's refer ElementNum should >= 0")
+	}
+	if this.ElementNum > 10240 {
+		return errors.New("TCaplusListAddAfterBatchRes.HasElementBuff's refer ElementNum should <= count 10240")
+	}
+
+	if this.HasElementBuff == nil {
+		this.HasElementBuff = make([]int32, int(this.ElementNum))
+	}
+
+	referHasElementBuff := this.HasElementBuff[:this.ElementNum]
+	err = binary.Read(r, binary.BigEndian, referHasElementBuff)
+	if err != nil {
+		return errors.New("TCaplusListAddAfterBatchRes.HasElementBuff pack error\n" + err.Error())
+	}
+
+	err = this.ResultInfo.UnpackFrom(cutVer, r)
+	if err != nil {
+		return errors.New("TCaplusListAddAfterBatchRes.ResultInfo unpack error\n" + err.Error())
+	}
+
+	return err
+}
+
+const (
+	TCaplusListReplaceBatchReqBaseVersion    uint32 = 118
+	TCaplusListReplaceBatchReqCurrentVersion uint32 = 118
+)
+
+// TCaplusListReplaceBatchReq
+type TCaplusListReplaceBatchReq struct {
+	AllowMultiResponses byte `tdr_field:"AllowMultiResponses"`
+
+	Flag byte `tdr_field:"Flag"`
+
+	ElementNum uint32 `tdr_field:"ElementNum"`
+
+	ElementIndexArray []int32 `tdr_field:"ElementIndexArray" tdr_count:"10240" tdr_refer:"ElementNum"`
+
+	ValueIndex []*FieldIndex `tdr_field:"ValueIndex" tdr_count:"1024" tdr_refer:"ElementNum"`
+
+	ValueLen int32 `tdr_field:"ValueLen"`
+
+	ValueInfo []byte `tdr_field:"ValueInfo" tdr_count:"10300000" tdr_refer:"ValueLen"`
+
+	CheckVersiontType byte `tdr_field:"CheckVersiontType"`
+}
+
+func NewTCaplusListReplaceBatchReq() *TCaplusListReplaceBatchReq {
+	obj := new(TCaplusListReplaceBatchReq)
+	obj.Init()
+	return obj
+}
+
+func (this *TCaplusListReplaceBatchReq) GetBaseVersion() uint32 {
+	return TCaplusListReplaceBatchReqBaseVersion
+}
+
+func (this *TCaplusListReplaceBatchReq) GetCurrentVersion() uint32 {
+	return TCaplusListReplaceBatchReqCurrentVersion
+}
+
+func (this *TCaplusListReplaceBatchReq) Init() {
+	this.AllowMultiResponses = 0
+
+	this.Flag = 0
+
+	this.ElementNum = 0
+
+	this.ValueLen = 0
+
+	this.CheckVersiontType = 1
+
+}
+
+func (this *TCaplusListReplaceBatchReq) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("TCaplusListReplaceBatchReq Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *TCaplusListReplaceBatchReq) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > TCaplusListReplaceBatchReqCurrentVersion {
+		cutVer = TCaplusListReplaceBatchReqCurrentVersion
+	}
+	// check cut version
+	if cutVer < TCaplusListReplaceBatchReqBaseVersion {
+		return errors.New("TCaplusListReplaceBatchReq cut version must large than TCaplusListReplaceBatchReqBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, this.AllowMultiResponses)
+	if err != nil {
+		return errors.New("TCaplusListReplaceBatchReq.AllowMultiResponses pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.Flag)
+	if err != nil {
+		return errors.New("TCaplusListReplaceBatchReq.Flag pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.ElementNum)
+	if err != nil {
+		return errors.New("TCaplusListReplaceBatchReq.ElementNum pack error\n" + err.Error())
+	}
+
+	if this.ElementNum < 0 {
+		return errors.New("TCaplusListReplaceBatchReq.ElementIndexArray's refer ElementNum should >= 0")
+	}
+	if this.ElementNum > 10240 {
+		return errors.New("TCaplusListReplaceBatchReq.ElementIndexArray's refer ElementNum should <= count 10240")
+	}
+	if len(this.ElementIndexArray) < int(this.ElementNum) {
+		return errors.New("TCaplusListReplaceBatchReq.ElementIndexArray's length should > ElementNum")
+	}
+	if this.ElementNum > 0 {
+		referElementIndexArray := this.ElementIndexArray[:this.ElementNum]
+		err = binary.Write(w, binary.BigEndian, referElementIndexArray)
+		if err != nil {
+			return errors.New("TCaplusListReplaceBatchReq.ElementIndexArray pack error\n" + err.Error())
+		}
+	}
+
+	if this.ElementNum < 0 {
+		return errors.New("TCaplusListReplaceBatchReq.ValueIndex's refer ElementNum should >= 0")
+	}
+	if this.ElementNum > 1024 {
+		return errors.New("TCaplusListReplaceBatchReq.ValueIndex's refer ElementNum should <= count 1024")
+	}
+	if len(this.ValueIndex) < int(this.ElementNum) {
+		return errors.New("TCaplusListReplaceBatchReq.ValueIndex's length should > ElementNum")
+	}
+	if this.ElementNum > 0 {
+		for i := 0; i < int(this.ElementNum); i++ {
+			err = this.ValueIndex[i].PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusListReplaceBatchReq.ValueIndex pack error\n" + err.Error())
+			}
+
+		}
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.ValueLen)
+	if err != nil {
+		return errors.New("TCaplusListReplaceBatchReq.ValueLen pack error\n" + err.Error())
+	}
+
+	if this.ValueLen < 0 {
+		return errors.New("TCaplusListReplaceBatchReq.ValueInfo's refer ValueLen should >= 0")
+	}
+	if this.ValueLen > 10300000 {
+		return errors.New("TCaplusListReplaceBatchReq.ValueInfo's refer ValueLen should <= count 10300000")
+	}
+	if len(this.ValueInfo) < int(this.ValueLen) {
+		return errors.New("TCaplusListReplaceBatchReq.ValueInfo's length should > ValueLen")
+	}
+	if this.ValueLen > 0 {
+		referValueInfo := this.ValueInfo[:this.ValueLen]
+		err = binary.Write(w, binary.BigEndian, referValueInfo)
+		if err != nil {
+			return errors.New("TCaplusListReplaceBatchReq.ValueInfo pack error\n" + err.Error())
+		}
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.CheckVersiontType)
+	if err != nil {
+		return errors.New("TCaplusListReplaceBatchReq.CheckVersiontType pack error\n" + err.Error())
+	}
+
+	return nil
+}
+
+func (this *TCaplusListReplaceBatchReq) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("TCaplusListReplaceBatchReq data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *TCaplusListReplaceBatchReq) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > TCaplusListReplaceBatchReqCurrentVersion {
+		cutVer = TCaplusListReplaceBatchReqCurrentVersion
+	}
+	// check version
+	if cutVer < TCaplusListReplaceBatchReqBaseVersion {
+		errors.New("TCaplusListReplaceBatchReq cut version must large than TCaplusListReplaceBatchReqBaseVersion\n")
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.AllowMultiResponses)
+	if err != nil {
+		return errors.New("TCaplusListReplaceBatchReq.AllowMultiResponses unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.Flag)
+	if err != nil {
+		return errors.New("TCaplusListReplaceBatchReq.Flag unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.ElementNum)
+	if err != nil {
+		return errors.New("TCaplusListReplaceBatchReq.ElementNum unpack error\n" + err.Error())
+	}
+
+	if this.ElementNum < 0 {
+		return errors.New("TCaplusListReplaceBatchReq.ElementIndexArray's refer ElementNum should >= 0")
+	}
+	if this.ElementNum > 10240 {
+		return errors.New("TCaplusListReplaceBatchReq.ElementIndexArray's refer ElementNum should <= count 10240")
+	}
+
+	if this.ElementIndexArray == nil {
+		this.ElementIndexArray = make([]int32, int(this.ElementNum))
+	}
+
+	referElementIndexArray := this.ElementIndexArray[:this.ElementNum]
+	err = binary.Read(r, binary.BigEndian, referElementIndexArray)
+	if err != nil {
+		return errors.New("TCaplusListReplaceBatchReq.ElementIndexArray pack error\n" + err.Error())
+	}
+
+	if this.ElementNum < 0 {
+		return errors.New("TCaplusListReplaceBatchReq.ValueIndex's refer ElementNum should >= 0")
+	}
+	if this.ElementNum > 1024 {
+		return errors.New("TCaplusListReplaceBatchReq.ValueIndex's refer ElementNum should <= count 1024")
+	}
+
+	if this.ValueIndex == nil {
+		this.ValueIndex = make([]*FieldIndex, int(this.ElementNum))
+		for i := 0; i < int(this.ElementNum); i++ {
+			this.ValueIndex[i] = NewFieldIndex()
+		}
+	}
+
+	for i := 0; i < int(this.ElementNum); i++ {
+		err = this.ValueIndex[i].UnpackFrom(cutVer, r)
+		if err != nil {
+			return errors.New("TCaplusListReplaceBatchReq.ValueIndex unpack error\n" + err.Error())
+		}
+
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.ValueLen)
+	if err != nil {
+		return errors.New("TCaplusListReplaceBatchReq.ValueLen unpack error\n" + err.Error())
+	}
+
+	if this.ValueLen < 0 {
+		return errors.New("TCaplusListReplaceBatchReq.ValueInfo's refer ValueLen should >= 0")
+	}
+	if this.ValueLen > 10300000 {
+		return errors.New("TCaplusListReplaceBatchReq.ValueInfo's refer ValueLen should <= count 10300000")
+	}
+
+	if this.ValueInfo == nil {
+		this.ValueInfo = make([]byte, int(this.ValueLen))
+	}
+
+	referValueInfo := this.ValueInfo[:this.ValueLen]
+	err = binary.Read(r, binary.BigEndian, referValueInfo)
+	if err != nil {
+		return errors.New("TCaplusListReplaceBatchReq.ValueInfo pack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.CheckVersiontType)
+	if err != nil {
+		return errors.New("TCaplusListReplaceBatchReq.CheckVersiontType unpack error\n" + err.Error())
+	}
+
+	return err
+}
+
+const (
+	TCaplusListReplaceBatchResBaseVersion    uint32 = 118
+	TCaplusListReplaceBatchResCurrentVersion uint32 = 119
+)
+
+// TCaplusListReplaceBatchRes
+type TCaplusListReplaceBatchRes struct {
+	Result int32 `tdr_field:"Result"`
+
+	TotalNum uint32 `tdr_field:"TotalNum"`
+
+	LeftNum uint32 `tdr_field:"LeftNum"`
+
+	ElementNum uint32 `tdr_field:"ElementNum"`
+
+	ElementIndexArray []int32 `tdr_field:"ElementIndexArray" tdr_count:"10240" tdr_refer:"ElementNum"`
+
+	ElementResult []int32 `tdr_field:"ElementResult" tdr_count:"10240" tdr_refer:"ElementNum"`
+
+	HasElementBuff []int32 `tdr_field:"HasElementBuff" tdr_count:"10240" tdr_refer:"ElementNum"`
+
+	ResultInfo *TCaplusListElementSet `tdr_field:"ResultInfo"`
+}
+
+func NewTCaplusListReplaceBatchRes() *TCaplusListReplaceBatchRes {
+	obj := new(TCaplusListReplaceBatchRes)
+	obj.Init()
+	return obj
+}
+
+func (this *TCaplusListReplaceBatchRes) GetBaseVersion() uint32 {
+	return TCaplusListReplaceBatchResBaseVersion
+}
+
+func (this *TCaplusListReplaceBatchRes) GetCurrentVersion() uint32 {
+	return TCaplusListReplaceBatchResCurrentVersion
+}
+
+func (this *TCaplusListReplaceBatchRes) Init() {
+
+	this.TotalNum = 0
+
+	this.LeftNum = 0
+
+	this.ElementNum = 0
+
+	this.ResultInfo = NewTCaplusListElementSet()
+
+}
+
+func (this *TCaplusListReplaceBatchRes) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("TCaplusListReplaceBatchRes Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *TCaplusListReplaceBatchRes) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > TCaplusListReplaceBatchResCurrentVersion {
+		cutVer = TCaplusListReplaceBatchResCurrentVersion
+	}
+	// check cut version
+	if cutVer < TCaplusListReplaceBatchResBaseVersion {
+		return errors.New("TCaplusListReplaceBatchRes cut version must large than TCaplusListReplaceBatchResBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, this.Result)
+	if err != nil {
+		return errors.New("TCaplusListReplaceBatchRes.Result pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.TotalNum)
+	if err != nil {
+		return errors.New("TCaplusListReplaceBatchRes.TotalNum pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.LeftNum)
+	if err != nil {
+		return errors.New("TCaplusListReplaceBatchRes.LeftNum pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.ElementNum)
+	if err != nil {
+		return errors.New("TCaplusListReplaceBatchRes.ElementNum pack error\n" + err.Error())
+	}
+
+	if this.ElementNum < 0 {
+		return errors.New("TCaplusListReplaceBatchRes.ElementIndexArray's refer ElementNum should >= 0")
+	}
+	if this.ElementNum > 10240 {
+		return errors.New("TCaplusListReplaceBatchRes.ElementIndexArray's refer ElementNum should <= count 10240")
+	}
+	if len(this.ElementIndexArray) < int(this.ElementNum) {
+		return errors.New("TCaplusListReplaceBatchRes.ElementIndexArray's length should > ElementNum")
+	}
+	if this.ElementNum > 0 {
+		referElementIndexArray := this.ElementIndexArray[:this.ElementNum]
+		err = binary.Write(w, binary.BigEndian, referElementIndexArray)
+		if err != nil {
+			return errors.New("TCaplusListReplaceBatchRes.ElementIndexArray pack error\n" + err.Error())
+		}
+	}
+
+	if this.ElementNum < 0 {
+		return errors.New("TCaplusListReplaceBatchRes.ElementResult's refer ElementNum should >= 0")
+	}
+	if this.ElementNum > 10240 {
+		return errors.New("TCaplusListReplaceBatchRes.ElementResult's refer ElementNum should <= count 10240")
+	}
+	if len(this.ElementResult) < int(this.ElementNum) {
+		return errors.New("TCaplusListReplaceBatchRes.ElementResult's length should > ElementNum")
+	}
+	if this.ElementNum > 0 {
+		referElementResult := this.ElementResult[:this.ElementNum]
+		err = binary.Write(w, binary.BigEndian, referElementResult)
+		if err != nil {
+			return errors.New("TCaplusListReplaceBatchRes.ElementResult pack error\n" + err.Error())
+		}
+	}
+
+	if this.ElementNum < 0 {
+		return errors.New("TCaplusListReplaceBatchRes.HasElementBuff's refer ElementNum should >= 0")
+	}
+	if this.ElementNum > 10240 {
+		return errors.New("TCaplusListReplaceBatchRes.HasElementBuff's refer ElementNum should <= count 10240")
+	}
+	if len(this.HasElementBuff) < int(this.ElementNum) {
+		return errors.New("TCaplusListReplaceBatchRes.HasElementBuff's length should > ElementNum")
+	}
+	if this.ElementNum > 0 {
+		referHasElementBuff := this.HasElementBuff[:this.ElementNum]
+		err = binary.Write(w, binary.BigEndian, referHasElementBuff)
+		if err != nil {
+			return errors.New("TCaplusListReplaceBatchRes.HasElementBuff pack error\n" + err.Error())
+		}
+	}
+
+	err = this.ResultInfo.PackTo(cutVer, w)
+	if err != nil {
+		return errors.New("TCaplusListReplaceBatchRes.ResultInfo pack error\n" + err.Error())
+	}
+
+	return nil
+}
+
+func (this *TCaplusListReplaceBatchRes) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("TCaplusListReplaceBatchRes data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *TCaplusListReplaceBatchRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > TCaplusListReplaceBatchResCurrentVersion {
+		cutVer = TCaplusListReplaceBatchResCurrentVersion
+	}
+	// check version
+	if cutVer < TCaplusListReplaceBatchResBaseVersion {
+		errors.New("TCaplusListReplaceBatchRes cut version must large than TCaplusListReplaceBatchResBaseVersion\n")
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.Result)
+	if err != nil {
+		return errors.New("TCaplusListReplaceBatchRes.Result unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.TotalNum)
+	if err != nil {
+		return errors.New("TCaplusListReplaceBatchRes.TotalNum unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.LeftNum)
+	if err != nil {
+		return errors.New("TCaplusListReplaceBatchRes.LeftNum unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.ElementNum)
+	if err != nil {
+		return errors.New("TCaplusListReplaceBatchRes.ElementNum unpack error\n" + err.Error())
+	}
+
+	if this.ElementNum < 0 {
+		return errors.New("TCaplusListReplaceBatchRes.ElementIndexArray's refer ElementNum should >= 0")
+	}
+	if this.ElementNum > 10240 {
+		return errors.New("TCaplusListReplaceBatchRes.ElementIndexArray's refer ElementNum should <= count 10240")
+	}
+
+	if this.ElementIndexArray == nil {
+		this.ElementIndexArray = make([]int32, int(this.ElementNum))
+	}
+
+	referElementIndexArray := this.ElementIndexArray[:this.ElementNum]
+	err = binary.Read(r, binary.BigEndian, referElementIndexArray)
+	if err != nil {
+		return errors.New("TCaplusListReplaceBatchRes.ElementIndexArray pack error\n" + err.Error())
+	}
+
+	if this.ElementNum < 0 {
+		return errors.New("TCaplusListReplaceBatchRes.ElementResult's refer ElementNum should >= 0")
+	}
+	if this.ElementNum > 10240 {
+		return errors.New("TCaplusListReplaceBatchRes.ElementResult's refer ElementNum should <= count 10240")
+	}
+
+	if this.ElementResult == nil {
+		this.ElementResult = make([]int32, int(this.ElementNum))
+	}
+
+	referElementResult := this.ElementResult[:this.ElementNum]
+	err = binary.Read(r, binary.BigEndian, referElementResult)
+	if err != nil {
+		return errors.New("TCaplusListReplaceBatchRes.ElementResult pack error\n" + err.Error())
+	}
+
+	if this.ElementNum < 0 {
+		return errors.New("TCaplusListReplaceBatchRes.HasElementBuff's refer ElementNum should >= 0")
+	}
+	if this.ElementNum > 10240 {
+		return errors.New("TCaplusListReplaceBatchRes.HasElementBuff's refer ElementNum should <= count 10240")
+	}
+
+	if this.HasElementBuff == nil {
+		this.HasElementBuff = make([]int32, int(this.ElementNum))
+	}
+
+	referHasElementBuff := this.HasElementBuff[:this.ElementNum]
+	err = binary.Read(r, binary.BigEndian, referHasElementBuff)
+	if err != nil {
+		return errors.New("TCaplusListReplaceBatchRes.HasElementBuff pack error\n" + err.Error())
+	}
+
+	err = this.ResultInfo.UnpackFrom(cutVer, r)
+	if err != nil {
+		return errors.New("TCaplusListReplaceBatchRes.ResultInfo unpack error\n" + err.Error())
+	}
+
 	return err
 }
 
@@ -5556,8 +10598,9 @@ func (this *TCaplusListCheckRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader) err
 }
 
 const (
-	TCaplusListGetReqBaseVersion    uint32 = 1
-	TCaplusListGetReqCurrentVersion uint32 = 1
+	TCaplusListGetReqBaseVersion      uint32 = 1
+	TCaplusListGetReqCurrentVersion   uint32 = 125
+	TCaplusListGetReqConditionVersion uint32 = 125
 )
 
 // TCaplusListGetReq
@@ -5565,6 +10608,8 @@ type TCaplusListGetReq struct {
 	ElementIndex int32 `tdr_field:"ElementIndex"`
 
 	ElementValueNames *TCaplusNameSet `tdr_field:"ElementValueNames"`
+
+	Condition string `tdr_field:"Condition"`
 }
 
 func NewTCaplusListGetReq() *TCaplusListGetReq {
@@ -5619,6 +10664,19 @@ func (this *TCaplusListGetReq) PackTo(cutVer uint32, w *tdrcom.Writer) error {
 		return errors.New("TCaplusListGetReq.ElementValueNames pack error\n" + err.Error())
 	}
 
+	if cutVer >= TCaplusListGetReqConditionVersion {
+
+		err = binary.Write(w, binary.BigEndian, uint32(len(this.Condition))+1)
+		if err != nil {
+			return errors.New("TCaplusListGetReq.Condition string size pack error\n" + err.Error())
+		}
+		err = binary.Write(w, binary.BigEndian, append([]byte(this.Condition), 0))
+		if err != nil {
+			return errors.New("TCaplusListGetReq.Condition string content pack error\n" + err.Error())
+		}
+
+	}
+
 	return nil
 }
 
@@ -5650,12 +10708,28 @@ func (this *TCaplusListGetReq) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error
 		return errors.New("TCaplusListGetReq.ElementValueNames unpack error\n" + err.Error())
 	}
 
+	if cutVer >= TCaplusListGetReqConditionVersion {
+
+		var ConditionSize uint32
+		err = binary.Read(r, binary.BigEndian, &ConditionSize)
+		if err != nil {
+			return errors.New("TCaplusListGetReq.Condition string size unpack error\n" + err.Error())
+		}
+
+		ConditionBytes := make([]byte, ConditionSize)
+		err = binary.Read(r, binary.BigEndian, ConditionBytes)
+		if err != nil {
+			return errors.New("TCaplusListGetReq.Condition string content unpack error\n" + err.Error())
+		}
+		this.Condition = string(ConditionBytes[:len(ConditionBytes)-1])
+
+	}
 	return err
 }
 
 const (
 	TCaplusListGetResBaseVersion    uint32 = 1
-	TCaplusListGetResCurrentVersion uint32 = 1
+	TCaplusListGetResCurrentVersion uint32 = 119
 )
 
 // TCaplusListGetRes
@@ -5924,7 +10998,7 @@ func (this *TCaplusListAddAfterReq) UnpackFrom(cutVer uint32, r *tdrcom.Reader) 
 
 const (
 	TCaplusListAddAfterResBaseVersion       uint32 = 1
-	TCaplusListAddAfterResCurrentVersion    uint32 = 59
+	TCaplusListAddAfterResCurrentVersion    uint32 = 119
 	TCaplusListAddAfterResShiftFlagVersion  uint32 = 11
 	TCaplusListAddAfterResFlagVersion       uint32 = 59
 	TCaplusListAddAfterResResultInfoVersion uint32 = 59
@@ -6091,9 +11165,10 @@ func (this *TCaplusListAddAfterRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader) 
 
 const (
 	TCaplusListDeleteReqBaseVersion              uint32 = 1
-	TCaplusListDeleteReqCurrentVersion           uint32 = 13
+	TCaplusListDeleteReqCurrentVersion           uint32 = 125
 	TCaplusListDeleteReqFlagVersion              uint32 = 6
 	TCaplusListDeleteReqCheckVersiontTypeVersion uint32 = 13
+	TCaplusListDeleteReqConditionVersion         uint32 = 125
 )
 
 // TCaplusListDeleteReq
@@ -6103,6 +11178,8 @@ type TCaplusListDeleteReq struct {
 	Flag byte `tdr_field:"Flag"`
 
 	CheckVersiontType byte `tdr_field:"CheckVersiontType"`
+
+	Condition string `tdr_field:"Condition"`
 }
 
 func NewTCaplusListDeleteReq() *TCaplusListDeleteReq {
@@ -6168,6 +11245,18 @@ func (this *TCaplusListDeleteReq) PackTo(cutVer uint32, w *tdrcom.Writer) error 
 		}
 
 	}
+	if cutVer >= TCaplusListDeleteReqConditionVersion {
+
+		err = binary.Write(w, binary.BigEndian, uint32(len(this.Condition))+1)
+		if err != nil {
+			return errors.New("TCaplusListDeleteReq.Condition string size pack error\n" + err.Error())
+		}
+		err = binary.Write(w, binary.BigEndian, append([]byte(this.Condition), 0))
+		if err != nil {
+			return errors.New("TCaplusListDeleteReq.Condition string content pack error\n" + err.Error())
+		}
+
+	}
 
 	return nil
 }
@@ -6214,12 +11303,28 @@ func (this *TCaplusListDeleteReq) UnpackFrom(cutVer uint32, r *tdrcom.Reader) er
 		this.CheckVersiontType = 1
 
 	}
+	if cutVer >= TCaplusListDeleteReqConditionVersion {
+
+		var ConditionSize uint32
+		err = binary.Read(r, binary.BigEndian, &ConditionSize)
+		if err != nil {
+			return errors.New("TCaplusListDeleteReq.Condition string size unpack error\n" + err.Error())
+		}
+
+		ConditionBytes := make([]byte, ConditionSize)
+		err = binary.Read(r, binary.BigEndian, ConditionBytes)
+		if err != nil {
+			return errors.New("TCaplusListDeleteReq.Condition string content unpack error\n" + err.Error())
+		}
+		this.Condition = string(ConditionBytes[:len(ConditionBytes)-1])
+
+	}
 	return err
 }
 
 const (
 	TCaplusListDeleteResBaseVersion       uint32 = 1
-	TCaplusListDeleteResCurrentVersion    uint32 = 6
+	TCaplusListDeleteResCurrentVersion    uint32 = 119
 	TCaplusListDeleteResFlagVersion       uint32 = 6
 	TCaplusListDeleteResResultInfoVersion uint32 = 6
 )
@@ -6482,7 +11587,7 @@ func (this *TCaplusSysListDeleteReq) UnpackFrom(cutVer uint32, r *tdrcom.Reader)
 
 const (
 	TCaplusSysListDeleteResBaseVersion    uint32 = 53
-	TCaplusSysListDeleteResCurrentVersion uint32 = 53
+	TCaplusSysListDeleteResCurrentVersion uint32 = 119
 )
 
 // TCaplusSysListDeleteRes
@@ -6605,10 +11710,12 @@ func (this *TCaplusSysListDeleteRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader)
 
 const (
 	TCaplusListReplaceReqBaseVersion               uint32 = 1
-	TCaplusListReplaceReqCurrentVersion            uint32 = 114
+	TCaplusListReplaceReqCurrentVersion            uint32 = 125
 	TCaplusListReplaceReqFlagVersion               uint32 = 59
 	TCaplusListReplaceReqCheckVersiontTypeVersion  uint32 = 13
 	TCaplusListReplaceReqElementPbValueInfoVersion uint32 = 114
+	TCaplusListReplaceReqConditionVersion          uint32 = 125
+	TCaplusListReplaceReqOperationVersion          uint32 = 125
 )
 
 // TCaplusListReplaceReq
@@ -6622,6 +11729,10 @@ type TCaplusListReplaceReq struct {
 	CheckVersiontType byte `tdr_field:"CheckVersiontType"`
 
 	ElementPbValueInfo *ProtobufValueSet_ `tdr_field:"ElementPbValueInfo"`
+
+	Condition string `tdr_field:"Condition"`
+
+	Operation string `tdr_field:"Operation"`
 }
 
 func NewTCaplusListReplaceReq() *TCaplusListReplaceReq {
@@ -6704,6 +11815,30 @@ func (this *TCaplusListReplaceReq) PackTo(cutVer uint32, w *tdrcom.Writer) error
 		}
 
 	}
+	if cutVer >= TCaplusListReplaceReqConditionVersion {
+
+		err = binary.Write(w, binary.BigEndian, uint32(len(this.Condition))+1)
+		if err != nil {
+			return errors.New("TCaplusListReplaceReq.Condition string size pack error\n" + err.Error())
+		}
+		err = binary.Write(w, binary.BigEndian, append([]byte(this.Condition), 0))
+		if err != nil {
+			return errors.New("TCaplusListReplaceReq.Condition string content pack error\n" + err.Error())
+		}
+
+	}
+	if cutVer >= TCaplusListReplaceReqOperationVersion {
+
+		err = binary.Write(w, binary.BigEndian, uint32(len(this.Operation))+1)
+		if err != nil {
+			return errors.New("TCaplusListReplaceReq.Operation string size pack error\n" + err.Error())
+		}
+		err = binary.Write(w, binary.BigEndian, append([]byte(this.Operation), 0))
+		if err != nil {
+			return errors.New("TCaplusListReplaceReq.Operation string content pack error\n" + err.Error())
+		}
+
+	}
 
 	return nil
 }
@@ -6766,12 +11901,44 @@ func (this *TCaplusListReplaceReq) UnpackFrom(cutVer uint32, r *tdrcom.Reader) e
 		this.ElementPbValueInfo.Init()
 
 	}
+	if cutVer >= TCaplusListReplaceReqConditionVersion {
+
+		var ConditionSize uint32
+		err = binary.Read(r, binary.BigEndian, &ConditionSize)
+		if err != nil {
+			return errors.New("TCaplusListReplaceReq.Condition string size unpack error\n" + err.Error())
+		}
+
+		ConditionBytes := make([]byte, ConditionSize)
+		err = binary.Read(r, binary.BigEndian, ConditionBytes)
+		if err != nil {
+			return errors.New("TCaplusListReplaceReq.Condition string content unpack error\n" + err.Error())
+		}
+		this.Condition = string(ConditionBytes[:len(ConditionBytes)-1])
+
+	}
+	if cutVer >= TCaplusListReplaceReqOperationVersion {
+
+		var OperationSize uint32
+		err = binary.Read(r, binary.BigEndian, &OperationSize)
+		if err != nil {
+			return errors.New("TCaplusListReplaceReq.Operation string size unpack error\n" + err.Error())
+		}
+
+		OperationBytes := make([]byte, OperationSize)
+		err = binary.Read(r, binary.BigEndian, OperationBytes)
+		if err != nil {
+			return errors.New("TCaplusListReplaceReq.Operation string content unpack error\n" + err.Error())
+		}
+		this.Operation = string(OperationBytes[:len(OperationBytes)-1])
+
+	}
 	return err
 }
 
 const (
 	TCaplusListReplaceResBaseVersion       uint32 = 1
-	TCaplusListReplaceResCurrentVersion    uint32 = 59
+	TCaplusListReplaceResCurrentVersion    uint32 = 119
 	TCaplusListReplaceResFlagVersion       uint32 = 59
 	TCaplusListReplaceResResultInfoVersion uint32 = 59
 )
@@ -6916,8 +12083,11 @@ func (this *TCaplusListReplaceRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader) e
 }
 
 const (
-	TCaplusGetByPartKeyReqBaseVersion    uint32 = 1
-	TCaplusGetByPartKeyReqCurrentVersion uint32 = 1
+	TCaplusGetByPartKeyReqBaseVersion          uint32 = 1
+	TCaplusGetByPartKeyReqCurrentVersion       uint32 = 125
+	TCaplusGetByPartKeyReqSubscribeTimeVersion uint32 = 122
+	TCaplusGetByPartKeyReqSubscribeFlagVersion uint32 = 122
+	TCaplusGetByPartKeyReqConditionVersion     uint32 = 125
 )
 
 // TCaplusGetByPartKeyReq
@@ -6927,6 +12097,12 @@ type TCaplusGetByPartKeyReq struct {
 	Limit int32 `tdr_field:"Limit"`
 
 	ValueInfo *TCaplusNameSet `tdr_field:"ValueInfo"`
+
+	SubscribeTime int64 `tdr_field:"SubscribeTime"`
+
+	SubscribeFlag int32 `tdr_field:"SubscribeFlag"`
+
+	Condition string `tdr_field:"Condition"`
 }
 
 func NewTCaplusGetByPartKeyReq() *TCaplusGetByPartKeyReq {
@@ -6949,6 +12125,10 @@ func (this *TCaplusGetByPartKeyReq) Init() {
 	this.Limit = -1
 
 	this.ValueInfo = NewTCaplusNameSet()
+
+	this.SubscribeTime = 0
+
+	this.SubscribeFlag = 0
 
 }
 
@@ -6988,6 +12168,35 @@ func (this *TCaplusGetByPartKeyReq) PackTo(cutVer uint32, w *tdrcom.Writer) erro
 		return errors.New("TCaplusGetByPartKeyReq.ValueInfo pack error\n" + err.Error())
 	}
 
+	if cutVer >= TCaplusGetByPartKeyReqSubscribeTimeVersion {
+
+		err = binary.Write(w, binary.BigEndian, this.SubscribeTime)
+		if err != nil {
+			return errors.New("TCaplusGetByPartKeyReq.SubscribeTime pack error\n" + err.Error())
+		}
+
+	}
+	if cutVer >= TCaplusGetByPartKeyReqSubscribeFlagVersion {
+
+		err = binary.Write(w, binary.BigEndian, this.SubscribeFlag)
+		if err != nil {
+			return errors.New("TCaplusGetByPartKeyReq.SubscribeFlag pack error\n" + err.Error())
+		}
+
+	}
+	if cutVer >= TCaplusGetByPartKeyReqConditionVersion {
+
+		err = binary.Write(w, binary.BigEndian, uint32(len(this.Condition))+1)
+		if err != nil {
+			return errors.New("TCaplusGetByPartKeyReq.Condition string size pack error\n" + err.Error())
+		}
+		err = binary.Write(w, binary.BigEndian, append([]byte(this.Condition), 0))
+		if err != nil {
+			return errors.New("TCaplusGetByPartKeyReq.Condition string content pack error\n" + err.Error())
+		}
+
+	}
+
 	return nil
 }
 
@@ -7024,13 +12233,52 @@ func (this *TCaplusGetByPartKeyReq) UnpackFrom(cutVer uint32, r *tdrcom.Reader) 
 		return errors.New("TCaplusGetByPartKeyReq.ValueInfo unpack error\n" + err.Error())
 	}
 
+	if cutVer >= TCaplusGetByPartKeyReqSubscribeTimeVersion {
+
+		err = binary.Read(r, binary.BigEndian, &this.SubscribeTime)
+		if err != nil {
+			return errors.New("TCaplusGetByPartKeyReq.SubscribeTime unpack error\n" + err.Error())
+		}
+
+	} else {
+		this.SubscribeTime = 0
+
+	}
+	if cutVer >= TCaplusGetByPartKeyReqSubscribeFlagVersion {
+
+		err = binary.Read(r, binary.BigEndian, &this.SubscribeFlag)
+		if err != nil {
+			return errors.New("TCaplusGetByPartKeyReq.SubscribeFlag unpack error\n" + err.Error())
+		}
+
+	} else {
+		this.SubscribeFlag = 0
+
+	}
+	if cutVer >= TCaplusGetByPartKeyReqConditionVersion {
+
+		var ConditionSize uint32
+		err = binary.Read(r, binary.BigEndian, &ConditionSize)
+		if err != nil {
+			return errors.New("TCaplusGetByPartKeyReq.Condition string size unpack error\n" + err.Error())
+		}
+
+		ConditionBytes := make([]byte, ConditionSize)
+		err = binary.Read(r, binary.BigEndian, ConditionBytes)
+		if err != nil {
+			return errors.New("TCaplusGetByPartKeyReq.Condition string content unpack error\n" + err.Error())
+		}
+		this.Condition = string(ConditionBytes[:len(ConditionBytes)-1])
+
+	}
 	return err
 }
 
 const (
 	TCaplusGetByPartKeyResultSuccBaseVersion           uint32 = 1
-	TCaplusGetByPartKeyResultSuccCurrentVersion        uint32 = 38
+	TCaplusGetByPartKeyResultSuccCurrentVersion        uint32 = 122
 	TCaplusGetByPartKeyResultSuccIsCompleteFlagVersion uint32 = 38
+	TCaplusGetByPartKeyResultSuccIsSubscribeResVersion uint32 = 122
 )
 
 // TCaplusGetByPartKeyResultSucc
@@ -7046,6 +12294,8 @@ type TCaplusGetByPartKeyResultSucc struct {
 	BatchValueInfo []byte `tdr_field:"BatchValueInfo" tdr_count:"10300000" tdr_refer:"BatchValueLen"`
 
 	IsCompleteFlag int32 `tdr_field:"IsCompleteFlag"`
+
+	IsSubscribeRes int32 `tdr_field:"IsSubscribeRes"`
 }
 
 func NewTCaplusGetByPartKeyResultSucc() *TCaplusGetByPartKeyResultSucc {
@@ -7069,6 +12319,8 @@ func (this *TCaplusGetByPartKeyResultSucc) Init() {
 	this.BatchValueLen = 0
 
 	this.IsCompleteFlag = 1
+
+	this.IsSubscribeRes = 0
 
 }
 
@@ -7135,6 +12387,14 @@ func (this *TCaplusGetByPartKeyResultSucc) PackTo(cutVer uint32, w *tdrcom.Write
 		err = binary.Write(w, binary.BigEndian, this.IsCompleteFlag)
 		if err != nil {
 			return errors.New("TCaplusGetByPartKeyResultSucc.IsCompleteFlag pack error\n" + err.Error())
+		}
+
+	}
+	if cutVer >= TCaplusGetByPartKeyResultSuccIsSubscribeResVersion {
+
+		err = binary.Write(w, binary.BigEndian, this.IsSubscribeRes)
+		if err != nil {
+			return errors.New("TCaplusGetByPartKeyResultSucc.IsSubscribeRes pack error\n" + err.Error())
 		}
 
 	}
@@ -7208,12 +12468,23 @@ func (this *TCaplusGetByPartKeyResultSucc) UnpackFrom(cutVer uint32, r *tdrcom.R
 		this.IsCompleteFlag = 1
 
 	}
+	if cutVer >= TCaplusGetByPartKeyResultSuccIsSubscribeResVersion {
+
+		err = binary.Read(r, binary.BigEndian, &this.IsSubscribeRes)
+		if err != nil {
+			return errors.New("TCaplusGetByPartKeyResultSucc.IsSubscribeRes unpack error\n" + err.Error())
+		}
+
+	} else {
+		this.IsSubscribeRes = 0
+
+	}
 	return err
 }
 
 const (
 	TCaplusGetByPartKeyResultBaseVersion    uint32 = 1
-	TCaplusGetByPartKeyResultCurrentVersion uint32 = 38
+	TCaplusGetByPartKeyResultCurrentVersion uint32 = 122
 )
 
 // TCaplusGetByPartKeyResult
@@ -7316,7 +12587,7 @@ func (this *TCaplusGetByPartKeyResult) UnpackFrom(cutVer uint32, r *tdrcom.Reade
 
 const (
 	TCaplusGetByPartKeyResBaseVersion    uint32 = 1
-	TCaplusGetByPartKeyResCurrentVersion uint32 = 38
+	TCaplusGetByPartKeyResCurrentVersion uint32 = 122
 )
 
 // TCaplusGetByPartKeyRes
@@ -8895,12 +14166,15 @@ func (this *TCaplusSpecialGetReq) UnpackFrom(cutVer uint32, r *tdrcom.Reader) er
 
 const (
 	TCaplusRecordPropertyBaseVersion    uint32 = 54
-	TCaplusRecordPropertyCurrentVersion uint32 = 54
+	TCaplusRecordPropertyCurrentVersion uint32 = 119
+	TCaplusRecordPropertyTTLVersion     uint32 = 119
 )
 
 // TCaplusRecordProperty
 type TCaplusRecordProperty struct {
 	LastAccessTime uint64 `tdr_field:"LastAccessTime"`
+
+	TTL uint64 `tdr_field:"TTL"`
 }
 
 func NewTCaplusRecordProperty() *TCaplusRecordProperty {
@@ -8919,6 +14193,8 @@ func (this *TCaplusRecordProperty) GetCurrentVersion() uint32 {
 
 func (this *TCaplusRecordProperty) Init() {
 	this.LastAccessTime = 0
+
+	this.TTL = 0
 
 }
 
@@ -8948,6 +14224,15 @@ func (this *TCaplusRecordProperty) PackTo(cutVer uint32, w *tdrcom.Writer) error
 		return errors.New("TCaplusRecordProperty.LastAccessTime pack error\n" + err.Error())
 	}
 
+	if cutVer >= TCaplusRecordPropertyTTLVersion {
+
+		err = binary.Write(w, binary.BigEndian, this.TTL)
+		if err != nil {
+			return errors.New("TCaplusRecordProperty.TTL pack error\n" + err.Error())
+		}
+
+	}
+
 	return nil
 }
 
@@ -8974,6 +14259,17 @@ func (this *TCaplusRecordProperty) UnpackFrom(cutVer uint32, r *tdrcom.Reader) e
 		return errors.New("TCaplusRecordProperty.LastAccessTime unpack error\n" + err.Error())
 	}
 
+	if cutVer >= TCaplusRecordPropertyTTLVersion {
+
+		err = binary.Read(r, binary.BigEndian, &this.TTL)
+		if err != nil {
+			return errors.New("TCaplusRecordProperty.TTL unpack error\n" + err.Error())
+		}
+
+	} else {
+		this.TTL = 0
+
+	}
 	return err
 }
 
@@ -9207,7 +14503,7 @@ func (this *TCaplusMoveInfo) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
 
 const (
 	TCaplusMoveInsertReqBaseVersion           uint32 = 1
-	TCaplusMoveInsertReqCurrentVersion        uint32 = 109
+	TCaplusMoveInsertReqCurrentVersion        uint32 = 119
 	TCaplusMoveInsertReqRecordPropertyVersion uint32 = 54
 )
 
@@ -9399,7 +14695,7 @@ func (this *TCaplusMoveInsertRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader) er
 
 const (
 	TCaplusListIndexMoveInsertReqBaseVersion           uint32 = 8
-	TCaplusListIndexMoveInsertReqCurrentVersion        uint32 = 91
+	TCaplusListIndexMoveInsertReqCurrentVersion        uint32 = 119
 	TCaplusListIndexMoveInsertReqRecordPropertyVersion uint32 = 58
 )
 
@@ -9591,7 +14887,7 @@ func (this *TCaplusListIndexMoveInsertRes) UnpackFrom(cutVer uint32, r *tdrcom.R
 
 const (
 	TCaplusListElemMoveInsertReqBaseVersion           uint32 = 8
-	TCaplusListElemMoveInsertReqCurrentVersion        uint32 = 109
+	TCaplusListElemMoveInsertReqCurrentVersion        uint32 = 119
 	TCaplusListElemMoveInsertReqRecordPropertyVersion uint32 = 54
 )
 
@@ -9783,13 +15079,14 @@ func (this *TCaplusListElemMoveInsertRes) UnpackFrom(cutVer uint32, r *tdrcom.Re
 
 const (
 	TCaplusMsSyncRecordBaseVersion                   uint32 = 3
-	TCaplusMsSyncRecordCurrentVersion                uint32 = 89
+	TCaplusMsSyncRecordCurrentVersion                uint32 = 119
 	TCaplusMsSyncRecordListElementIndexVersion       uint32 = 7
 	TCaplusMsSyncRecordListIndexArrayBuffLenVersion  uint32 = 7
 	TCaplusMsSyncRecordListIndexArrayBuffVersion     uint32 = 7
 	TCaplusMsSyncRecordListBatchIndexArrayNumVersion uint32 = 89
 	TCaplusMsSyncRecordListBatchIndexArrayVersion    uint32 = 89
 	TCaplusMsSyncRecordLastAccessTimeVersion         uint32 = 56
+	TCaplusMsSyncRecordTTLVersion                    uint32 = 119
 )
 
 // TCaplusMsSyncRecord
@@ -9815,6 +15112,8 @@ type TCaplusMsSyncRecord struct {
 	ListBatchIndexArray []int32 `tdr_field:"ListBatchIndexArray" tdr_count:"10240" tdr_refer:"ListBatchIndexArrayNum"`
 
 	LastAccessTime uint64 `tdr_field:"LastAccessTime"`
+
+	TTL uint64 `tdr_field:"TTL"`
 }
 
 func NewTCaplusMsSyncRecord() *TCaplusMsSyncRecord {
@@ -9844,6 +15143,8 @@ func (this *TCaplusMsSyncRecord) Init() {
 	this.ListBatchIndexArrayNum = 0
 
 	this.LastAccessTime = 0
+
+	this.TTL = 0
 
 }
 
@@ -9986,6 +15287,14 @@ func (this *TCaplusMsSyncRecord) PackTo(cutVer uint32, w *tdrcom.Writer) error {
 		err = binary.Write(w, binary.BigEndian, this.LastAccessTime)
 		if err != nil {
 			return errors.New("TCaplusMsSyncRecord.LastAccessTime pack error\n" + err.Error())
+		}
+
+	}
+	if cutVer >= TCaplusMsSyncRecordTTLVersion {
+
+		err = binary.Write(w, binary.BigEndian, this.TTL)
+		if err != nil {
+			return errors.New("TCaplusMsSyncRecord.TTL pack error\n" + err.Error())
 		}
 
 	}
@@ -10144,12 +15453,23 @@ func (this *TCaplusMsSyncRecord) UnpackFrom(cutVer uint32, r *tdrcom.Reader) err
 		this.LastAccessTime = 0
 
 	}
+	if cutVer >= TCaplusMsSyncRecordTTLVersion {
+
+		err = binary.Read(r, binary.BigEndian, &this.TTL)
+		if err != nil {
+			return errors.New("TCaplusMsSyncRecord.TTL unpack error\n" + err.Error())
+		}
+
+	} else {
+		this.TTL = 0
+
+	}
 	return err
 }
 
 const (
 	TCaplusMsSyncInsertReqBaseVersion    uint32 = 3
-	TCaplusMsSyncInsertReqCurrentVersion uint32 = 89
+	TCaplusMsSyncInsertReqCurrentVersion uint32 = 119
 )
 
 // TCaplusMsSyncInsertReq
@@ -10316,7 +15636,7 @@ func (this *TCaplusMsSyncInsertRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader) 
 
 const (
 	TCaplusMsSyncReplaceReqBaseVersion    uint32 = 3
-	TCaplusMsSyncReplaceReqCurrentVersion uint32 = 89
+	TCaplusMsSyncReplaceReqCurrentVersion uint32 = 119
 )
 
 // TCaplusMsSyncReplaceReq
@@ -10483,7 +15803,7 @@ func (this *TCaplusMsSyncReplaceRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader)
 
 const (
 	TCaplusMsSyncUpdateReqBaseVersion    uint32 = 3
-	TCaplusMsSyncUpdateReqCurrentVersion uint32 = 89
+	TCaplusMsSyncUpdateReqCurrentVersion uint32 = 119
 )
 
 // TCaplusMsSyncUpdateReq
@@ -11106,7 +16426,7 @@ func (this *TCaplusListMsSyncDeleteAllRes) UnpackFrom(cutVer uint32, r *tdrcom.R
 
 const (
 	TCaplusListMsSyncAddAfterReqBaseVersion    uint32 = 3
-	TCaplusListMsSyncAddAfterReqCurrentVersion uint32 = 89
+	TCaplusListMsSyncAddAfterReqCurrentVersion uint32 = 119
 )
 
 // TCaplusListMsSyncAddAfterReq
@@ -11273,7 +16593,7 @@ func (this *TCaplusListMsSyncAddAfterRes) UnpackFrom(cutVer uint32, r *tdrcom.Re
 
 const (
 	TCaplusListMsSyncDeleteReqBaseVersion    uint32 = 3
-	TCaplusListMsSyncDeleteReqCurrentVersion uint32 = 89
+	TCaplusListMsSyncDeleteReqCurrentVersion uint32 = 119
 )
 
 // TCaplusListMsSyncDeleteReq
@@ -11440,7 +16760,7 @@ func (this *TCaplusListMsSyncDeleteRes) UnpackFrom(cutVer uint32, r *tdrcom.Read
 
 const (
 	TCaplusListMsSyncReplaceReqBaseVersion    uint32 = 3
-	TCaplusListMsSyncReplaceReqCurrentVersion uint32 = 89
+	TCaplusListMsSyncReplaceReqCurrentVersion uint32 = 119
 )
 
 // TCaplusListMsSyncReplaceReq
@@ -11606,8 +16926,10 @@ func (this *TCaplusListMsSyncReplaceRes) UnpackFrom(cutVer uint32, r *tdrcom.Rea
 }
 
 const (
-	TCaplusAppSignupReqBaseVersion    uint32 = 7
-	TCaplusAppSignupReqCurrentVersion uint32 = 7
+	TCaplusAppSignupReqBaseVersion        uint32 = 7
+	TCaplusAppSignupReqCurrentVersion     uint32 = 120
+	TCaplusAppSignupReqUserNameVersion    uint32 = 120
+	TCaplusAppSignupReqPasswordMd5Version uint32 = 120
 )
 
 // TCaplusAppSignupReq
@@ -11615,6 +16937,10 @@ type TCaplusAppSignupReq struct {
 	Signature string `tdr_field:"Signature"`
 
 	Type int16 `tdr_field:"Type"`
+
+	UserName string `tdr_field:"UserName"`
+
+	PasswordMd5 string `tdr_field:"PasswordMd5"`
 }
 
 func NewTCaplusAppSignupReq() *TCaplusAppSignupReq {
@@ -11670,6 +16996,31 @@ func (this *TCaplusAppSignupReq) PackTo(cutVer uint32, w *tdrcom.Writer) error {
 		return errors.New("TCaplusAppSignupReq.Type pack error\n" + err.Error())
 	}
 
+	if cutVer >= TCaplusAppSignupReqUserNameVersion {
+
+		err = binary.Write(w, binary.BigEndian, uint32(len(this.UserName))+1)
+		if err != nil {
+			return errors.New("TCaplusAppSignupReq.UserName string size pack error\n" + err.Error())
+		}
+		err = binary.Write(w, binary.BigEndian, append([]byte(this.UserName), 0))
+		if err != nil {
+			return errors.New("TCaplusAppSignupReq.UserName string content pack error\n" + err.Error())
+		}
+
+	}
+	if cutVer >= TCaplusAppSignupReqPasswordMd5Version {
+
+		err = binary.Write(w, binary.BigEndian, uint32(len(this.PasswordMd5))+1)
+		if err != nil {
+			return errors.New("TCaplusAppSignupReq.PasswordMd5 string size pack error\n" + err.Error())
+		}
+		err = binary.Write(w, binary.BigEndian, append([]byte(this.PasswordMd5), 0))
+		if err != nil {
+			return errors.New("TCaplusAppSignupReq.PasswordMd5 string content pack error\n" + err.Error())
+		}
+
+	}
+
 	return nil
 }
 
@@ -11709,6 +17060,38 @@ func (this *TCaplusAppSignupReq) UnpackFrom(cutVer uint32, r *tdrcom.Reader) err
 		return errors.New("TCaplusAppSignupReq.Type unpack error\n" + err.Error())
 	}
 
+	if cutVer >= TCaplusAppSignupReqUserNameVersion {
+
+		var UserNameSize uint32
+		err = binary.Read(r, binary.BigEndian, &UserNameSize)
+		if err != nil {
+			return errors.New("TCaplusAppSignupReq.UserName string size unpack error\n" + err.Error())
+		}
+
+		UserNameBytes := make([]byte, UserNameSize)
+		err = binary.Read(r, binary.BigEndian, UserNameBytes)
+		if err != nil {
+			return errors.New("TCaplusAppSignupReq.UserName string content unpack error\n" + err.Error())
+		}
+		this.UserName = string(UserNameBytes[:len(UserNameBytes)-1])
+
+	}
+	if cutVer >= TCaplusAppSignupReqPasswordMd5Version {
+
+		var PasswordMd5Size uint32
+		err = binary.Read(r, binary.BigEndian, &PasswordMd5Size)
+		if err != nil {
+			return errors.New("TCaplusAppSignupReq.PasswordMd5 string size unpack error\n" + err.Error())
+		}
+
+		PasswordMd5Bytes := make([]byte, PasswordMd5Size)
+		err = binary.Read(r, binary.BigEndian, PasswordMd5Bytes)
+		if err != nil {
+			return errors.New("TCaplusAppSignupReq.PasswordMd5 string content unpack error\n" + err.Error())
+		}
+		this.PasswordMd5 = string(PasswordMd5Bytes[:len(PasswordMd5Bytes)-1])
+
+	}
 	return err
 }
 
@@ -12883,7 +18266,7 @@ func (this *RouteKeySet) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
 
 const (
 	TCaplusTableTraverseReqBaseVersion         uint32 = 12
-	TCaplusTableTraverseReqCurrentVersion      uint32 = 19
+	TCaplusTableTraverseReqCurrentVersion      uint32 = 125
 	TCaplusTableTraverseReqResNumPerReqVersion uint32 = 17
 	TCaplusTableTraverseReqMaxSpeedVersion     uint32 = 17
 	TCaplusTableTraverseReqRouteKeySetVersion  uint32 = 17
@@ -12892,6 +18275,7 @@ const (
 	TCaplusTableTraverseReqSequenceVersion     uint32 = 18
 	TCaplusTableTraverseReqToTalLimitVersion   uint32 = 19
 	TCaplusTableTraverseReqTraversedCntVersion uint32 = 19
+	TCaplusTableTraverseReqConditionVersion    uint32 = 125
 )
 
 // TCaplusTableTraverseReq
@@ -12917,6 +18301,8 @@ type TCaplusTableTraverseReq struct {
 	ToTalLimit int64 `tdr_field:"ToTalLimit"`
 
 	TraversedCnt int64 `tdr_field:"TraversedCnt"`
+
+	Condition string `tdr_field:"Condition"`
 }
 
 func NewTCaplusTableTraverseReq() *TCaplusTableTraverseReq {
@@ -13058,6 +18444,18 @@ func (this *TCaplusTableTraverseReq) PackTo(cutVer uint32, w *tdrcom.Writer) err
 		}
 
 	}
+	if cutVer >= TCaplusTableTraverseReqConditionVersion {
+
+		err = binary.Write(w, binary.BigEndian, uint32(len(this.Condition))+1)
+		if err != nil {
+			return errors.New("TCaplusTableTraverseReq.Condition string size pack error\n" + err.Error())
+		}
+		err = binary.Write(w, binary.BigEndian, append([]byte(this.Condition), 0))
+		if err != nil {
+			return errors.New("TCaplusTableTraverseReq.Condition string content pack error\n" + err.Error())
+		}
+
+	}
 
 	return nil
 }
@@ -13181,6 +18579,22 @@ func (this *TCaplusTableTraverseReq) UnpackFrom(cutVer uint32, r *tdrcom.Reader)
 
 	} else {
 		this.TraversedCnt = 0
+
+	}
+	if cutVer >= TCaplusTableTraverseReqConditionVersion {
+
+		var ConditionSize uint32
+		err = binary.Read(r, binary.BigEndian, &ConditionSize)
+		if err != nil {
+			return errors.New("TCaplusTableTraverseReq.Condition string size unpack error\n" + err.Error())
+		}
+
+		ConditionBytes := make([]byte, ConditionSize)
+		err = binary.Read(r, binary.BigEndian, ConditionBytes)
+		if err != nil {
+			return errors.New("TCaplusTableTraverseReq.Condition string content unpack error\n" + err.Error())
+		}
+		this.Condition = string(ConditionBytes[:len(ConditionBytes)-1])
 
 	}
 	return err
@@ -13436,8 +18850,9 @@ func (this *TCaplusTableTraverseRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader)
 }
 
 const (
-	TCaplusListTableTraverseReqBaseVersion    uint32 = 55
-	TCaplusListTableTraverseReqCurrentVersion uint32 = 55
+	TCaplusListTableTraverseReqBaseVersion      uint32 = 55
+	TCaplusListTableTraverseReqCurrentVersion   uint32 = 125
+	TCaplusListTableTraverseReqConditionVersion uint32 = 125
 )
 
 // TCaplusListTableTraverseReq
@@ -13461,6 +18876,8 @@ type TCaplusListTableTraverseReq struct {
 	ToTalLimit int64 `tdr_field:"ToTalLimit"`
 
 	TraversedCnt int64 `tdr_field:"TraversedCnt"`
+
+	Condition string `tdr_field:"Condition"`
 }
 
 func NewTCaplusListTableTraverseReq() *TCaplusListTableTraverseReq {
@@ -13571,6 +18988,19 @@ func (this *TCaplusListTableTraverseReq) PackTo(cutVer uint32, w *tdrcom.Writer)
 		return errors.New("TCaplusListTableTraverseReq.TraversedCnt pack error\n" + err.Error())
 	}
 
+	if cutVer >= TCaplusListTableTraverseReqConditionVersion {
+
+		err = binary.Write(w, binary.BigEndian, uint32(len(this.Condition))+1)
+		if err != nil {
+			return errors.New("TCaplusListTableTraverseReq.Condition string size pack error\n" + err.Error())
+		}
+		err = binary.Write(w, binary.BigEndian, append([]byte(this.Condition), 0))
+		if err != nil {
+			return errors.New("TCaplusListTableTraverseReq.Condition string content pack error\n" + err.Error())
+		}
+
+	}
+
 	return nil
 }
 
@@ -13642,12 +19072,28 @@ func (this *TCaplusListTableTraverseReq) UnpackFrom(cutVer uint32, r *tdrcom.Rea
 		return errors.New("TCaplusListTableTraverseReq.TraversedCnt unpack error\n" + err.Error())
 	}
 
+	if cutVer >= TCaplusListTableTraverseReqConditionVersion {
+
+		var ConditionSize uint32
+		err = binary.Read(r, binary.BigEndian, &ConditionSize)
+		if err != nil {
+			return errors.New("TCaplusListTableTraverseReq.Condition string size unpack error\n" + err.Error())
+		}
+
+		ConditionBytes := make([]byte, ConditionSize)
+		err = binary.Read(r, binary.BigEndian, ConditionBytes)
+		if err != nil {
+			return errors.New("TCaplusListTableTraverseReq.Condition string content unpack error\n" + err.Error())
+		}
+		this.Condition = string(ConditionBytes[:len(ConditionBytes)-1])
+
+	}
 	return err
 }
 
 const (
 	TCaplusListTableTraverseResBaseVersion     uint32 = 55
-	TCaplusListTableTraverseResCurrentVersion  uint32 = 88
+	TCaplusListTableTraverseResCurrentVersion  uint32 = 119
 	TCaplusListTableTraverseResCurSrvIDVersion uint32 = 88
 )
 
@@ -13964,7 +19410,7 @@ func (this *TCaplusSysListGetReq) UnpackFrom(cutVer uint32, r *tdrcom.Reader) er
 
 const (
 	TCaplusSysListGetResBaseVersion    uint32 = 55
-	TCaplusSysListGetResCurrentVersion uint32 = 55
+	TCaplusSysListGetResCurrentVersion uint32 = 119
 )
 
 // TCaplusSysListGetRes
@@ -14199,7 +19645,7 @@ func (this *TCaplusSysListGetAllReq) UnpackFrom(cutVer uint32, r *tdrcom.Reader)
 
 const (
 	TCaplusSysListGetAllResBaseVersion           uint32 = 55
-	TCaplusSysListGetAllResCurrentVersion        uint32 = 113
+	TCaplusSysListGetAllResCurrentVersion        uint32 = 119
 	TCaplusSysListGetAllResEmptyIndexFlagVersion uint32 = 113
 )
 
@@ -15413,6 +20859,526 @@ func (this *TCaplusGetTableRecordCountRes) UnpackFrom(cutVer uint32, r *tdrcom.R
 }
 
 const (
+	StatusItemBaseVersion    uint32 = 121
+	StatusItemCurrentVersion uint32 = 121
+)
+
+// StatusItem
+type StatusItem struct {
+	StatusName string `tdr_field:"StatusName"`
+
+	StatusValue uint64 `tdr_field:"StatusValue"`
+
+	StatusOperator int32 `tdr_field:"StatusOperator"`
+}
+
+func NewStatusItem() *StatusItem {
+	obj := new(StatusItem)
+	obj.Init()
+	return obj
+}
+
+func (this *StatusItem) GetBaseVersion() uint32 {
+	return StatusItemBaseVersion
+}
+
+func (this *StatusItem) GetCurrentVersion() uint32 {
+	return StatusItemCurrentVersion
+}
+
+func (this *StatusItem) Init() {
+
+	this.StatusOperator = 0x00
+
+}
+
+func (this *StatusItem) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("StatusItem Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *StatusItem) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > StatusItemCurrentVersion {
+		cutVer = StatusItemCurrentVersion
+	}
+	// check cut version
+	if cutVer < StatusItemBaseVersion {
+		return errors.New("StatusItem cut version must large than StatusItemBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, uint32(len(this.StatusName))+1)
+	if err != nil {
+		return errors.New("StatusItem.StatusName string size pack error\n" + err.Error())
+	}
+	err = binary.Write(w, binary.BigEndian, append([]byte(this.StatusName), 0))
+	if err != nil {
+		return errors.New("StatusItem.StatusName string content pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.StatusValue)
+	if err != nil {
+		return errors.New("StatusItem.StatusValue pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.StatusOperator)
+	if err != nil {
+		return errors.New("StatusItem.StatusOperator pack error\n" + err.Error())
+	}
+
+	return nil
+}
+
+func (this *StatusItem) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("StatusItem data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *StatusItem) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > StatusItemCurrentVersion {
+		cutVer = StatusItemCurrentVersion
+	}
+	// check version
+	if cutVer < StatusItemBaseVersion {
+		errors.New("StatusItem cut version must large than StatusItemBaseVersion\n")
+	}
+
+	var StatusNameSize uint32
+	err = binary.Read(r, binary.BigEndian, &StatusNameSize)
+	if err != nil {
+		return errors.New("StatusItem.StatusName string size unpack error\n" + err.Error())
+	}
+
+	StatusNameBytes := make([]byte, StatusNameSize)
+	err = binary.Read(r, binary.BigEndian, StatusNameBytes)
+	if err != nil {
+		return errors.New("StatusItem.StatusName string content unpack error\n" + err.Error())
+	}
+	this.StatusName = string(StatusNameBytes[:len(StatusNameBytes)-1])
+
+	err = binary.Read(r, binary.BigEndian, &this.StatusValue)
+	if err != nil {
+		return errors.New("StatusItem.StatusValue unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.StatusOperator)
+	if err != nil {
+		return errors.New("StatusItem.StatusOperator unpack error\n" + err.Error())
+	}
+
+	return err
+}
+
+const (
+	StatusInfoBaseVersion    uint32 = 121
+	StatusInfoCurrentVersion uint32 = 121
+)
+
+// StatusInfo
+type StatusInfo struct {
+	StatusItemCount int32 `tdr_field:"StatusItemCount"`
+
+	StatusItems []*StatusItem `tdr_field:"StatusItems" tdr_count:"100" tdr_refer:"StatusItemCount"`
+}
+
+func NewStatusInfo() *StatusInfo {
+	obj := new(StatusInfo)
+	obj.Init()
+	return obj
+}
+
+func (this *StatusInfo) GetBaseVersion() uint32 {
+	return StatusInfoBaseVersion
+}
+
+func (this *StatusInfo) GetCurrentVersion() uint32 {
+	return StatusInfoCurrentVersion
+}
+
+func (this *StatusInfo) Init() {
+
+}
+
+func (this *StatusInfo) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("StatusInfo Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *StatusInfo) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > StatusInfoCurrentVersion {
+		cutVer = StatusInfoCurrentVersion
+	}
+	// check cut version
+	if cutVer < StatusInfoBaseVersion {
+		return errors.New("StatusInfo cut version must large than StatusInfoBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, this.StatusItemCount)
+	if err != nil {
+		return errors.New("StatusInfo.StatusItemCount pack error\n" + err.Error())
+	}
+
+	if this.StatusItemCount < 0 {
+		return errors.New("StatusInfo.StatusItems's refer StatusItemCount should >= 0")
+	}
+	if this.StatusItemCount > 100 {
+		return errors.New("StatusInfo.StatusItems's refer StatusItemCount should <= count 100")
+	}
+	if len(this.StatusItems) < int(this.StatusItemCount) {
+		return errors.New("StatusInfo.StatusItems's length should > StatusItemCount")
+	}
+	if this.StatusItemCount > 0 {
+		for i := 0; i < int(this.StatusItemCount); i++ {
+			err = this.StatusItems[i].PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("StatusInfo.StatusItems pack error\n" + err.Error())
+			}
+
+		}
+	}
+
+	return nil
+}
+
+func (this *StatusInfo) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("StatusInfo data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *StatusInfo) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > StatusInfoCurrentVersion {
+		cutVer = StatusInfoCurrentVersion
+	}
+	// check version
+	if cutVer < StatusInfoBaseVersion {
+		errors.New("StatusInfo cut version must large than StatusInfoBaseVersion\n")
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.StatusItemCount)
+	if err != nil {
+		return errors.New("StatusInfo.StatusItemCount unpack error\n" + err.Error())
+	}
+
+	if this.StatusItemCount < 0 {
+		return errors.New("StatusInfo.StatusItems's refer StatusItemCount should >= 0")
+	}
+	if this.StatusItemCount > 100 {
+		return errors.New("StatusInfo.StatusItems's refer StatusItemCount should <= count 100")
+	}
+
+	if this.StatusItems == nil {
+		this.StatusItems = make([]*StatusItem, int(this.StatusItemCount))
+		for i := 0; i < int(this.StatusItemCount); i++ {
+			this.StatusItems[i] = NewStatusItem()
+		}
+	}
+
+	for i := 0; i < int(this.StatusItemCount); i++ {
+		err = this.StatusItems[i].UnpackFrom(cutVer, r)
+		if err != nil {
+			return errors.New("StatusInfo.StatusItems unpack error\n" + err.Error())
+		}
+
+	}
+
+	return err
+}
+
+const (
+	TCaplusGetTableStatusInfoReqBaseVersion    uint32 = 121
+	TCaplusGetTableStatusInfoReqCurrentVersion uint32 = 121
+)
+
+// TCaplusGetTableStatusInfoReq
+type TCaplusGetTableStatusInfoReq struct {
+	Reserve int32 `tdr_field:"Reserve"`
+}
+
+func NewTCaplusGetTableStatusInfoReq() *TCaplusGetTableStatusInfoReq {
+	obj := new(TCaplusGetTableStatusInfoReq)
+	obj.Init()
+	return obj
+}
+
+func (this *TCaplusGetTableStatusInfoReq) GetBaseVersion() uint32 {
+	return TCaplusGetTableStatusInfoReqBaseVersion
+}
+
+func (this *TCaplusGetTableStatusInfoReq) GetCurrentVersion() uint32 {
+	return TCaplusGetTableStatusInfoReqCurrentVersion
+}
+
+func (this *TCaplusGetTableStatusInfoReq) Init() {
+
+}
+
+func (this *TCaplusGetTableStatusInfoReq) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("TCaplusGetTableStatusInfoReq Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *TCaplusGetTableStatusInfoReq) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > TCaplusGetTableStatusInfoReqCurrentVersion {
+		cutVer = TCaplusGetTableStatusInfoReqCurrentVersion
+	}
+	// check cut version
+	if cutVer < TCaplusGetTableStatusInfoReqBaseVersion {
+		return errors.New("TCaplusGetTableStatusInfoReq cut version must large than TCaplusGetTableStatusInfoReqBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, this.Reserve)
+	if err != nil {
+		return errors.New("TCaplusGetTableStatusInfoReq.Reserve pack error\n" + err.Error())
+	}
+
+	return nil
+}
+
+func (this *TCaplusGetTableStatusInfoReq) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("TCaplusGetTableStatusInfoReq data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *TCaplusGetTableStatusInfoReq) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > TCaplusGetTableStatusInfoReqCurrentVersion {
+		cutVer = TCaplusGetTableStatusInfoReqCurrentVersion
+	}
+	// check version
+	if cutVer < TCaplusGetTableStatusInfoReqBaseVersion {
+		errors.New("TCaplusGetTableStatusInfoReq cut version must large than TCaplusGetTableStatusInfoReqBaseVersion\n")
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.Reserve)
+	if err != nil {
+		return errors.New("TCaplusGetTableStatusInfoReq.Reserve unpack error\n" + err.Error())
+	}
+
+	return err
+}
+
+const (
+	TCaplusGetTableStatusInfoResBaseVersion    uint32 = 121
+	TCaplusGetTableStatusInfoResCurrentVersion uint32 = 121
+)
+
+// TCaplusGetTableStatusInfoRes
+type TCaplusGetTableStatusInfoRes struct {
+	Result int32 `tdr_field:"Result"`
+
+	TableStatusInfo *StatusInfo `tdr_field:"TableStatusInfo"`
+
+	ShardCount int32 `tdr_field:"ShardCount"`
+
+	ShardList []int32 `tdr_field:"ShardList" tdr_count:"512" tdr_refer:"ShardCount"`
+
+	ShardStatusInfoList []*StatusInfo `tdr_field:"ShardStatusInfoList" tdr_count:"512" tdr_refer:"ShardCount"`
+}
+
+func NewTCaplusGetTableStatusInfoRes() *TCaplusGetTableStatusInfoRes {
+	obj := new(TCaplusGetTableStatusInfoRes)
+	obj.Init()
+	return obj
+}
+
+func (this *TCaplusGetTableStatusInfoRes) GetBaseVersion() uint32 {
+	return TCaplusGetTableStatusInfoResBaseVersion
+}
+
+func (this *TCaplusGetTableStatusInfoRes) GetCurrentVersion() uint32 {
+	return TCaplusGetTableStatusInfoResCurrentVersion
+}
+
+func (this *TCaplusGetTableStatusInfoRes) Init() {
+
+	this.TableStatusInfo = NewStatusInfo()
+
+	this.ShardCount = 0
+
+}
+
+func (this *TCaplusGetTableStatusInfoRes) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("TCaplusGetTableStatusInfoRes Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *TCaplusGetTableStatusInfoRes) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > TCaplusGetTableStatusInfoResCurrentVersion {
+		cutVer = TCaplusGetTableStatusInfoResCurrentVersion
+	}
+	// check cut version
+	if cutVer < TCaplusGetTableStatusInfoResBaseVersion {
+		return errors.New("TCaplusGetTableStatusInfoRes cut version must large than TCaplusGetTableStatusInfoResBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, this.Result)
+	if err != nil {
+		return errors.New("TCaplusGetTableStatusInfoRes.Result pack error\n" + err.Error())
+	}
+
+	err = this.TableStatusInfo.PackTo(cutVer, w)
+	if err != nil {
+		return errors.New("TCaplusGetTableStatusInfoRes.TableStatusInfo pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.ShardCount)
+	if err != nil {
+		return errors.New("TCaplusGetTableStatusInfoRes.ShardCount pack error\n" + err.Error())
+	}
+
+	if this.ShardCount < 0 {
+		return errors.New("TCaplusGetTableStatusInfoRes.ShardList's refer ShardCount should >= 0")
+	}
+	if this.ShardCount > 512 {
+		return errors.New("TCaplusGetTableStatusInfoRes.ShardList's refer ShardCount should <= count 512")
+	}
+	if len(this.ShardList) < int(this.ShardCount) {
+		return errors.New("TCaplusGetTableStatusInfoRes.ShardList's length should > ShardCount")
+	}
+	if this.ShardCount > 0 {
+		referShardList := this.ShardList[:this.ShardCount]
+		err = binary.Write(w, binary.BigEndian, referShardList)
+		if err != nil {
+			return errors.New("TCaplusGetTableStatusInfoRes.ShardList pack error\n" + err.Error())
+		}
+	}
+
+	if this.ShardCount < 0 {
+		return errors.New("TCaplusGetTableStatusInfoRes.ShardStatusInfoList's refer ShardCount should >= 0")
+	}
+	if this.ShardCount > 512 {
+		return errors.New("TCaplusGetTableStatusInfoRes.ShardStatusInfoList's refer ShardCount should <= count 512")
+	}
+	if len(this.ShardStatusInfoList) < int(this.ShardCount) {
+		return errors.New("TCaplusGetTableStatusInfoRes.ShardStatusInfoList's length should > ShardCount")
+	}
+	if this.ShardCount > 0 {
+		for i := 0; i < int(this.ShardCount); i++ {
+			err = this.ShardStatusInfoList[i].PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusGetTableStatusInfoRes.ShardStatusInfoList pack error\n" + err.Error())
+			}
+
+		}
+	}
+
+	return nil
+}
+
+func (this *TCaplusGetTableStatusInfoRes) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("TCaplusGetTableStatusInfoRes data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *TCaplusGetTableStatusInfoRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > TCaplusGetTableStatusInfoResCurrentVersion {
+		cutVer = TCaplusGetTableStatusInfoResCurrentVersion
+	}
+	// check version
+	if cutVer < TCaplusGetTableStatusInfoResBaseVersion {
+		errors.New("TCaplusGetTableStatusInfoRes cut version must large than TCaplusGetTableStatusInfoResBaseVersion\n")
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.Result)
+	if err != nil {
+		return errors.New("TCaplusGetTableStatusInfoRes.Result unpack error\n" + err.Error())
+	}
+
+	err = this.TableStatusInfo.UnpackFrom(cutVer, r)
+	if err != nil {
+		return errors.New("TCaplusGetTableStatusInfoRes.TableStatusInfo unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.ShardCount)
+	if err != nil {
+		return errors.New("TCaplusGetTableStatusInfoRes.ShardCount unpack error\n" + err.Error())
+	}
+
+	if this.ShardCount < 0 {
+		return errors.New("TCaplusGetTableStatusInfoRes.ShardList's refer ShardCount should >= 0")
+	}
+	if this.ShardCount > 512 {
+		return errors.New("TCaplusGetTableStatusInfoRes.ShardList's refer ShardCount should <= count 512")
+	}
+
+	if this.ShardList == nil {
+		this.ShardList = make([]int32, int(this.ShardCount))
+	}
+
+	referShardList := this.ShardList[:this.ShardCount]
+	err = binary.Read(r, binary.BigEndian, referShardList)
+	if err != nil {
+		return errors.New("TCaplusGetTableStatusInfoRes.ShardList pack error\n" + err.Error())
+	}
+
+	if this.ShardCount < 0 {
+		return errors.New("TCaplusGetTableStatusInfoRes.ShardStatusInfoList's refer ShardCount should >= 0")
+	}
+	if this.ShardCount > 512 {
+		return errors.New("TCaplusGetTableStatusInfoRes.ShardStatusInfoList's refer ShardCount should <= count 512")
+	}
+
+	if this.ShardStatusInfoList == nil {
+		this.ShardStatusInfoList = make([]*StatusInfo, int(this.ShardCount))
+		for i := 0; i < int(this.ShardCount); i++ {
+			this.ShardStatusInfoList[i] = NewStatusInfo()
+		}
+	}
+
+	for i := 0; i < int(this.ShardCount); i++ {
+		err = this.ShardStatusInfoList[i].UnpackFrom(cutVer, r)
+		if err != nil {
+			return errors.New("TCaplusGetTableStatusInfoRes.ShardStatusInfoList unpack error\n" + err.Error())
+		}
+
+	}
+
+	return err
+}
+
+const (
 	TCaplusHttpGenericReqBaseVersion    uint32 = 54
 	TCaplusHttpGenericReqCurrentVersion uint32 = 54
 )
@@ -15764,7 +21730,7 @@ func (this *TCaplusHttpGenericRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader) e
 
 const (
 	TCaplusGetDuringMoveReqBaseVersion    uint32 = 57
-	TCaplusGetDuringMoveReqCurrentVersion uint32 = 109
+	TCaplusGetDuringMoveReqCurrentVersion uint32 = 125
 )
 
 // TCaplusGetDuringMoveReq
@@ -15958,7 +21924,9 @@ func (this *TCaplusGetDuringMoveRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader)
 
 const (
 	ProxyHeadForReqSendToSvrBaseVersion    uint32 = 58
-	ProxyHeadForReqSendToSvrCurrentVersion uint32 = 58
+	ProxyHeadForReqSendToSvrCurrentVersion uint32 = 126
+	ProxyHeadForReqSendToSvrIndexVersion   uint32 = 126
+	ProxyHeadForReqSendToSvrSeqVersion     uint32 = 126
 )
 
 // ProxyHeadForReqSendToSvr
@@ -15972,6 +21940,10 @@ type ProxyHeadForReqSendToSvr struct {
 	SendTime uint64 `tdr_field:"SendTime"`
 
 	HashCode uint64 `tdr_field:"HashCode"`
+
+	Index uint32 `tdr_field:"Index"`
+
+	Seq uint32 `tdr_field:"Seq"`
 }
 
 func NewProxyHeadForReqSendToSvr() *ProxyHeadForReqSendToSvr {
@@ -15998,6 +21970,10 @@ func (this *ProxyHeadForReqSendToSvr) Init() {
 	this.SendTime = 0
 
 	this.HashCode = 0
+
+	this.Index = 0
+
+	this.Seq = 0
 
 }
 
@@ -16047,6 +22023,23 @@ func (this *ProxyHeadForReqSendToSvr) PackTo(cutVer uint32, w *tdrcom.Writer) er
 	err = binary.Write(w, binary.BigEndian, this.HashCode)
 	if err != nil {
 		return errors.New("ProxyHeadForReqSendToSvr.HashCode pack error\n" + err.Error())
+	}
+
+	if cutVer >= ProxyHeadForReqSendToSvrIndexVersion {
+
+		err = binary.Write(w, binary.BigEndian, this.Index)
+		if err != nil {
+			return errors.New("ProxyHeadForReqSendToSvr.Index pack error\n" + err.Error())
+		}
+
+	}
+	if cutVer >= ProxyHeadForReqSendToSvrSeqVersion {
+
+		err = binary.Write(w, binary.BigEndian, this.Seq)
+		if err != nil {
+			return errors.New("ProxyHeadForReqSendToSvr.Seq pack error\n" + err.Error())
+		}
+
 	}
 
 	return nil
@@ -16101,13 +22094,36 @@ func (this *ProxyHeadForReqSendToSvr) UnpackFrom(cutVer uint32, r *tdrcom.Reader
 		return errors.New("ProxyHeadForReqSendToSvr.HashCode unpack error\n" + err.Error())
 	}
 
+	if cutVer >= ProxyHeadForReqSendToSvrIndexVersion {
+
+		err = binary.Read(r, binary.BigEndian, &this.Index)
+		if err != nil {
+			return errors.New("ProxyHeadForReqSendToSvr.Index unpack error\n" + err.Error())
+		}
+
+	} else {
+		this.Index = 0
+
+	}
+	if cutVer >= ProxyHeadForReqSendToSvrSeqVersion {
+
+		err = binary.Read(r, binary.BigEndian, &this.Seq)
+		if err != nil {
+			return errors.New("ProxyHeadForReqSendToSvr.Seq unpack error\n" + err.Error())
+		}
+
+	} else {
+		this.Seq = 0
+
+	}
 	return err
 }
 
 const (
 	PerfTestBaseVersion                 uint32 = 79
-	PerfTestCurrentVersion              uint32 = 108
+	PerfTestCurrentVersion              uint32 = 119
 	PerfTestSvrTbusppForwardTimeVersion uint32 = 108
+	PerfTestProxyReqLenVersion          uint32 = 119
 )
 
 // PerfTest
@@ -16133,6 +22149,8 @@ type PerfTest struct {
 	ProxyEndBackwardTime uint64 `tdr_field:"ProxyEndBackwardTime"`
 
 	ApiRecvTime uint64 `tdr_field:"ApiRecvTime"`
+
+	ProxyReqLen uint32 `tdr_field:"ProxyReqLen"`
 }
 
 func NewPerfTest() *PerfTest {
@@ -16233,6 +22251,15 @@ func (this *PerfTest) PackTo(cutVer uint32, w *tdrcom.Writer) error {
 		return errors.New("PerfTest.ApiRecvTime pack error\n" + err.Error())
 	}
 
+	if cutVer >= PerfTestProxyReqLenVersion {
+
+		err = binary.Write(w, binary.BigEndian, this.ProxyReqLen)
+		if err != nil {
+			return errors.New("PerfTest.ProxyReqLen pack error\n" + err.Error())
+		}
+
+	}
+
 	return nil
 }
 
@@ -16313,12 +22340,20 @@ func (this *PerfTest) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
 		return errors.New("PerfTest.ApiRecvTime unpack error\n" + err.Error())
 	}
 
+	if cutVer >= PerfTestProxyReqLenVersion {
+
+		err = binary.Read(r, binary.BigEndian, &this.ProxyReqLen)
+		if err != nil {
+			return errors.New("PerfTest.ProxyReqLen unpack error\n" + err.Error())
+		}
+
+	}
 	return err
 }
 
 const (
 	TCaplusPkgHeadBaseVersion                 uint32 = 1
-	TCaplusPkgHeadCurrentVersion              uint32 = 91
+	TCaplusPkgHeadCurrentVersion              uint32 = 123
 	TCaplusPkgHeadSubCmdVersion               uint32 = 54
 	TCaplusPkgHeadFlagsVersion                uint32 = 16
 	TCaplusPkgHeadPerfTestLenVersion          uint32 = 79
@@ -16329,6 +22364,9 @@ const (
 	TCaplusPkgHeadResultVersion               uint32 = 37
 	TCaplusPkgHeadSplitTableKeyBuffLenVersion uint32 = 91
 	TCaplusPkgHeadSplitTableKeyBuffVersion    uint32 = 91
+	TCaplusPkgHeadReqLenVersion               uint32 = 119
+	TCaplusPkgHeadUserNameVersion             uint32 = 123
+	TCaplusPkgHeadPasswordMd5Version          uint32 = 123
 )
 
 // TCaplusPkgHead
@@ -16374,6 +22412,12 @@ type TCaplusPkgHead struct {
 	SplitTableKeyBuffLen uint32 `tdr_field:"SplitTableKeyBuffLen"`
 
 	SplitTableKeyBuff []byte `tdr_field:"SplitTableKeyBuff" tdr_count:"1024" tdr_refer:"SplitTableKeyBuffLen"`
+
+	ReqLen uint32 `tdr_field:"ReqLen"`
+
+	UserName string `tdr_field:"UserName"`
+
+	PasswordMd5 string `tdr_field:"PasswordMd5"`
 }
 
 func NewTCaplusPkgHead() *TCaplusPkgHead {
@@ -16412,6 +22456,8 @@ func (this *TCaplusPkgHead) Init() {
 	this.Result = 0
 
 	this.SplitTableKeyBuffLen = 0
+
+	this.ReqLen = 0
 
 }
 
@@ -16608,6 +22654,38 @@ func (this *TCaplusPkgHead) PackTo(cutVer uint32, w *tdrcom.Writer) error {
 			if err != nil {
 				return errors.New("TCaplusPkgHead.SplitTableKeyBuff pack error\n" + err.Error())
 			}
+		}
+
+	}
+	if cutVer >= TCaplusPkgHeadReqLenVersion {
+
+		err = binary.Write(w, binary.BigEndian, this.ReqLen)
+		if err != nil {
+			return errors.New("TCaplusPkgHead.ReqLen pack error\n" + err.Error())
+		}
+
+	}
+	if cutVer >= TCaplusPkgHeadUserNameVersion {
+
+		err = binary.Write(w, binary.BigEndian, uint32(len(this.UserName))+1)
+		if err != nil {
+			return errors.New("TCaplusPkgHead.UserName string size pack error\n" + err.Error())
+		}
+		err = binary.Write(w, binary.BigEndian, append([]byte(this.UserName), 0))
+		if err != nil {
+			return errors.New("TCaplusPkgHead.UserName string content pack error\n" + err.Error())
+		}
+
+	}
+	if cutVer >= TCaplusPkgHeadPasswordMd5Version {
+
+		err = binary.Write(w, binary.BigEndian, uint32(len(this.PasswordMd5))+1)
+		if err != nil {
+			return errors.New("TCaplusPkgHead.PasswordMd5 string size pack error\n" + err.Error())
+		}
+		err = binary.Write(w, binary.BigEndian, append([]byte(this.PasswordMd5), 0))
+		if err != nil {
+			return errors.New("TCaplusPkgHead.PasswordMd5 string content pack error\n" + err.Error())
 		}
 
 	}
@@ -16836,12 +22914,55 @@ func (this *TCaplusPkgHead) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
 		}
 
 	}
+	if cutVer >= TCaplusPkgHeadReqLenVersion {
+
+		err = binary.Read(r, binary.BigEndian, &this.ReqLen)
+		if err != nil {
+			return errors.New("TCaplusPkgHead.ReqLen unpack error\n" + err.Error())
+		}
+
+	} else {
+		this.ReqLen = 0
+
+	}
+	if cutVer >= TCaplusPkgHeadUserNameVersion {
+
+		var UserNameSize uint32
+		err = binary.Read(r, binary.BigEndian, &UserNameSize)
+		if err != nil {
+			return errors.New("TCaplusPkgHead.UserName string size unpack error\n" + err.Error())
+		}
+
+		UserNameBytes := make([]byte, UserNameSize)
+		err = binary.Read(r, binary.BigEndian, UserNameBytes)
+		if err != nil {
+			return errors.New("TCaplusPkgHead.UserName string content unpack error\n" + err.Error())
+		}
+		this.UserName = string(UserNameBytes[:len(UserNameBytes)-1])
+
+	}
+	if cutVer >= TCaplusPkgHeadPasswordMd5Version {
+
+		var PasswordMd5Size uint32
+		err = binary.Read(r, binary.BigEndian, &PasswordMd5Size)
+		if err != nil {
+			return errors.New("TCaplusPkgHead.PasswordMd5 string size unpack error\n" + err.Error())
+		}
+
+		PasswordMd5Bytes := make([]byte, PasswordMd5Size)
+		err = binary.Read(r, binary.BigEndian, PasswordMd5Bytes)
+		if err != nil {
+			return errors.New("TCaplusPkgHead.PasswordMd5 string content unpack error\n" + err.Error())
+		}
+		this.PasswordMd5 = string(PasswordMd5Bytes[:len(PasswordMd5Bytes)-1])
+
+	}
 	return err
 }
 
 const (
 	CarryInfoDuringMoveBaseVersion    uint32 = 57
-	CarryInfoDuringMoveCurrentVersion uint32 = 91
+	CarryInfoDuringMoveCurrentVersion uint32 = 123
 )
 
 // CarryInfoDuringMove
@@ -17029,7 +23150,7 @@ func (this *CarryInfoDuringMove) UnpackFrom(cutVer uint32, r *tdrcom.Reader) err
 
 const (
 	TCaplusGetDuringMoveFromSrcReqBaseVersion    uint32 = 57
-	TCaplusGetDuringMoveFromSrcReqCurrentVersion uint32 = 91
+	TCaplusGetDuringMoveFromSrcReqCurrentVersion uint32 = 123
 )
 
 // TCaplusGetDuringMoveFromSrcReq
@@ -17113,7 +23234,7 @@ func (this *TCaplusGetDuringMoveFromSrcReq) UnpackFrom(cutVer uint32, r *tdrcom.
 
 const (
 	TCaplusGetDuringMoveFromSrcResBaseVersion    uint32 = 57
-	TCaplusGetDuringMoveFromSrcResCurrentVersion uint32 = 109
+	TCaplusGetDuringMoveFromSrcResCurrentVersion uint32 = 123
 )
 
 // TCaplusGetDuringMoveFromSrcRes
@@ -17580,8 +23701,10 @@ func (this *TCaplusCheckConnectDuringMoveRes) UnpackFrom(cutVer uint32, r *tdrco
 }
 
 const (
-	TCaplusProtobufFieldUpdateReqBaseVersion    uint32 = 78
-	TCaplusProtobufFieldUpdateReqCurrentVersion uint32 = 109
+	TCaplusProtobufFieldUpdateReqBaseVersion      uint32 = 78
+	TCaplusProtobufFieldUpdateReqCurrentVersion   uint32 = 125
+	TCaplusProtobufFieldUpdateReqConditionVersion uint32 = 125
+	TCaplusProtobufFieldUpdateReqOperationVersion uint32 = 125
 )
 
 // TCaplusProtobufFieldUpdateReq
@@ -17589,6 +23712,10 @@ type TCaplusProtobufFieldUpdateReq struct {
 	ValueInfo *ProtobufValueSet_ `tdr_field:"ValueInfo"`
 
 	CheckVersionType byte `tdr_field:"CheckVersionType"`
+
+	Condition string `tdr_field:"Condition"`
+
+	Operation string `tdr_field:"Operation"`
 }
 
 func NewTCaplusProtobufFieldUpdateReq() *TCaplusProtobufFieldUpdateReq {
@@ -17643,6 +23770,31 @@ func (this *TCaplusProtobufFieldUpdateReq) PackTo(cutVer uint32, w *tdrcom.Write
 		return errors.New("TCaplusProtobufFieldUpdateReq.CheckVersionType pack error\n" + err.Error())
 	}
 
+	if cutVer >= TCaplusProtobufFieldUpdateReqConditionVersion {
+
+		err = binary.Write(w, binary.BigEndian, uint32(len(this.Condition))+1)
+		if err != nil {
+			return errors.New("TCaplusProtobufFieldUpdateReq.Condition string size pack error\n" + err.Error())
+		}
+		err = binary.Write(w, binary.BigEndian, append([]byte(this.Condition), 0))
+		if err != nil {
+			return errors.New("TCaplusProtobufFieldUpdateReq.Condition string content pack error\n" + err.Error())
+		}
+
+	}
+	if cutVer >= TCaplusProtobufFieldUpdateReqOperationVersion {
+
+		err = binary.Write(w, binary.BigEndian, uint32(len(this.Operation))+1)
+		if err != nil {
+			return errors.New("TCaplusProtobufFieldUpdateReq.Operation string size pack error\n" + err.Error())
+		}
+		err = binary.Write(w, binary.BigEndian, append([]byte(this.Operation), 0))
+		if err != nil {
+			return errors.New("TCaplusProtobufFieldUpdateReq.Operation string content pack error\n" + err.Error())
+		}
+
+	}
+
 	return nil
 }
 
@@ -17674,6 +23826,38 @@ func (this *TCaplusProtobufFieldUpdateReq) UnpackFrom(cutVer uint32, r *tdrcom.R
 		return errors.New("TCaplusProtobufFieldUpdateReq.CheckVersionType unpack error\n" + err.Error())
 	}
 
+	if cutVer >= TCaplusProtobufFieldUpdateReqConditionVersion {
+
+		var ConditionSize uint32
+		err = binary.Read(r, binary.BigEndian, &ConditionSize)
+		if err != nil {
+			return errors.New("TCaplusProtobufFieldUpdateReq.Condition string size unpack error\n" + err.Error())
+		}
+
+		ConditionBytes := make([]byte, ConditionSize)
+		err = binary.Read(r, binary.BigEndian, ConditionBytes)
+		if err != nil {
+			return errors.New("TCaplusProtobufFieldUpdateReq.Condition string content unpack error\n" + err.Error())
+		}
+		this.Condition = string(ConditionBytes[:len(ConditionBytes)-1])
+
+	}
+	if cutVer >= TCaplusProtobufFieldUpdateReqOperationVersion {
+
+		var OperationSize uint32
+		err = binary.Read(r, binary.BigEndian, &OperationSize)
+		if err != nil {
+			return errors.New("TCaplusProtobufFieldUpdateReq.Operation string size unpack error\n" + err.Error())
+		}
+
+		OperationBytes := make([]byte, OperationSize)
+		err = binary.Read(r, binary.BigEndian, OperationBytes)
+		if err != nil {
+			return errors.New("TCaplusProtobufFieldUpdateReq.Operation string content unpack error\n" + err.Error())
+		}
+		this.Operation = string(OperationBytes[:len(OperationBytes)-1])
+
+	}
 	return err
 }
 
@@ -17775,13 +23959,16 @@ func (this *TCaplusProtobufFieldUpdateRes) UnpackFrom(cutVer uint32, r *tdrcom.R
 }
 
 const (
-	TCaplusProtobufFieldGetReqBaseVersion    uint32 = 78
-	TCaplusProtobufFieldGetReqCurrentVersion uint32 = 109
+	TCaplusProtobufFieldGetReqBaseVersion      uint32 = 78
+	TCaplusProtobufFieldGetReqCurrentVersion   uint32 = 125
+	TCaplusProtobufFieldGetReqConditionVersion uint32 = 125
 )
 
 // TCaplusProtobufFieldGetReq
 type TCaplusProtobufFieldGetReq struct {
 	ValueInfo *ProtobufValueSet_ `tdr_field:"ValueInfo"`
+
+	Condition string `tdr_field:"Condition"`
 }
 
 func NewTCaplusProtobufFieldGetReq() *TCaplusProtobufFieldGetReq {
@@ -17829,6 +24016,19 @@ func (this *TCaplusProtobufFieldGetReq) PackTo(cutVer uint32, w *tdrcom.Writer) 
 		return errors.New("TCaplusProtobufFieldGetReq.ValueInfo pack error\n" + err.Error())
 	}
 
+	if cutVer >= TCaplusProtobufFieldGetReqConditionVersion {
+
+		err = binary.Write(w, binary.BigEndian, uint32(len(this.Condition))+1)
+		if err != nil {
+			return errors.New("TCaplusProtobufFieldGetReq.Condition string size pack error\n" + err.Error())
+		}
+		err = binary.Write(w, binary.BigEndian, append([]byte(this.Condition), 0))
+		if err != nil {
+			return errors.New("TCaplusProtobufFieldGetReq.Condition string content pack error\n" + err.Error())
+		}
+
+	}
+
 	return nil
 }
 
@@ -17855,6 +24055,22 @@ func (this *TCaplusProtobufFieldGetReq) UnpackFrom(cutVer uint32, r *tdrcom.Read
 		return errors.New("TCaplusProtobufFieldGetReq.ValueInfo unpack error\n" + err.Error())
 	}
 
+	if cutVer >= TCaplusProtobufFieldGetReqConditionVersion {
+
+		var ConditionSize uint32
+		err = binary.Read(r, binary.BigEndian, &ConditionSize)
+		if err != nil {
+			return errors.New("TCaplusProtobufFieldGetReq.Condition string size unpack error\n" + err.Error())
+		}
+
+		ConditionBytes := make([]byte, ConditionSize)
+		err = binary.Read(r, binary.BigEndian, ConditionBytes)
+		if err != nil {
+			return errors.New("TCaplusProtobufFieldGetReq.Condition string content unpack error\n" + err.Error())
+		}
+		this.Condition = string(ConditionBytes[:len(ConditionBytes)-1])
+
+	}
 	return err
 }
 
@@ -17968,15 +24184,30 @@ func (this *TCaplusProtobufFieldGetRes) UnpackFrom(cutVer uint32, r *tdrcom.Read
 }
 
 const (
-	TCaplusProtobufFieldIncreaseReqBaseVersion    uint32 = 78
-	TCaplusProtobufFieldIncreaseReqCurrentVersion uint32 = 109
+	TCaplusProtobufFieldIncreaseReqBaseVersion                   uint32 = 78
+	TCaplusProtobufFieldIncreaseReqCurrentVersion                uint32 = 125
+	TCaplusProtobufFieldIncreaseReqLowerLimitVersion             uint32 = 124
+	TCaplusProtobufFieldIncreaseReqUpperLimitVersion             uint32 = 124
+	TCaplusProtobufFieldIncreaseReqConditionVersion              uint32 = 125
+	TCaplusProtobufFieldIncreaseReqOperationVersion              uint32 = 125
+	TCaplusProtobufFieldIncreaseReqEnableIncreaseNotExistVersion uint32 = 125
 )
 
 // TCaplusProtobufFieldIncreaseReq
 type TCaplusProtobufFieldIncreaseReq struct {
 	ValueInfo *ProtobufValueSet_ `tdr_field:"ValueInfo"`
 
+	LowerLimit *ProtobufValueSet_ `tdr_field:"LowerLimit"`
+
+	UpperLimit *ProtobufValueSet_ `tdr_field:"UpperLimit"`
+
 	CheckVersionType byte `tdr_field:"CheckVersionType"`
+
+	Condition string `tdr_field:"Condition"`
+
+	Operation string `tdr_field:"Operation"`
+
+	EnableIncreaseNotExist byte `tdr_field:"EnableIncreaseNotExist"`
 }
 
 func NewTCaplusProtobufFieldIncreaseReq() *TCaplusProtobufFieldIncreaseReq {
@@ -17996,7 +24227,13 @@ func (this *TCaplusProtobufFieldIncreaseReq) GetCurrentVersion() uint32 {
 func (this *TCaplusProtobufFieldIncreaseReq) Init() {
 	this.ValueInfo = NewProtobufValueSet_()
 
+	this.LowerLimit = NewProtobufValueSet_()
+
+	this.UpperLimit = NewProtobufValueSet_()
+
 	this.CheckVersionType = 1
+
+	this.EnableIncreaseNotExist = 0
 
 }
 
@@ -18026,9 +24263,59 @@ func (this *TCaplusProtobufFieldIncreaseReq) PackTo(cutVer uint32, w *tdrcom.Wri
 		return errors.New("TCaplusProtobufFieldIncreaseReq.ValueInfo pack error\n" + err.Error())
 	}
 
+	if cutVer >= TCaplusProtobufFieldIncreaseReqLowerLimitVersion {
+
+		err = this.LowerLimit.PackTo(cutVer, w)
+		if err != nil {
+			return errors.New("TCaplusProtobufFieldIncreaseReq.LowerLimit pack error\n" + err.Error())
+		}
+
+	}
+	if cutVer >= TCaplusProtobufFieldIncreaseReqUpperLimitVersion {
+
+		err = this.UpperLimit.PackTo(cutVer, w)
+		if err != nil {
+			return errors.New("TCaplusProtobufFieldIncreaseReq.UpperLimit pack error\n" + err.Error())
+		}
+
+	}
+
 	err = binary.Write(w, binary.BigEndian, this.CheckVersionType)
 	if err != nil {
 		return errors.New("TCaplusProtobufFieldIncreaseReq.CheckVersionType pack error\n" + err.Error())
+	}
+
+	if cutVer >= TCaplusProtobufFieldIncreaseReqConditionVersion {
+
+		err = binary.Write(w, binary.BigEndian, uint32(len(this.Condition))+1)
+		if err != nil {
+			return errors.New("TCaplusProtobufFieldIncreaseReq.Condition string size pack error\n" + err.Error())
+		}
+		err = binary.Write(w, binary.BigEndian, append([]byte(this.Condition), 0))
+		if err != nil {
+			return errors.New("TCaplusProtobufFieldIncreaseReq.Condition string content pack error\n" + err.Error())
+		}
+
+	}
+	if cutVer >= TCaplusProtobufFieldIncreaseReqOperationVersion {
+
+		err = binary.Write(w, binary.BigEndian, uint32(len(this.Operation))+1)
+		if err != nil {
+			return errors.New("TCaplusProtobufFieldIncreaseReq.Operation string size pack error\n" + err.Error())
+		}
+		err = binary.Write(w, binary.BigEndian, append([]byte(this.Operation), 0))
+		if err != nil {
+			return errors.New("TCaplusProtobufFieldIncreaseReq.Operation string content pack error\n" + err.Error())
+		}
+
+	}
+	if cutVer >= TCaplusProtobufFieldIncreaseReqEnableIncreaseNotExistVersion {
+
+		err = binary.Write(w, binary.BigEndian, this.EnableIncreaseNotExist)
+		if err != nil {
+			return errors.New("TCaplusProtobufFieldIncreaseReq.EnableIncreaseNotExist pack error\n" + err.Error())
+		}
+
 	}
 
 	return nil
@@ -18057,11 +24344,77 @@ func (this *TCaplusProtobufFieldIncreaseReq) UnpackFrom(cutVer uint32, r *tdrcom
 		return errors.New("TCaplusProtobufFieldIncreaseReq.ValueInfo unpack error\n" + err.Error())
 	}
 
+	if cutVer >= TCaplusProtobufFieldIncreaseReqLowerLimitVersion {
+
+		err = this.LowerLimit.UnpackFrom(cutVer, r)
+		if err != nil {
+			return errors.New("TCaplusProtobufFieldIncreaseReq.LowerLimit unpack error\n" + err.Error())
+		}
+
+	} else {
+		this.LowerLimit.Init()
+
+	}
+	if cutVer >= TCaplusProtobufFieldIncreaseReqUpperLimitVersion {
+
+		err = this.UpperLimit.UnpackFrom(cutVer, r)
+		if err != nil {
+			return errors.New("TCaplusProtobufFieldIncreaseReq.UpperLimit unpack error\n" + err.Error())
+		}
+
+	} else {
+		this.UpperLimit.Init()
+
+	}
+
 	err = binary.Read(r, binary.BigEndian, &this.CheckVersionType)
 	if err != nil {
 		return errors.New("TCaplusProtobufFieldIncreaseReq.CheckVersionType unpack error\n" + err.Error())
 	}
 
+	if cutVer >= TCaplusProtobufFieldIncreaseReqConditionVersion {
+
+		var ConditionSize uint32
+		err = binary.Read(r, binary.BigEndian, &ConditionSize)
+		if err != nil {
+			return errors.New("TCaplusProtobufFieldIncreaseReq.Condition string size unpack error\n" + err.Error())
+		}
+
+		ConditionBytes := make([]byte, ConditionSize)
+		err = binary.Read(r, binary.BigEndian, ConditionBytes)
+		if err != nil {
+			return errors.New("TCaplusProtobufFieldIncreaseReq.Condition string content unpack error\n" + err.Error())
+		}
+		this.Condition = string(ConditionBytes[:len(ConditionBytes)-1])
+
+	}
+	if cutVer >= TCaplusProtobufFieldIncreaseReqOperationVersion {
+
+		var OperationSize uint32
+		err = binary.Read(r, binary.BigEndian, &OperationSize)
+		if err != nil {
+			return errors.New("TCaplusProtobufFieldIncreaseReq.Operation string size unpack error\n" + err.Error())
+		}
+
+		OperationBytes := make([]byte, OperationSize)
+		err = binary.Read(r, binary.BigEndian, OperationBytes)
+		if err != nil {
+			return errors.New("TCaplusProtobufFieldIncreaseReq.Operation string content unpack error\n" + err.Error())
+		}
+		this.Operation = string(OperationBytes[:len(OperationBytes)-1])
+
+	}
+	if cutVer >= TCaplusProtobufFieldIncreaseReqEnableIncreaseNotExistVersion {
+
+		err = binary.Read(r, binary.BigEndian, &this.EnableIncreaseNotExist)
+		if err != nil {
+			return errors.New("TCaplusProtobufFieldIncreaseReq.EnableIncreaseNotExist unpack error\n" + err.Error())
+		}
+
+	} else {
+		this.EnableIncreaseNotExist = 0
+
+	}
 	return err
 }
 
@@ -18164,7 +24517,7 @@ func (this *TCaplusProtobufFieldIncreaseRes) UnpackFrom(cutVer uint32, r *tdrcom
 
 const (
 	TCaplusMsSyncGetReqBaseVersion    uint32 = 85
-	TCaplusMsSyncGetReqCurrentVersion uint32 = 89
+	TCaplusMsSyncGetReqCurrentVersion uint32 = 119
 )
 
 // TCaplusMsSyncGetReq
@@ -18331,7 +24684,7 @@ func (this *TCaplusMsSyncGetRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader) err
 
 const (
 	TCaplusListMsSyncGetReqBaseVersion    uint32 = 85
-	TCaplusListMsSyncGetReqCurrentVersion uint32 = 89
+	TCaplusListMsSyncGetReqCurrentVersion uint32 = 119
 )
 
 // TCaplusListMsSyncGetReq
@@ -18498,7 +24851,7 @@ func (this *TCaplusListMsSyncGetRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader)
 
 const (
 	TCaplusListMsSyncGetAllReqBaseVersion    uint32 = 85
-	TCaplusListMsSyncGetAllReqCurrentVersion uint32 = 89
+	TCaplusListMsSyncGetAllReqCurrentVersion uint32 = 119
 )
 
 // TCaplusListMsSyncGetAllReq
@@ -18665,7 +25018,7 @@ func (this *TCaplusListMsSyncGetAllRes) UnpackFrom(cutVer uint32, r *tdrcom.Read
 
 const (
 	TCaplusMsSyncPartkeyGetReqBaseVersion    uint32 = 85
-	TCaplusMsSyncPartkeyGetReqCurrentVersion uint32 = 89
+	TCaplusMsSyncPartkeyGetReqCurrentVersion uint32 = 119
 )
 
 // TCaplusMsSyncPartkeyGetReq
@@ -19137,7 +25490,7 @@ func (this *TCaplusSysListMakeConsistReq) UnpackFrom(cutVer uint32, r *tdrcom.Re
 
 const (
 	TCaplusSysListMakeConsistResBaseVersion    uint32 = 86
-	TCaplusSysListMakeConsistResCurrentVersion uint32 = 86
+	TCaplusSysListMakeConsistResCurrentVersion uint32 = 119
 )
 
 // TCaplusSysListMakeConsistRes
@@ -19246,7 +25599,7 @@ func (this *TCaplusSysListMakeConsistRes) UnpackFrom(cutVer uint32, r *tdrcom.Re
 
 const (
 	TCaplusLosslessMoveReplaceReqBaseVersion    uint32 = 87
-	TCaplusLosslessMoveReplaceReqCurrentVersion uint32 = 109
+	TCaplusLosslessMoveReplaceReqCurrentVersion uint32 = 119
 )
 
 // TCaplusLosslessMoveReplaceReq
@@ -19427,7 +25780,7 @@ func (this *TCaplusLosslessMoveReplaceRes) UnpackFrom(cutVer uint32, r *tdrcom.R
 
 const (
 	TCaplusLosslessMoveListIndexReplaceReqBaseVersion    uint32 = 87
-	TCaplusLosslessMoveListIndexReplaceReqCurrentVersion uint32 = 91
+	TCaplusLosslessMoveListIndexReplaceReqCurrentVersion uint32 = 119
 )
 
 // TCaplusLosslessMoveListIndexReplaceReq
@@ -19608,7 +25961,7 @@ func (this *TCaplusLosslessMoveListIndexReplaceRes) UnpackFrom(cutVer uint32, r 
 
 const (
 	TCaplusLosslessMoveListElemReplaceReqBaseVersion    uint32 = 87
-	TCaplusLosslessMoveListElemReplaceReqCurrentVersion uint32 = 109
+	TCaplusLosslessMoveListElemReplaceReqCurrentVersion uint32 = 119
 )
 
 // TCaplusLosslessMoveListElemReplaceReq
@@ -19788,6 +26141,487 @@ func (this *TCaplusLosslessMoveListElemReplaceRes) UnpackFrom(cutVer uint32, r *
 }
 
 const (
+	TcaplusPhysMoveInitFileReqBaseVersion    uint32 = 126
+	TcaplusPhysMoveInitFileReqCurrentVersion uint32 = 126
+)
+
+// TcaplusPhysMoveInitFileReq
+type TcaplusPhysMoveInitFileReq struct {
+	FileNum uint32 `tdr_field:"FileNum"`
+
+	MoveFileInfo []*PhysMoveMigrateFileInfo `tdr_field:"MoveFileInfo" tdr_count:"10" tdr_refer:"FileNum"`
+}
+
+func NewTcaplusPhysMoveInitFileReq() *TcaplusPhysMoveInitFileReq {
+	obj := new(TcaplusPhysMoveInitFileReq)
+	obj.Init()
+	return obj
+}
+
+func (this *TcaplusPhysMoveInitFileReq) GetBaseVersion() uint32 {
+	return TcaplusPhysMoveInitFileReqBaseVersion
+}
+
+func (this *TcaplusPhysMoveInitFileReq) GetCurrentVersion() uint32 {
+	return TcaplusPhysMoveInitFileReqCurrentVersion
+}
+
+func (this *TcaplusPhysMoveInitFileReq) Init() {
+	this.FileNum = 0
+
+}
+
+func (this *TcaplusPhysMoveInitFileReq) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("TcaplusPhysMoveInitFileReq Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *TcaplusPhysMoveInitFileReq) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > TcaplusPhysMoveInitFileReqCurrentVersion {
+		cutVer = TcaplusPhysMoveInitFileReqCurrentVersion
+	}
+	// check cut version
+	if cutVer < TcaplusPhysMoveInitFileReqBaseVersion {
+		return errors.New("TcaplusPhysMoveInitFileReq cut version must large than TcaplusPhysMoveInitFileReqBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, this.FileNum)
+	if err != nil {
+		return errors.New("TcaplusPhysMoveInitFileReq.FileNum pack error\n" + err.Error())
+	}
+
+	if this.FileNum < 0 {
+		return errors.New("TcaplusPhysMoveInitFileReq.MoveFileInfo's refer FileNum should >= 0")
+	}
+	if this.FileNum > 10 {
+		return errors.New("TcaplusPhysMoveInitFileReq.MoveFileInfo's refer FileNum should <= count 10")
+	}
+	if len(this.MoveFileInfo) < int(this.FileNum) {
+		return errors.New("TcaplusPhysMoveInitFileReq.MoveFileInfo's length should > FileNum")
+	}
+	if this.FileNum > 0 {
+		for i := 0; i < int(this.FileNum); i++ {
+			err = this.MoveFileInfo[i].PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TcaplusPhysMoveInitFileReq.MoveFileInfo pack error\n" + err.Error())
+			}
+
+		}
+	}
+
+	return nil
+}
+
+func (this *TcaplusPhysMoveInitFileReq) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("TcaplusPhysMoveInitFileReq data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *TcaplusPhysMoveInitFileReq) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > TcaplusPhysMoveInitFileReqCurrentVersion {
+		cutVer = TcaplusPhysMoveInitFileReqCurrentVersion
+	}
+	// check version
+	if cutVer < TcaplusPhysMoveInitFileReqBaseVersion {
+		errors.New("TcaplusPhysMoveInitFileReq cut version must large than TcaplusPhysMoveInitFileReqBaseVersion\n")
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.FileNum)
+	if err != nil {
+		return errors.New("TcaplusPhysMoveInitFileReq.FileNum unpack error\n" + err.Error())
+	}
+
+	if this.FileNum < 0 {
+		return errors.New("TcaplusPhysMoveInitFileReq.MoveFileInfo's refer FileNum should >= 0")
+	}
+	if this.FileNum > 10 {
+		return errors.New("TcaplusPhysMoveInitFileReq.MoveFileInfo's refer FileNum should <= count 10")
+	}
+
+	if this.MoveFileInfo == nil {
+		this.MoveFileInfo = make([]*PhysMoveMigrateFileInfo, int(this.FileNum))
+		for i := 0; i < int(this.FileNum); i++ {
+			this.MoveFileInfo[i] = NewPhysMoveMigrateFileInfo()
+		}
+	}
+
+	for i := 0; i < int(this.FileNum); i++ {
+		err = this.MoveFileInfo[i].UnpackFrom(cutVer, r)
+		if err != nil {
+			return errors.New("TcaplusPhysMoveInitFileReq.MoveFileInfo unpack error\n" + err.Error())
+		}
+
+	}
+
+	return err
+}
+
+const (
+	TcaplusPhysMoveInitFileResBaseVersion    uint32 = 126
+	TcaplusPhysMoveInitFileResCurrentVersion uint32 = 126
+)
+
+// TcaplusPhysMoveInitFileRes
+type TcaplusPhysMoveInitFileRes struct {
+	Result int32 `tdr_field:"Result"`
+}
+
+func NewTcaplusPhysMoveInitFileRes() *TcaplusPhysMoveInitFileRes {
+	obj := new(TcaplusPhysMoveInitFileRes)
+	obj.Init()
+	return obj
+}
+
+func (this *TcaplusPhysMoveInitFileRes) GetBaseVersion() uint32 {
+	return TcaplusPhysMoveInitFileResBaseVersion
+}
+
+func (this *TcaplusPhysMoveInitFileRes) GetCurrentVersion() uint32 {
+	return TcaplusPhysMoveInitFileResCurrentVersion
+}
+
+func (this *TcaplusPhysMoveInitFileRes) Init() {
+
+}
+
+func (this *TcaplusPhysMoveInitFileRes) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("TcaplusPhysMoveInitFileRes Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *TcaplusPhysMoveInitFileRes) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > TcaplusPhysMoveInitFileResCurrentVersion {
+		cutVer = TcaplusPhysMoveInitFileResCurrentVersion
+	}
+	// check cut version
+	if cutVer < TcaplusPhysMoveInitFileResBaseVersion {
+		return errors.New("TcaplusPhysMoveInitFileRes cut version must large than TcaplusPhysMoveInitFileResBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, this.Result)
+	if err != nil {
+		return errors.New("TcaplusPhysMoveInitFileRes.Result pack error\n" + err.Error())
+	}
+
+	return nil
+}
+
+func (this *TcaplusPhysMoveInitFileRes) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("TcaplusPhysMoveInitFileRes data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *TcaplusPhysMoveInitFileRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > TcaplusPhysMoveInitFileResCurrentVersion {
+		cutVer = TcaplusPhysMoveInitFileResCurrentVersion
+	}
+	// check version
+	if cutVer < TcaplusPhysMoveInitFileResBaseVersion {
+		errors.New("TcaplusPhysMoveInitFileRes cut version must large than TcaplusPhysMoveInitFileResBaseVersion\n")
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.Result)
+	if err != nil {
+		return errors.New("TcaplusPhysMoveInitFileRes.Result unpack error\n" + err.Error())
+	}
+
+	return err
+}
+
+const (
+	TcaplusPhysMoveSendDataReqBaseVersion    uint32 = 126
+	TcaplusPhysMoveSendDataReqCurrentVersion uint32 = 126
+)
+
+// TcaplusPhysMoveSendDataReq
+type TcaplusPhysMoveSendDataReq struct {
+	MoveFileInfo *PhysMoveMigrateFileInfo `tdr_field:"MoveFileInfo"`
+
+	Offset uint64 `tdr_field:"Offset"`
+
+	BufLen uint32 `tdr_field:"BufLen"`
+
+	Buf []byte `tdr_field:"Buf" tdr_count:"1048576" tdr_refer:"BufLen"`
+
+	CrcCode uint32 `tdr_field:"CrcCode"`
+
+	Finish int32 `tdr_field:"Finish"`
+}
+
+func NewTcaplusPhysMoveSendDataReq() *TcaplusPhysMoveSendDataReq {
+	obj := new(TcaplusPhysMoveSendDataReq)
+	obj.Init()
+	return obj
+}
+
+func (this *TcaplusPhysMoveSendDataReq) GetBaseVersion() uint32 {
+	return TcaplusPhysMoveSendDataReqBaseVersion
+}
+
+func (this *TcaplusPhysMoveSendDataReq) GetCurrentVersion() uint32 {
+	return TcaplusPhysMoveSendDataReqCurrentVersion
+}
+
+func (this *TcaplusPhysMoveSendDataReq) Init() {
+	this.MoveFileInfo = NewPhysMoveMigrateFileInfo()
+
+	this.Offset = 0
+
+	this.BufLen = 0
+
+	this.CrcCode = 0
+
+	this.Finish = 0
+
+}
+
+func (this *TcaplusPhysMoveSendDataReq) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("TcaplusPhysMoveSendDataReq Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *TcaplusPhysMoveSendDataReq) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > TcaplusPhysMoveSendDataReqCurrentVersion {
+		cutVer = TcaplusPhysMoveSendDataReqCurrentVersion
+	}
+	// check cut version
+	if cutVer < TcaplusPhysMoveSendDataReqBaseVersion {
+		return errors.New("TcaplusPhysMoveSendDataReq cut version must large than TcaplusPhysMoveSendDataReqBaseVersion\n")
+	}
+
+	var err error
+
+	err = this.MoveFileInfo.PackTo(cutVer, w)
+	if err != nil {
+		return errors.New("TcaplusPhysMoveSendDataReq.MoveFileInfo pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.Offset)
+	if err != nil {
+		return errors.New("TcaplusPhysMoveSendDataReq.Offset pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.BufLen)
+	if err != nil {
+		return errors.New("TcaplusPhysMoveSendDataReq.BufLen pack error\n" + err.Error())
+	}
+
+	if this.BufLen < 0 {
+		return errors.New("TcaplusPhysMoveSendDataReq.Buf's refer BufLen should >= 0")
+	}
+	if this.BufLen > 1048576 {
+		return errors.New("TcaplusPhysMoveSendDataReq.Buf's refer BufLen should <= count 1048576")
+	}
+	if len(this.Buf) < int(this.BufLen) {
+		return errors.New("TcaplusPhysMoveSendDataReq.Buf's length should > BufLen")
+	}
+	if this.BufLen > 0 {
+		referBuf := this.Buf[:this.BufLen]
+		err = binary.Write(w, binary.BigEndian, referBuf)
+		if err != nil {
+			return errors.New("TcaplusPhysMoveSendDataReq.Buf pack error\n" + err.Error())
+		}
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.CrcCode)
+	if err != nil {
+		return errors.New("TcaplusPhysMoveSendDataReq.CrcCode pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.Finish)
+	if err != nil {
+		return errors.New("TcaplusPhysMoveSendDataReq.Finish pack error\n" + err.Error())
+	}
+
+	return nil
+}
+
+func (this *TcaplusPhysMoveSendDataReq) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("TcaplusPhysMoveSendDataReq data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *TcaplusPhysMoveSendDataReq) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > TcaplusPhysMoveSendDataReqCurrentVersion {
+		cutVer = TcaplusPhysMoveSendDataReqCurrentVersion
+	}
+	// check version
+	if cutVer < TcaplusPhysMoveSendDataReqBaseVersion {
+		errors.New("TcaplusPhysMoveSendDataReq cut version must large than TcaplusPhysMoveSendDataReqBaseVersion\n")
+	}
+
+	err = this.MoveFileInfo.UnpackFrom(cutVer, r)
+	if err != nil {
+		return errors.New("TcaplusPhysMoveSendDataReq.MoveFileInfo unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.Offset)
+	if err != nil {
+		return errors.New("TcaplusPhysMoveSendDataReq.Offset unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.BufLen)
+	if err != nil {
+		return errors.New("TcaplusPhysMoveSendDataReq.BufLen unpack error\n" + err.Error())
+	}
+
+	if this.BufLen < 0 {
+		return errors.New("TcaplusPhysMoveSendDataReq.Buf's refer BufLen should >= 0")
+	}
+	if this.BufLen > 1048576 {
+		return errors.New("TcaplusPhysMoveSendDataReq.Buf's refer BufLen should <= count 1048576")
+	}
+
+	if this.Buf == nil {
+		this.Buf = make([]byte, int(this.BufLen))
+	}
+
+	referBuf := this.Buf[:this.BufLen]
+	err = binary.Read(r, binary.BigEndian, referBuf)
+	if err != nil {
+		return errors.New("TcaplusPhysMoveSendDataReq.Buf pack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.CrcCode)
+	if err != nil {
+		return errors.New("TcaplusPhysMoveSendDataReq.CrcCode unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.Finish)
+	if err != nil {
+		return errors.New("TcaplusPhysMoveSendDataReq.Finish unpack error\n" + err.Error())
+	}
+
+	return err
+}
+
+const (
+	TcaplusPhysMoveSendDataResBaseVersion    uint32 = 126
+	TcaplusPhysMoveSendDataResCurrentVersion uint32 = 126
+)
+
+// TcaplusPhysMoveSendDataRes
+type TcaplusPhysMoveSendDataRes struct {
+	Result int32 `tdr_field:"Result"`
+
+	Offset uint64 `tdr_field:"Offset"`
+}
+
+func NewTcaplusPhysMoveSendDataRes() *TcaplusPhysMoveSendDataRes {
+	obj := new(TcaplusPhysMoveSendDataRes)
+	obj.Init()
+	return obj
+}
+
+func (this *TcaplusPhysMoveSendDataRes) GetBaseVersion() uint32 {
+	return TcaplusPhysMoveSendDataResBaseVersion
+}
+
+func (this *TcaplusPhysMoveSendDataRes) GetCurrentVersion() uint32 {
+	return TcaplusPhysMoveSendDataResCurrentVersion
+}
+
+func (this *TcaplusPhysMoveSendDataRes) Init() {
+
+}
+
+func (this *TcaplusPhysMoveSendDataRes) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("TcaplusPhysMoveSendDataRes Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *TcaplusPhysMoveSendDataRes) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > TcaplusPhysMoveSendDataResCurrentVersion {
+		cutVer = TcaplusPhysMoveSendDataResCurrentVersion
+	}
+	// check cut version
+	if cutVer < TcaplusPhysMoveSendDataResBaseVersion {
+		return errors.New("TcaplusPhysMoveSendDataRes cut version must large than TcaplusPhysMoveSendDataResBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, this.Result)
+	if err != nil {
+		return errors.New("TcaplusPhysMoveSendDataRes.Result pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.Offset)
+	if err != nil {
+		return errors.New("TcaplusPhysMoveSendDataRes.Offset pack error\n" + err.Error())
+	}
+
+	return nil
+}
+
+func (this *TcaplusPhysMoveSendDataRes) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("TcaplusPhysMoveSendDataRes data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *TcaplusPhysMoveSendDataRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > TcaplusPhysMoveSendDataResCurrentVersion {
+		cutVer = TcaplusPhysMoveSendDataResCurrentVersion
+	}
+	// check version
+	if cutVer < TcaplusPhysMoveSendDataResBaseVersion {
+		errors.New("TcaplusPhysMoveSendDataRes cut version must large than TcaplusPhysMoveSendDataResBaseVersion\n")
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.Result)
+	if err != nil {
+		return errors.New("TcaplusPhysMoveSendDataRes.Result unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.Offset)
+	if err != nil {
+		return errors.New("TcaplusPhysMoveSendDataRes.Offset unpack error\n" + err.Error())
+	}
+
+	return err
+}
+
+const (
 	TCaplusListIndexMoveReplaceReqBaseVersion    uint32 = 112
 	TCaplusListIndexMoveReplaceReqCurrentVersion uint32 = 112
 )
@@ -19956,7 +26790,9 @@ func (this *TCaplusListIndexMoveReplaceRes) UnpackFrom(cutVer uint32, r *tdrcom.
 
 const (
 	TCaplusListElementMoveReplaceReqBaseVersion    uint32 = 112
-	TCaplusListElementMoveReplaceReqCurrentVersion uint32 = 112
+	TCaplusListElementMoveReplaceReqCurrentVersion uint32 = 120
+	TCaplusListElementMoveReplaceReqTTLVersion     uint32 = 120
+	TCaplusListElementMoveReplaceReqTTLTypeVersion uint32 = 120
 )
 
 // TCaplusListElementMoveReplaceReq
@@ -19964,6 +26800,10 @@ type TCaplusListElementMoveReplaceReq struct {
 	ElementIndex int32 `tdr_field:"ElementIndex"`
 
 	ElementValueInfo *TCaplusValueSet_ `tdr_field:"ElementValueInfo"`
+
+	TTL uint64 `tdr_field:"TTL"`
+
+	TTLType byte `tdr_field:"TTLType"`
 }
 
 func NewTCaplusListElementMoveReplaceReq() *TCaplusListElementMoveReplaceReq {
@@ -19984,6 +26824,10 @@ func (this *TCaplusListElementMoveReplaceReq) Init() {
 	this.ElementIndex = 0
 
 	this.ElementValueInfo = NewTCaplusValueSet_()
+
+	this.TTL = 0
+
+	this.TTLType = 3
 
 }
 
@@ -20018,6 +26862,23 @@ func (this *TCaplusListElementMoveReplaceReq) PackTo(cutVer uint32, w *tdrcom.Wr
 		return errors.New("TCaplusListElementMoveReplaceReq.ElementValueInfo pack error\n" + err.Error())
 	}
 
+	if cutVer >= TCaplusListElementMoveReplaceReqTTLVersion {
+
+		err = binary.Write(w, binary.BigEndian, this.TTL)
+		if err != nil {
+			return errors.New("TCaplusListElementMoveReplaceReq.TTL pack error\n" + err.Error())
+		}
+
+	}
+	if cutVer >= TCaplusListElementMoveReplaceReqTTLTypeVersion {
+
+		err = binary.Write(w, binary.BigEndian, this.TTLType)
+		if err != nil {
+			return errors.New("TCaplusListElementMoveReplaceReq.TTLType pack error\n" + err.Error())
+		}
+
+	}
+
 	return nil
 }
 
@@ -20049,6 +26910,28 @@ func (this *TCaplusListElementMoveReplaceReq) UnpackFrom(cutVer uint32, r *tdrco
 		return errors.New("TCaplusListElementMoveReplaceReq.ElementValueInfo unpack error\n" + err.Error())
 	}
 
+	if cutVer >= TCaplusListElementMoveReplaceReqTTLVersion {
+
+		err = binary.Read(r, binary.BigEndian, &this.TTL)
+		if err != nil {
+			return errors.New("TCaplusListElementMoveReplaceReq.TTL unpack error\n" + err.Error())
+		}
+
+	} else {
+		this.TTL = 0
+
+	}
+	if cutVer >= TCaplusListElementMoveReplaceReqTTLTypeVersion {
+
+		err = binary.Read(r, binary.BigEndian, &this.TTLType)
+		if err != nil {
+			return errors.New("TCaplusListElementMoveReplaceReq.TTLType unpack error\n" + err.Error())
+		}
+
+	} else {
+		this.TTLType = 3
+
+	}
 	return err
 }
 
@@ -20886,8 +27769,960 @@ func (this *ProxyCacheRequestInfo) UnpackFrom(cutVer uint32, r *tdrcom.Reader) e
 }
 
 const (
+	TCaplusSetTTLReqBaseVersion    uint32 = 119
+	TCaplusSetTTLReqCurrentVersion uint32 = 120
+	TCaplusSetTTLReqTTLTypeVersion uint32 = 120
+)
+
+// TCaplusSetTTLReq
+type TCaplusSetTTLReq struct {
+	RecordNum uint32 `tdr_field:"RecordNum"`
+
+	KeyInfo []*TCaplusKeySet `tdr_field:"KeyInfo" tdr_count:"1024" tdr_refer:"RecordNum"`
+
+	Index []int32 `tdr_field:"Index" tdr_count:"1024" tdr_refer:"RecordNum"`
+
+	SplitTableKeyBuffs []*SplitTableKeyBuff `tdr_field:"SplitTableKeyBuffs" tdr_count:"1024" tdr_refer:"RecordNum"`
+
+	TTL []uint64 `tdr_field:"TTL" tdr_count:"1024" tdr_refer:"RecordNum"`
+
+	TTLType []byte `tdr_field:"TTLType" tdr_count:"1024" tdr_refer:"RecordNum"`
+}
+
+func NewTCaplusSetTTLReq() *TCaplusSetTTLReq {
+	obj := new(TCaplusSetTTLReq)
+	obj.Init()
+	return obj
+}
+
+func (this *TCaplusSetTTLReq) GetBaseVersion() uint32 {
+	return TCaplusSetTTLReqBaseVersion
+}
+
+func (this *TCaplusSetTTLReq) GetCurrentVersion() uint32 {
+	return TCaplusSetTTLReqCurrentVersion
+}
+
+func (this *TCaplusSetTTLReq) Init() {
+	this.RecordNum = 0
+
+}
+
+func (this *TCaplusSetTTLReq) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("TCaplusSetTTLReq Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *TCaplusSetTTLReq) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > TCaplusSetTTLReqCurrentVersion {
+		cutVer = TCaplusSetTTLReqCurrentVersion
+	}
+	// check cut version
+	if cutVer < TCaplusSetTTLReqBaseVersion {
+		return errors.New("TCaplusSetTTLReq cut version must large than TCaplusSetTTLReqBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, this.RecordNum)
+	if err != nil {
+		return errors.New("TCaplusSetTTLReq.RecordNum pack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusSetTTLReq.KeyInfo's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusSetTTLReq.KeyInfo's refer RecordNum should <= count 1024")
+	}
+	if len(this.KeyInfo) < int(this.RecordNum) {
+		return errors.New("TCaplusSetTTLReq.KeyInfo's length should > RecordNum")
+	}
+	if this.RecordNum > 0 {
+		for i := 0; i < int(this.RecordNum); i++ {
+			err = this.KeyInfo[i].PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusSetTTLReq.KeyInfo pack error\n" + err.Error())
+			}
+
+		}
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusSetTTLReq.Index's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusSetTTLReq.Index's refer RecordNum should <= count 1024")
+	}
+	if len(this.Index) < int(this.RecordNum) {
+		return errors.New("TCaplusSetTTLReq.Index's length should > RecordNum")
+	}
+	if this.RecordNum > 0 {
+		referIndex := this.Index[:this.RecordNum]
+		err = binary.Write(w, binary.BigEndian, referIndex)
+		if err != nil {
+			return errors.New("TCaplusSetTTLReq.Index pack error\n" + err.Error())
+		}
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusSetTTLReq.SplitTableKeyBuffs's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusSetTTLReq.SplitTableKeyBuffs's refer RecordNum should <= count 1024")
+	}
+	if len(this.SplitTableKeyBuffs) < int(this.RecordNum) {
+		return errors.New("TCaplusSetTTLReq.SplitTableKeyBuffs's length should > RecordNum")
+	}
+	if this.RecordNum > 0 {
+		for i := 0; i < int(this.RecordNum); i++ {
+			err = this.SplitTableKeyBuffs[i].PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusSetTTLReq.SplitTableKeyBuffs pack error\n" + err.Error())
+			}
+
+		}
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusSetTTLReq.TTL's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusSetTTLReq.TTL's refer RecordNum should <= count 1024")
+	}
+	if len(this.TTL) < int(this.RecordNum) {
+		return errors.New("TCaplusSetTTLReq.TTL's length should > RecordNum")
+	}
+	if this.RecordNum > 0 {
+		referTTL := this.TTL[:this.RecordNum]
+		err = binary.Write(w, binary.BigEndian, referTTL)
+		if err != nil {
+			return errors.New("TCaplusSetTTLReq.TTL pack error\n" + err.Error())
+		}
+	}
+
+	if cutVer >= TCaplusSetTTLReqTTLTypeVersion {
+
+		if this.RecordNum < 0 {
+			return errors.New("TCaplusSetTTLReq.TTLType's refer RecordNum should >= 0")
+		}
+		if this.RecordNum > 1024 {
+			return errors.New("TCaplusSetTTLReq.TTLType's refer RecordNum should <= count 1024")
+		}
+		if len(this.TTLType) < int(this.RecordNum) {
+			return errors.New("TCaplusSetTTLReq.TTLType's length should > RecordNum")
+		}
+		if this.RecordNum > 0 {
+			referTTLType := this.TTLType[:this.RecordNum]
+			err = binary.Write(w, binary.BigEndian, referTTLType)
+			if err != nil {
+				return errors.New("TCaplusSetTTLReq.TTLType pack error\n" + err.Error())
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func (this *TCaplusSetTTLReq) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("TCaplusSetTTLReq data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *TCaplusSetTTLReq) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > TCaplusSetTTLReqCurrentVersion {
+		cutVer = TCaplusSetTTLReqCurrentVersion
+	}
+	// check version
+	if cutVer < TCaplusSetTTLReqBaseVersion {
+		errors.New("TCaplusSetTTLReq cut version must large than TCaplusSetTTLReqBaseVersion\n")
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.RecordNum)
+	if err != nil {
+		return errors.New("TCaplusSetTTLReq.RecordNum unpack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusSetTTLReq.KeyInfo's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusSetTTLReq.KeyInfo's refer RecordNum should <= count 1024")
+	}
+
+	if this.KeyInfo == nil {
+		this.KeyInfo = make([]*TCaplusKeySet, int(this.RecordNum))
+		for i := 0; i < int(this.RecordNum); i++ {
+			this.KeyInfo[i] = NewTCaplusKeySet()
+		}
+	}
+
+	for i := 0; i < int(this.RecordNum); i++ {
+		err = this.KeyInfo[i].UnpackFrom(cutVer, r)
+		if err != nil {
+			return errors.New("TCaplusSetTTLReq.KeyInfo unpack error\n" + err.Error())
+		}
+
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusSetTTLReq.Index's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusSetTTLReq.Index's refer RecordNum should <= count 1024")
+	}
+
+	if this.Index == nil {
+		this.Index = make([]int32, int(this.RecordNum))
+	}
+
+	referIndex := this.Index[:this.RecordNum]
+	err = binary.Read(r, binary.BigEndian, referIndex)
+	if err != nil {
+		return errors.New("TCaplusSetTTLReq.Index pack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusSetTTLReq.SplitTableKeyBuffs's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusSetTTLReq.SplitTableKeyBuffs's refer RecordNum should <= count 1024")
+	}
+
+	if this.SplitTableKeyBuffs == nil {
+		this.SplitTableKeyBuffs = make([]*SplitTableKeyBuff, int(this.RecordNum))
+		for i := 0; i < int(this.RecordNum); i++ {
+			this.SplitTableKeyBuffs[i] = NewSplitTableKeyBuff()
+		}
+	}
+
+	for i := 0; i < int(this.RecordNum); i++ {
+		err = this.SplitTableKeyBuffs[i].UnpackFrom(cutVer, r)
+		if err != nil {
+			return errors.New("TCaplusSetTTLReq.SplitTableKeyBuffs unpack error\n" + err.Error())
+		}
+
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusSetTTLReq.TTL's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusSetTTLReq.TTL's refer RecordNum should <= count 1024")
+	}
+
+	if this.TTL == nil {
+		this.TTL = make([]uint64, int(this.RecordNum))
+	}
+
+	referTTL := this.TTL[:this.RecordNum]
+	err = binary.Read(r, binary.BigEndian, referTTL)
+	if err != nil {
+		return errors.New("TCaplusSetTTLReq.TTL pack error\n" + err.Error())
+	}
+
+	if cutVer >= TCaplusSetTTLReqTTLTypeVersion {
+
+		if this.RecordNum < 0 {
+			return errors.New("TCaplusSetTTLReq.TTLType's refer RecordNum should >= 0")
+		}
+		if this.RecordNum > 1024 {
+			return errors.New("TCaplusSetTTLReq.TTLType's refer RecordNum should <= count 1024")
+		}
+
+		if this.TTLType == nil {
+			this.TTLType = make([]byte, int(this.RecordNum))
+		}
+
+		referTTLType := this.TTLType[:this.RecordNum]
+		err = binary.Read(r, binary.BigEndian, referTTLType)
+		if err != nil {
+			return errors.New("TCaplusSetTTLReq.TTLType pack error\n" + err.Error())
+		}
+
+	}
+	return err
+}
+
+const (
+	TCaplusSetTTLResBaseVersion    uint32 = 119
+	TCaplusSetTTLResCurrentVersion uint32 = 119
+)
+
+// TCaplusSetTTLRes
+type TCaplusSetTTLRes struct {
+	Result int32 `tdr_field:"Result"`
+
+	RecordNum uint32 `tdr_field:"RecordNum"`
+
+	KeyInfo []*TCaplusKeySet `tdr_field:"KeyInfo" tdr_count:"1024" tdr_refer:"RecordNum"`
+
+	Index []int32 `tdr_field:"Index" tdr_count:"1024" tdr_refer:"RecordNum"`
+
+	RecordResult []int32 `tdr_field:"RecordResult" tdr_count:"1024" tdr_refer:"RecordNum"`
+}
+
+func NewTCaplusSetTTLRes() *TCaplusSetTTLRes {
+	obj := new(TCaplusSetTTLRes)
+	obj.Init()
+	return obj
+}
+
+func (this *TCaplusSetTTLRes) GetBaseVersion() uint32 {
+	return TCaplusSetTTLResBaseVersion
+}
+
+func (this *TCaplusSetTTLRes) GetCurrentVersion() uint32 {
+	return TCaplusSetTTLResCurrentVersion
+}
+
+func (this *TCaplusSetTTLRes) Init() {
+
+	this.RecordNum = 0
+
+}
+
+func (this *TCaplusSetTTLRes) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("TCaplusSetTTLRes Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *TCaplusSetTTLRes) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > TCaplusSetTTLResCurrentVersion {
+		cutVer = TCaplusSetTTLResCurrentVersion
+	}
+	// check cut version
+	if cutVer < TCaplusSetTTLResBaseVersion {
+		return errors.New("TCaplusSetTTLRes cut version must large than TCaplusSetTTLResBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, this.Result)
+	if err != nil {
+		return errors.New("TCaplusSetTTLRes.Result pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.RecordNum)
+	if err != nil {
+		return errors.New("TCaplusSetTTLRes.RecordNum pack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusSetTTLRes.KeyInfo's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusSetTTLRes.KeyInfo's refer RecordNum should <= count 1024")
+	}
+	if len(this.KeyInfo) < int(this.RecordNum) {
+		return errors.New("TCaplusSetTTLRes.KeyInfo's length should > RecordNum")
+	}
+	if this.RecordNum > 0 {
+		for i := 0; i < int(this.RecordNum); i++ {
+			err = this.KeyInfo[i].PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusSetTTLRes.KeyInfo pack error\n" + err.Error())
+			}
+
+		}
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusSetTTLRes.Index's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusSetTTLRes.Index's refer RecordNum should <= count 1024")
+	}
+	if len(this.Index) < int(this.RecordNum) {
+		return errors.New("TCaplusSetTTLRes.Index's length should > RecordNum")
+	}
+	if this.RecordNum > 0 {
+		referIndex := this.Index[:this.RecordNum]
+		err = binary.Write(w, binary.BigEndian, referIndex)
+		if err != nil {
+			return errors.New("TCaplusSetTTLRes.Index pack error\n" + err.Error())
+		}
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusSetTTLRes.RecordResult's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusSetTTLRes.RecordResult's refer RecordNum should <= count 1024")
+	}
+	if len(this.RecordResult) < int(this.RecordNum) {
+		return errors.New("TCaplusSetTTLRes.RecordResult's length should > RecordNum")
+	}
+	if this.RecordNum > 0 {
+		referRecordResult := this.RecordResult[:this.RecordNum]
+		err = binary.Write(w, binary.BigEndian, referRecordResult)
+		if err != nil {
+			return errors.New("TCaplusSetTTLRes.RecordResult pack error\n" + err.Error())
+		}
+	}
+
+	return nil
+}
+
+func (this *TCaplusSetTTLRes) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("TCaplusSetTTLRes data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *TCaplusSetTTLRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > TCaplusSetTTLResCurrentVersion {
+		cutVer = TCaplusSetTTLResCurrentVersion
+	}
+	// check version
+	if cutVer < TCaplusSetTTLResBaseVersion {
+		errors.New("TCaplusSetTTLRes cut version must large than TCaplusSetTTLResBaseVersion\n")
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.Result)
+	if err != nil {
+		return errors.New("TCaplusSetTTLRes.Result unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.RecordNum)
+	if err != nil {
+		return errors.New("TCaplusSetTTLRes.RecordNum unpack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusSetTTLRes.KeyInfo's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusSetTTLRes.KeyInfo's refer RecordNum should <= count 1024")
+	}
+
+	if this.KeyInfo == nil {
+		this.KeyInfo = make([]*TCaplusKeySet, int(this.RecordNum))
+		for i := 0; i < int(this.RecordNum); i++ {
+			this.KeyInfo[i] = NewTCaplusKeySet()
+		}
+	}
+
+	for i := 0; i < int(this.RecordNum); i++ {
+		err = this.KeyInfo[i].UnpackFrom(cutVer, r)
+		if err != nil {
+			return errors.New("TCaplusSetTTLRes.KeyInfo unpack error\n" + err.Error())
+		}
+
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusSetTTLRes.Index's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusSetTTLRes.Index's refer RecordNum should <= count 1024")
+	}
+
+	if this.Index == nil {
+		this.Index = make([]int32, int(this.RecordNum))
+	}
+
+	referIndex := this.Index[:this.RecordNum]
+	err = binary.Read(r, binary.BigEndian, referIndex)
+	if err != nil {
+		return errors.New("TCaplusSetTTLRes.Index pack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusSetTTLRes.RecordResult's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusSetTTLRes.RecordResult's refer RecordNum should <= count 1024")
+	}
+
+	if this.RecordResult == nil {
+		this.RecordResult = make([]int32, int(this.RecordNum))
+	}
+
+	referRecordResult := this.RecordResult[:this.RecordNum]
+	err = binary.Read(r, binary.BigEndian, referRecordResult)
+	if err != nil {
+		return errors.New("TCaplusSetTTLRes.RecordResult pack error\n" + err.Error())
+	}
+
+	return err
+}
+
+const (
+	TCaplusGetTTLReqBaseVersion    uint32 = 119
+	TCaplusGetTTLReqCurrentVersion uint32 = 119
+)
+
+// TCaplusGetTTLReq
+type TCaplusGetTTLReq struct {
+	RecordNum uint32 `tdr_field:"RecordNum"`
+
+	KeyInfo []*TCaplusKeySet `tdr_field:"KeyInfo" tdr_count:"1024" tdr_refer:"RecordNum"`
+
+	Index []int32 `tdr_field:"Index" tdr_count:"1024" tdr_refer:"RecordNum"`
+
+	SplitTableKeyBuffs []*SplitTableKeyBuff `tdr_field:"SplitTableKeyBuffs" tdr_count:"1024" tdr_refer:"RecordNum"`
+}
+
+func NewTCaplusGetTTLReq() *TCaplusGetTTLReq {
+	obj := new(TCaplusGetTTLReq)
+	obj.Init()
+	return obj
+}
+
+func (this *TCaplusGetTTLReq) GetBaseVersion() uint32 {
+	return TCaplusGetTTLReqBaseVersion
+}
+
+func (this *TCaplusGetTTLReq) GetCurrentVersion() uint32 {
+	return TCaplusGetTTLReqCurrentVersion
+}
+
+func (this *TCaplusGetTTLReq) Init() {
+	this.RecordNum = 0
+
+}
+
+func (this *TCaplusGetTTLReq) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("TCaplusGetTTLReq Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *TCaplusGetTTLReq) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > TCaplusGetTTLReqCurrentVersion {
+		cutVer = TCaplusGetTTLReqCurrentVersion
+	}
+	// check cut version
+	if cutVer < TCaplusGetTTLReqBaseVersion {
+		return errors.New("TCaplusGetTTLReq cut version must large than TCaplusGetTTLReqBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, this.RecordNum)
+	if err != nil {
+		return errors.New("TCaplusGetTTLReq.RecordNum pack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusGetTTLReq.KeyInfo's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusGetTTLReq.KeyInfo's refer RecordNum should <= count 1024")
+	}
+	if len(this.KeyInfo) < int(this.RecordNum) {
+		return errors.New("TCaplusGetTTLReq.KeyInfo's length should > RecordNum")
+	}
+	if this.RecordNum > 0 {
+		for i := 0; i < int(this.RecordNum); i++ {
+			err = this.KeyInfo[i].PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusGetTTLReq.KeyInfo pack error\n" + err.Error())
+			}
+
+		}
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusGetTTLReq.Index's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusGetTTLReq.Index's refer RecordNum should <= count 1024")
+	}
+	if len(this.Index) < int(this.RecordNum) {
+		return errors.New("TCaplusGetTTLReq.Index's length should > RecordNum")
+	}
+	if this.RecordNum > 0 {
+		referIndex := this.Index[:this.RecordNum]
+		err = binary.Write(w, binary.BigEndian, referIndex)
+		if err != nil {
+			return errors.New("TCaplusGetTTLReq.Index pack error\n" + err.Error())
+		}
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusGetTTLReq.SplitTableKeyBuffs's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusGetTTLReq.SplitTableKeyBuffs's refer RecordNum should <= count 1024")
+	}
+	if len(this.SplitTableKeyBuffs) < int(this.RecordNum) {
+		return errors.New("TCaplusGetTTLReq.SplitTableKeyBuffs's length should > RecordNum")
+	}
+	if this.RecordNum > 0 {
+		for i := 0; i < int(this.RecordNum); i++ {
+			err = this.SplitTableKeyBuffs[i].PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusGetTTLReq.SplitTableKeyBuffs pack error\n" + err.Error())
+			}
+
+		}
+	}
+
+	return nil
+}
+
+func (this *TCaplusGetTTLReq) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("TCaplusGetTTLReq data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *TCaplusGetTTLReq) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > TCaplusGetTTLReqCurrentVersion {
+		cutVer = TCaplusGetTTLReqCurrentVersion
+	}
+	// check version
+	if cutVer < TCaplusGetTTLReqBaseVersion {
+		errors.New("TCaplusGetTTLReq cut version must large than TCaplusGetTTLReqBaseVersion\n")
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.RecordNum)
+	if err != nil {
+		return errors.New("TCaplusGetTTLReq.RecordNum unpack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusGetTTLReq.KeyInfo's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusGetTTLReq.KeyInfo's refer RecordNum should <= count 1024")
+	}
+
+	if this.KeyInfo == nil {
+		this.KeyInfo = make([]*TCaplusKeySet, int(this.RecordNum))
+		for i := 0; i < int(this.RecordNum); i++ {
+			this.KeyInfo[i] = NewTCaplusKeySet()
+		}
+	}
+
+	for i := 0; i < int(this.RecordNum); i++ {
+		err = this.KeyInfo[i].UnpackFrom(cutVer, r)
+		if err != nil {
+			return errors.New("TCaplusGetTTLReq.KeyInfo unpack error\n" + err.Error())
+		}
+
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusGetTTLReq.Index's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusGetTTLReq.Index's refer RecordNum should <= count 1024")
+	}
+
+	if this.Index == nil {
+		this.Index = make([]int32, int(this.RecordNum))
+	}
+
+	referIndex := this.Index[:this.RecordNum]
+	err = binary.Read(r, binary.BigEndian, referIndex)
+	if err != nil {
+		return errors.New("TCaplusGetTTLReq.Index pack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusGetTTLReq.SplitTableKeyBuffs's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusGetTTLReq.SplitTableKeyBuffs's refer RecordNum should <= count 1024")
+	}
+
+	if this.SplitTableKeyBuffs == nil {
+		this.SplitTableKeyBuffs = make([]*SplitTableKeyBuff, int(this.RecordNum))
+		for i := 0; i < int(this.RecordNum); i++ {
+			this.SplitTableKeyBuffs[i] = NewSplitTableKeyBuff()
+		}
+	}
+
+	for i := 0; i < int(this.RecordNum); i++ {
+		err = this.SplitTableKeyBuffs[i].UnpackFrom(cutVer, r)
+		if err != nil {
+			return errors.New("TCaplusGetTTLReq.SplitTableKeyBuffs unpack error\n" + err.Error())
+		}
+
+	}
+
+	return err
+}
+
+const (
+	TCaplusGetTTLResBaseVersion    uint32 = 119
+	TCaplusGetTTLResCurrentVersion uint32 = 119
+)
+
+// TCaplusGetTTLRes
+type TCaplusGetTTLRes struct {
+	Result int32 `tdr_field:"Result"`
+
+	RecordNum uint32 `tdr_field:"RecordNum"`
+
+	KeyInfo []*TCaplusKeySet `tdr_field:"KeyInfo" tdr_count:"1024" tdr_refer:"RecordNum"`
+
+	Index []int32 `tdr_field:"Index" tdr_count:"1024" tdr_refer:"RecordNum"`
+
+	RecordResult []int32 `tdr_field:"RecordResult" tdr_count:"1024" tdr_refer:"RecordNum"`
+
+	TTL []uint64 `tdr_field:"TTL" tdr_count:"1024" tdr_refer:"RecordNum"`
+}
+
+func NewTCaplusGetTTLRes() *TCaplusGetTTLRes {
+	obj := new(TCaplusGetTTLRes)
+	obj.Init()
+	return obj
+}
+
+func (this *TCaplusGetTTLRes) GetBaseVersion() uint32 {
+	return TCaplusGetTTLResBaseVersion
+}
+
+func (this *TCaplusGetTTLRes) GetCurrentVersion() uint32 {
+	return TCaplusGetTTLResCurrentVersion
+}
+
+func (this *TCaplusGetTTLRes) Init() {
+
+	this.RecordNum = 0
+
+}
+
+func (this *TCaplusGetTTLRes) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("TCaplusGetTTLRes Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *TCaplusGetTTLRes) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > TCaplusGetTTLResCurrentVersion {
+		cutVer = TCaplusGetTTLResCurrentVersion
+	}
+	// check cut version
+	if cutVer < TCaplusGetTTLResBaseVersion {
+		return errors.New("TCaplusGetTTLRes cut version must large than TCaplusGetTTLResBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, this.Result)
+	if err != nil {
+		return errors.New("TCaplusGetTTLRes.Result pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.RecordNum)
+	if err != nil {
+		return errors.New("TCaplusGetTTLRes.RecordNum pack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusGetTTLRes.KeyInfo's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusGetTTLRes.KeyInfo's refer RecordNum should <= count 1024")
+	}
+	if len(this.KeyInfo) < int(this.RecordNum) {
+		return errors.New("TCaplusGetTTLRes.KeyInfo's length should > RecordNum")
+	}
+	if this.RecordNum > 0 {
+		for i := 0; i < int(this.RecordNum); i++ {
+			err = this.KeyInfo[i].PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusGetTTLRes.KeyInfo pack error\n" + err.Error())
+			}
+
+		}
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusGetTTLRes.Index's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusGetTTLRes.Index's refer RecordNum should <= count 1024")
+	}
+	if len(this.Index) < int(this.RecordNum) {
+		return errors.New("TCaplusGetTTLRes.Index's length should > RecordNum")
+	}
+	if this.RecordNum > 0 {
+		referIndex := this.Index[:this.RecordNum]
+		err = binary.Write(w, binary.BigEndian, referIndex)
+		if err != nil {
+			return errors.New("TCaplusGetTTLRes.Index pack error\n" + err.Error())
+		}
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusGetTTLRes.RecordResult's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusGetTTLRes.RecordResult's refer RecordNum should <= count 1024")
+	}
+	if len(this.RecordResult) < int(this.RecordNum) {
+		return errors.New("TCaplusGetTTLRes.RecordResult's length should > RecordNum")
+	}
+	if this.RecordNum > 0 {
+		referRecordResult := this.RecordResult[:this.RecordNum]
+		err = binary.Write(w, binary.BigEndian, referRecordResult)
+		if err != nil {
+			return errors.New("TCaplusGetTTLRes.RecordResult pack error\n" + err.Error())
+		}
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusGetTTLRes.TTL's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusGetTTLRes.TTL's refer RecordNum should <= count 1024")
+	}
+	if len(this.TTL) < int(this.RecordNum) {
+		return errors.New("TCaplusGetTTLRes.TTL's length should > RecordNum")
+	}
+	if this.RecordNum > 0 {
+		referTTL := this.TTL[:this.RecordNum]
+		err = binary.Write(w, binary.BigEndian, referTTL)
+		if err != nil {
+			return errors.New("TCaplusGetTTLRes.TTL pack error\n" + err.Error())
+		}
+	}
+
+	return nil
+}
+
+func (this *TCaplusGetTTLRes) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("TCaplusGetTTLRes data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *TCaplusGetTTLRes) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > TCaplusGetTTLResCurrentVersion {
+		cutVer = TCaplusGetTTLResCurrentVersion
+	}
+	// check version
+	if cutVer < TCaplusGetTTLResBaseVersion {
+		errors.New("TCaplusGetTTLRes cut version must large than TCaplusGetTTLResBaseVersion\n")
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.Result)
+	if err != nil {
+		return errors.New("TCaplusGetTTLRes.Result unpack error\n" + err.Error())
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.RecordNum)
+	if err != nil {
+		return errors.New("TCaplusGetTTLRes.RecordNum unpack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusGetTTLRes.KeyInfo's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusGetTTLRes.KeyInfo's refer RecordNum should <= count 1024")
+	}
+
+	if this.KeyInfo == nil {
+		this.KeyInfo = make([]*TCaplusKeySet, int(this.RecordNum))
+		for i := 0; i < int(this.RecordNum); i++ {
+			this.KeyInfo[i] = NewTCaplusKeySet()
+		}
+	}
+
+	for i := 0; i < int(this.RecordNum); i++ {
+		err = this.KeyInfo[i].UnpackFrom(cutVer, r)
+		if err != nil {
+			return errors.New("TCaplusGetTTLRes.KeyInfo unpack error\n" + err.Error())
+		}
+
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusGetTTLRes.Index's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusGetTTLRes.Index's refer RecordNum should <= count 1024")
+	}
+
+	if this.Index == nil {
+		this.Index = make([]int32, int(this.RecordNum))
+	}
+
+	referIndex := this.Index[:this.RecordNum]
+	err = binary.Read(r, binary.BigEndian, referIndex)
+	if err != nil {
+		return errors.New("TCaplusGetTTLRes.Index pack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusGetTTLRes.RecordResult's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusGetTTLRes.RecordResult's refer RecordNum should <= count 1024")
+	}
+
+	if this.RecordResult == nil {
+		this.RecordResult = make([]int32, int(this.RecordNum))
+	}
+
+	referRecordResult := this.RecordResult[:this.RecordNum]
+	err = binary.Read(r, binary.BigEndian, referRecordResult)
+	if err != nil {
+		return errors.New("TCaplusGetTTLRes.RecordResult pack error\n" + err.Error())
+	}
+
+	if this.RecordNum < 0 {
+		return errors.New("TCaplusGetTTLRes.TTL's refer RecordNum should >= 0")
+	}
+	if this.RecordNum > 1024 {
+		return errors.New("TCaplusGetTTLRes.TTL's refer RecordNum should <= count 1024")
+	}
+
+	if this.TTL == nil {
+		this.TTL = make([]uint64, int(this.RecordNum))
+	}
+
+	referTTL := this.TTL[:this.RecordNum]
+	err = binary.Read(r, binary.BigEndian, referTTL)
+	if err != nil {
+		return errors.New("TCaplusGetTTLRes.TTL pack error\n" + err.Error())
+	}
+
+	return err
+}
+
+const (
 	TCaplusPkgBodyBaseVersion                            uint32 = 1
-	TCaplusPkgBodyCurrentVersion                         uint32 = 117
+	TCaplusPkgBodyCurrentVersion                         uint32 = 126
 	TCaplusPkgBodySysGetReqVersion                       uint32 = 53
 	TCaplusPkgBodySysGetResVersion                       uint32 = 53
 	TCaplusPkgBodySysDeleteReqVersion                    uint32 = 53
@@ -20986,6 +28821,10 @@ const (
 	TCaplusPkgBodyLosslessMoveListIndexReplaceResVersion uint32 = 87
 	TCaplusPkgBodyLosslessMoveListElemReplaceReqVersion  uint32 = 87
 	TCaplusPkgBodyLosslessMoveListElemReplaceResVersion  uint32 = 87
+	TCaplusPkgBodyPhysMoveInitFileReqVersion             uint32 = 126
+	TCaplusPkgBodyPhysMoveInitFileResVersion             uint32 = 126
+	TCaplusPkgBodyPhysMoveSendDataReqVersion             uint32 = 126
+	TCaplusPkgBodyPhysMoveSendDataResVersion             uint32 = 126
 	TCaplusPkgBodyTCaplusPbBatchFieldGetReqVersion       uint32 = 102
 	TCaplusPkgBodyTCaplusPbBatchFieldGetResVersion       uint32 = 102
 	TCaplusPkgBodyListIndexMoveReplaceReqVersion         uint32 = 112
@@ -20996,6 +28835,34 @@ const (
 	TCaplusPkgBodyTCaplusSqlResVersion                   uint32 = 117
 	TCaplusPkgBodyTCaplusGetForSqlQueryReqVersion        uint32 = 117
 	TCaplusPkgBodyTCaplusGetForSqlQueryResVersion        uint32 = 117
+	TCaplusPkgBodyBatchDeleteReqVersion                  uint32 = 118
+	TCaplusPkgBodyBatchDeleteResVersion                  uint32 = 118
+	TCaplusPkgBodyBatchReplaceReqVersion                 uint32 = 118
+	TCaplusPkgBodyBatchReplaceResVersion                 uint32 = 118
+	TCaplusPkgBodyBatchUpdateReqVersion                  uint32 = 118
+	TCaplusPkgBodyBatchUpdateResVersion                  uint32 = 118
+	TCaplusPkgBodyBatchInsertReqVersion                  uint32 = 118
+	TCaplusPkgBodyBatchInsertResVersion                  uint32 = 118
+	TCaplusPkgBodyListGetBatchReqVersion                 uint32 = 118
+	TCaplusPkgBodyListGetBatchResVersion                 uint32 = 118
+	TCaplusPkgBodyListAddAfterBatchReqVersion            uint32 = 118
+	TCaplusPkgBodyListAddAfterBatchResVersion            uint32 = 118
+	TCaplusPkgBodyListReplaceBatchReqVersion             uint32 = 118
+	TCaplusPkgBodyListReplaceBatchResVersion             uint32 = 118
+	TCaplusPkgBodyTCaplusSetTTLReqVersion                uint32 = 119
+	TCaplusPkgBodyTCaplusSetTTLResVersion                uint32 = 119
+	TCaplusPkgBodyTCaplusGetTTLReqVersion                uint32 = 119
+	TCaplusPkgBodyTCaplusGetTTLResVersion                uint32 = 119
+	TCaplusPkgBodyTCaplusGetTableStatusInfoReqVersion    uint32 = 121
+	TCaplusPkgBodyTCaplusGetTableStatusInfoResVersion    uint32 = 121
+	TCaplusPkgBodyTCaplusUpdateItemReqVersion            uint32 = 125
+	TCaplusPkgBodyTCaplusUpdateItemResVersion            uint32 = 125
+	TCaplusPkgBodyTCaplusListUpdateItemReqVersion        uint32 = 125
+	TCaplusPkgBodyTCaplusListUpdateItemResVersion        uint32 = 125
+	TCaplusPkgBodyTCaplusQueryReqVersion                 uint32 = 125
+	TCaplusPkgBodyTCaplusQueryResVersion                 uint32 = 125
+	TCaplusPkgBodyTCaplusListQueryReqVersion             uint32 = 125
+	TCaplusPkgBodyTCaplusListQueryResVersion             uint32 = 125
 )
 
 // TCaplusPkgBody
@@ -21268,6 +29135,14 @@ type TCaplusPkgBody struct {
 
 	LosslessMoveListElemReplaceRes *TCaplusLosslessMoveListElemReplaceRes `tdr_field:"LosslessMoveListElemReplaceRes"`
 
+	PhysMoveInitFileReq *TcaplusPhysMoveInitFileReq `tdr_field:"PhysMoveInitFileReq"`
+
+	PhysMoveInitFileRes *TcaplusPhysMoveInitFileRes `tdr_field:"PhysMoveInitFileRes"`
+
+	PhysMoveSendDataReq *TcaplusPhysMoveSendDataReq `tdr_field:"PhysMoveSendDataReq"`
+
+	PhysMoveSendDataRes *TcaplusPhysMoveSendDataRes `tdr_field:"PhysMoveSendDataRes"`
+
 	TCaplusPbBatchFieldGetReq *TCaplusProtobufBatchFieldGetReq `tdr_field:"TCaplusPbBatchFieldGetReq"`
 
 	TCaplusPbBatchFieldGetRes *TCaplusProtobufBatchFieldGetRes `tdr_field:"TCaplusPbBatchFieldGetRes"`
@@ -21287,6 +29162,62 @@ type TCaplusPkgBody struct {
 	TCaplusGetForSqlQueryReq *TCaplusGetForSqlQueryReq `tdr_field:"TCaplusGetForSqlQueryReq"`
 
 	TCaplusGetForSqlQueryRes *TCaplusGetForSqlQueryRes `tdr_field:"TCaplusGetForSqlQueryRes"`
+
+	BatchDeleteReq *TCaplusBatchDeleteReq `tdr_field:"BatchDeleteReq"`
+
+	BatchDeleteRes *TCaplusBatchDeleteRes `tdr_field:"BatchDeleteRes"`
+
+	BatchReplaceReq *TCaplusBatchReplaceReq `tdr_field:"BatchReplaceReq"`
+
+	BatchReplaceRes *TCaplusBatchReplaceRes `tdr_field:"BatchReplaceRes"`
+
+	BatchUpdateReq *TCaplusBatchUpdateReq `tdr_field:"BatchUpdateReq"`
+
+	BatchUpdateRes *TCaplusBatchUpdateRes `tdr_field:"BatchUpdateRes"`
+
+	BatchInsertReq *TCaplusBatchInsertReq `tdr_field:"BatchInsertReq"`
+
+	BatchInsertRes *TCaplusBatchInsertRes `tdr_field:"BatchInsertRes"`
+
+	ListGetBatchReq *TCaplusListGetBatchReq `tdr_field:"ListGetBatchReq"`
+
+	ListGetBatchRes *TCaplusListGetBatchRes `tdr_field:"ListGetBatchRes"`
+
+	ListAddAfterBatchReq *TCaplusListAddAfterBatchReq `tdr_field:"ListAddAfterBatchReq"`
+
+	ListAddAfterBatchRes *TCaplusListAddAfterBatchRes `tdr_field:"ListAddAfterBatchRes"`
+
+	ListReplaceBatchReq *TCaplusListReplaceBatchReq `tdr_field:"ListReplaceBatchReq"`
+
+	ListReplaceBatchRes *TCaplusListReplaceBatchRes `tdr_field:"ListReplaceBatchRes"`
+
+	TCaplusSetTTLReq *TCaplusSetTTLReq `tdr_field:"TCaplusSetTTLReq"`
+
+	TCaplusSetTTLRes *TCaplusSetTTLRes `tdr_field:"TCaplusSetTTLRes"`
+
+	TCaplusGetTTLReq *TCaplusGetTTLReq `tdr_field:"TCaplusGetTTLReq"`
+
+	TCaplusGetTTLRes *TCaplusGetTTLRes `tdr_field:"TCaplusGetTTLRes"`
+
+	TCaplusGetTableStatusInfoReq *TCaplusGetTableStatusInfoReq `tdr_field:"TCaplusGetTableStatusInfoReq"`
+
+	TCaplusGetTableStatusInfoRes *TCaplusGetTableStatusInfoRes `tdr_field:"TCaplusGetTableStatusInfoRes"`
+
+	TCaplusUpdateItemReq *TCaplusUpdateItemReq `tdr_field:"TCaplusUpdateItemReq"`
+
+	TCaplusUpdateItemRes *TCaplusUpdateItemRes `tdr_field:"TCaplusUpdateItemRes"`
+
+	TCaplusListUpdateItemReq *TCaplusListUpdateItemReq `tdr_field:"TCaplusListUpdateItemReq"`
+
+	TCaplusListUpdateItemRes *TCaplusListUpdateItemRes `tdr_field:"TCaplusListUpdateItemRes"`
+
+	TCaplusQueryReq *TCaplusQueryReq `tdr_field:"TCaplusQueryReq"`
+
+	TCaplusQueryRes *TCaplusQueryRes `tdr_field:"TCaplusQueryRes"`
+
+	TCaplusListQueryReq *TCaplusListQueryReq `tdr_field:"TCaplusListQueryReq"`
+
+	TCaplusListQueryRes *TCaplusListQueryRes `tdr_field:"TCaplusListQueryRes"`
 }
 
 func NewTCaplusPkgBody(selector int64) *TCaplusPkgBody {
@@ -21707,6 +29638,18 @@ func (this *TCaplusPkgBody) Init(selector int64) {
 	case TCAPLUS_CMD_LOSSLESS_MOVE_LIST_ELEM_REPLACE_RES:
 		this.LosslessMoveListElemReplaceRes = NewTCaplusLosslessMoveListElemReplaceRes()
 
+	case TCAPLUS_CMD_PHYS_MOVE_INIT_FILE_REQ:
+		this.PhysMoveInitFileReq = NewTcaplusPhysMoveInitFileReq()
+
+	case TCAPLUS_CMD_PHYS_MOVE_INIT_FILE_RES:
+		this.PhysMoveInitFileRes = NewTcaplusPhysMoveInitFileRes()
+
+	case TCAPLUS_CMD_PHYS_MOVE_SEND_DATA_REQ:
+		this.PhysMoveSendDataReq = NewTcaplusPhysMoveSendDataReq()
+
+	case TCAPLUS_CMD_PHYS_MOVE_SEND_DATA_RES:
+		this.PhysMoveSendDataRes = NewTcaplusPhysMoveSendDataRes()
+
 	case TCAPLUS_CMD_PROTOBUF_BATCH_FIELD_GET_REQ:
 		this.TCaplusPbBatchFieldGetReq = NewTCaplusProtobufBatchFieldGetReq()
 
@@ -21736,6 +29679,90 @@ func (this *TCaplusPkgBody) Init(selector int64) {
 
 	case TCAPLUS_CMD_GET_FOR_SQL_QUERY_RES:
 		this.TCaplusGetForSqlQueryRes = NewTCaplusGetForSqlQueryRes()
+
+	case TCAPLUS_CMD_BATCH_DELETE_REQ:
+		this.BatchDeleteReq = NewTCaplusBatchDeleteReq()
+
+	case TCAPLUS_CMD_BATCH_DELETE_RES:
+		this.BatchDeleteRes = NewTCaplusBatchDeleteRes()
+
+	case TCAPLUS_CMD_BATCH_REPLACE_REQ:
+		this.BatchReplaceReq = NewTCaplusBatchReplaceReq()
+
+	case TCAPLUS_CMD_BATCH_REPLACE_RES:
+		this.BatchReplaceRes = NewTCaplusBatchReplaceRes()
+
+	case TCAPLUS_CMD_BATCH_UPDATE_REQ:
+		this.BatchUpdateReq = NewTCaplusBatchUpdateReq()
+
+	case TCAPLUS_CMD_BATCH_UPDATE_RES:
+		this.BatchUpdateRes = NewTCaplusBatchUpdateRes()
+
+	case TCAPLUS_CMD_BATCH_INSERT_REQ:
+		this.BatchInsertReq = NewTCaplusBatchInsertReq()
+
+	case TCAPLUS_CMD_BATCH_INSERT_RES:
+		this.BatchInsertRes = NewTCaplusBatchInsertRes()
+
+	case TCAPLUS_CMD_LIST_GET_BATCH_REQ:
+		this.ListGetBatchReq = NewTCaplusListGetBatchReq()
+
+	case TCAPLUS_CMD_LIST_GET_BATCH_RES:
+		this.ListGetBatchRes = NewTCaplusListGetBatchRes()
+
+	case TCAPLUS_CMD_LIST_ADDAFTER_BATCH_REQ:
+		this.ListAddAfterBatchReq = NewTCaplusListAddAfterBatchReq()
+
+	case TCAPLUS_CMD_LIST_ADDAFTER_BATCH_RES:
+		this.ListAddAfterBatchRes = NewTCaplusListAddAfterBatchRes()
+
+	case TCAPLUS_CMD_LIST_REPLACE_BATCH_REQ:
+		this.ListReplaceBatchReq = NewTCaplusListReplaceBatchReq()
+
+	case TCAPLUS_CMD_LIST_REPLACE_BATCH_RES:
+		this.ListReplaceBatchRes = NewTCaplusListReplaceBatchRes()
+
+	case TCAPLUS_CMD_SET_TTL_REQ:
+		this.TCaplusSetTTLReq = NewTCaplusSetTTLReq()
+
+	case TCAPLUS_CMD_SET_TTL_RES:
+		this.TCaplusSetTTLRes = NewTCaplusSetTTLRes()
+
+	case TCAPLUS_CMD_GET_TTL_REQ:
+		this.TCaplusGetTTLReq = NewTCaplusGetTTLReq()
+
+	case TCAPLUS_CMD_GET_TTL_RES:
+		this.TCaplusGetTTLRes = NewTCaplusGetTTLRes()
+
+	case TCAPLUS_CMD_GET_TABLE_STATUS_INFO_REQ:
+		this.TCaplusGetTableStatusInfoReq = NewTCaplusGetTableStatusInfoReq()
+
+	case TCAPLUS_CMD_GET_TABLE_STATUS_INFO_RES:
+		this.TCaplusGetTableStatusInfoRes = NewTCaplusGetTableStatusInfoRes()
+
+	case TCAPLUS_CMD_UPDATE_ITEM_REQ:
+		this.TCaplusUpdateItemReq = NewTCaplusUpdateItemReq()
+
+	case TCAPLUS_CMD_UPDATE_ITEM_RES:
+		this.TCaplusUpdateItemRes = NewTCaplusUpdateItemRes()
+
+	case TCAPLUS_CMD_LIST_UPDATE_ITEM_REQ:
+		this.TCaplusListUpdateItemReq = NewTCaplusListUpdateItemReq()
+
+	case TCAPLUS_CMD_LIST_UPDATE_ITEM_RES:
+		this.TCaplusListUpdateItemRes = NewTCaplusListUpdateItemRes()
+
+	case TCAPLUS_CMD_QUERY_REQ:
+		this.TCaplusQueryReq = NewTCaplusQueryReq()
+
+	case TCAPLUS_CMD_QUERY_RES:
+		this.TCaplusQueryRes = NewTCaplusQueryRes()
+
+	case TCAPLUS_CMD_LIST_QUERY_REQ:
+		this.TCaplusListQueryReq = NewTCaplusListQueryReq()
+
+	case TCAPLUS_CMD_LIST_QUERY_RES:
+		this.TCaplusListQueryRes = NewTCaplusListQueryRes()
 
 	}
 }
@@ -23298,6 +31325,54 @@ func (this *TCaplusPkgBody) PackTo(cutVer uint32, w *tdrcom.Writer, selector int
 			}
 
 		}
+	case TCAPLUS_CMD_PHYS_MOVE_INIT_FILE_REQ:
+		if this.PhysMoveInitFileReq == nil {
+			return errors.New("TCaplusPkgBody.PhysMoveInitFileReq is nil")
+		}
+		if cutVer >= TCaplusPkgBodyPhysMoveInitFileReqVersion {
+
+			err = this.PhysMoveInitFileReq.PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.PhysMoveInitFileReq pack error\n" + err.Error())
+			}
+
+		}
+	case TCAPLUS_CMD_PHYS_MOVE_INIT_FILE_RES:
+		if this.PhysMoveInitFileRes == nil {
+			return errors.New("TCaplusPkgBody.PhysMoveInitFileRes is nil")
+		}
+		if cutVer >= TCaplusPkgBodyPhysMoveInitFileResVersion {
+
+			err = this.PhysMoveInitFileRes.PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.PhysMoveInitFileRes pack error\n" + err.Error())
+			}
+
+		}
+	case TCAPLUS_CMD_PHYS_MOVE_SEND_DATA_REQ:
+		if this.PhysMoveSendDataReq == nil {
+			return errors.New("TCaplusPkgBody.PhysMoveSendDataReq is nil")
+		}
+		if cutVer >= TCaplusPkgBodyPhysMoveSendDataReqVersion {
+
+			err = this.PhysMoveSendDataReq.PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.PhysMoveSendDataReq pack error\n" + err.Error())
+			}
+
+		}
+	case TCAPLUS_CMD_PHYS_MOVE_SEND_DATA_RES:
+		if this.PhysMoveSendDataRes == nil {
+			return errors.New("TCaplusPkgBody.PhysMoveSendDataRes is nil")
+		}
+		if cutVer >= TCaplusPkgBodyPhysMoveSendDataResVersion {
+
+			err = this.PhysMoveSendDataRes.PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.PhysMoveSendDataRes pack error\n" + err.Error())
+			}
+
+		}
 	case TCAPLUS_CMD_PROTOBUF_BATCH_FIELD_GET_REQ:
 		if this.TCaplusPbBatchFieldGetReq == nil {
 			return errors.New("TCaplusPkgBody.TCaplusPbBatchFieldGetReq is nil")
@@ -23415,6 +31490,342 @@ func (this *TCaplusPkgBody) PackTo(cutVer uint32, w *tdrcom.Writer, selector int
 			err = this.TCaplusGetForSqlQueryRes.PackTo(cutVer, w)
 			if err != nil {
 				return errors.New("TCaplusPkgBody.TCaplusGetForSqlQueryRes pack error\n" + err.Error())
+			}
+
+		}
+	case TCAPLUS_CMD_BATCH_DELETE_REQ:
+		if this.BatchDeleteReq == nil {
+			return errors.New("TCaplusPkgBody.BatchDeleteReq is nil")
+		}
+		if cutVer >= TCaplusPkgBodyBatchDeleteReqVersion {
+
+			err = this.BatchDeleteReq.PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.BatchDeleteReq pack error\n" + err.Error())
+			}
+
+		}
+	case TCAPLUS_CMD_BATCH_DELETE_RES:
+		if this.BatchDeleteRes == nil {
+			return errors.New("TCaplusPkgBody.BatchDeleteRes is nil")
+		}
+		if cutVer >= TCaplusPkgBodyBatchDeleteResVersion {
+
+			err = this.BatchDeleteRes.PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.BatchDeleteRes pack error\n" + err.Error())
+			}
+
+		}
+	case TCAPLUS_CMD_BATCH_REPLACE_REQ:
+		if this.BatchReplaceReq == nil {
+			return errors.New("TCaplusPkgBody.BatchReplaceReq is nil")
+		}
+		if cutVer >= TCaplusPkgBodyBatchReplaceReqVersion {
+
+			err = this.BatchReplaceReq.PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.BatchReplaceReq pack error\n" + err.Error())
+			}
+
+		}
+	case TCAPLUS_CMD_BATCH_REPLACE_RES:
+		if this.BatchReplaceRes == nil {
+			return errors.New("TCaplusPkgBody.BatchReplaceRes is nil")
+		}
+		if cutVer >= TCaplusPkgBodyBatchReplaceResVersion {
+
+			err = this.BatchReplaceRes.PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.BatchReplaceRes pack error\n" + err.Error())
+			}
+
+		}
+	case TCAPLUS_CMD_BATCH_UPDATE_REQ:
+		if this.BatchUpdateReq == nil {
+			return errors.New("TCaplusPkgBody.BatchUpdateReq is nil")
+		}
+		if cutVer >= TCaplusPkgBodyBatchUpdateReqVersion {
+
+			err = this.BatchUpdateReq.PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.BatchUpdateReq pack error\n" + err.Error())
+			}
+
+		}
+	case TCAPLUS_CMD_BATCH_UPDATE_RES:
+		if this.BatchUpdateRes == nil {
+			return errors.New("TCaplusPkgBody.BatchUpdateRes is nil")
+		}
+		if cutVer >= TCaplusPkgBodyBatchUpdateResVersion {
+
+			err = this.BatchUpdateRes.PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.BatchUpdateRes pack error\n" + err.Error())
+			}
+
+		}
+	case TCAPLUS_CMD_BATCH_INSERT_REQ:
+		if this.BatchInsertReq == nil {
+			return errors.New("TCaplusPkgBody.BatchInsertReq is nil")
+		}
+		if cutVer >= TCaplusPkgBodyBatchInsertReqVersion {
+
+			err = this.BatchInsertReq.PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.BatchInsertReq pack error\n" + err.Error())
+			}
+
+		}
+	case TCAPLUS_CMD_BATCH_INSERT_RES:
+		if this.BatchInsertRes == nil {
+			return errors.New("TCaplusPkgBody.BatchInsertRes is nil")
+		}
+		if cutVer >= TCaplusPkgBodyBatchInsertResVersion {
+
+			err = this.BatchInsertRes.PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.BatchInsertRes pack error\n" + err.Error())
+			}
+
+		}
+	case TCAPLUS_CMD_LIST_GET_BATCH_REQ:
+		if this.ListGetBatchReq == nil {
+			return errors.New("TCaplusPkgBody.ListGetBatchReq is nil")
+		}
+		if cutVer >= TCaplusPkgBodyListGetBatchReqVersion {
+
+			err = this.ListGetBatchReq.PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.ListGetBatchReq pack error\n" + err.Error())
+			}
+
+		}
+	case TCAPLUS_CMD_LIST_GET_BATCH_RES:
+		if this.ListGetBatchRes == nil {
+			return errors.New("TCaplusPkgBody.ListGetBatchRes is nil")
+		}
+		if cutVer >= TCaplusPkgBodyListGetBatchResVersion {
+
+			err = this.ListGetBatchRes.PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.ListGetBatchRes pack error\n" + err.Error())
+			}
+
+		}
+	case TCAPLUS_CMD_LIST_ADDAFTER_BATCH_REQ:
+		if this.ListAddAfterBatchReq == nil {
+			return errors.New("TCaplusPkgBody.ListAddAfterBatchReq is nil")
+		}
+		if cutVer >= TCaplusPkgBodyListAddAfterBatchReqVersion {
+
+			err = this.ListAddAfterBatchReq.PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.ListAddAfterBatchReq pack error\n" + err.Error())
+			}
+
+		}
+	case TCAPLUS_CMD_LIST_ADDAFTER_BATCH_RES:
+		if this.ListAddAfterBatchRes == nil {
+			return errors.New("TCaplusPkgBody.ListAddAfterBatchRes is nil")
+		}
+		if cutVer >= TCaplusPkgBodyListAddAfterBatchResVersion {
+
+			err = this.ListAddAfterBatchRes.PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.ListAddAfterBatchRes pack error\n" + err.Error())
+			}
+
+		}
+	case TCAPLUS_CMD_LIST_REPLACE_BATCH_REQ:
+		if this.ListReplaceBatchReq == nil {
+			return errors.New("TCaplusPkgBody.ListReplaceBatchReq is nil")
+		}
+		if cutVer >= TCaplusPkgBodyListReplaceBatchReqVersion {
+
+			err = this.ListReplaceBatchReq.PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.ListReplaceBatchReq pack error\n" + err.Error())
+			}
+
+		}
+	case TCAPLUS_CMD_LIST_REPLACE_BATCH_RES:
+		if this.ListReplaceBatchRes == nil {
+			return errors.New("TCaplusPkgBody.ListReplaceBatchRes is nil")
+		}
+		if cutVer >= TCaplusPkgBodyListReplaceBatchResVersion {
+
+			err = this.ListReplaceBatchRes.PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.ListReplaceBatchRes pack error\n" + err.Error())
+			}
+
+		}
+	case TCAPLUS_CMD_SET_TTL_REQ:
+		if this.TCaplusSetTTLReq == nil {
+			return errors.New("TCaplusPkgBody.TCaplusSetTTLReq is nil")
+		}
+		if cutVer >= TCaplusPkgBodyTCaplusSetTTLReqVersion {
+
+			err = this.TCaplusSetTTLReq.PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.TCaplusSetTTLReq pack error\n" + err.Error())
+			}
+
+		}
+	case TCAPLUS_CMD_SET_TTL_RES:
+		if this.TCaplusSetTTLRes == nil {
+			return errors.New("TCaplusPkgBody.TCaplusSetTTLRes is nil")
+		}
+		if cutVer >= TCaplusPkgBodyTCaplusSetTTLResVersion {
+
+			err = this.TCaplusSetTTLRes.PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.TCaplusSetTTLRes pack error\n" + err.Error())
+			}
+
+		}
+	case TCAPLUS_CMD_GET_TTL_REQ:
+		if this.TCaplusGetTTLReq == nil {
+			return errors.New("TCaplusPkgBody.TCaplusGetTTLReq is nil")
+		}
+		if cutVer >= TCaplusPkgBodyTCaplusGetTTLReqVersion {
+
+			err = this.TCaplusGetTTLReq.PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.TCaplusGetTTLReq pack error\n" + err.Error())
+			}
+
+		}
+	case TCAPLUS_CMD_GET_TTL_RES:
+		if this.TCaplusGetTTLRes == nil {
+			return errors.New("TCaplusPkgBody.TCaplusGetTTLRes is nil")
+		}
+		if cutVer >= TCaplusPkgBodyTCaplusGetTTLResVersion {
+
+			err = this.TCaplusGetTTLRes.PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.TCaplusGetTTLRes pack error\n" + err.Error())
+			}
+
+		}
+	case TCAPLUS_CMD_GET_TABLE_STATUS_INFO_REQ:
+		if this.TCaplusGetTableStatusInfoReq == nil {
+			return errors.New("TCaplusPkgBody.TCaplusGetTableStatusInfoReq is nil")
+		}
+		if cutVer >= TCaplusPkgBodyTCaplusGetTableStatusInfoReqVersion {
+
+			err = this.TCaplusGetTableStatusInfoReq.PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.TCaplusGetTableStatusInfoReq pack error\n" + err.Error())
+			}
+
+		}
+	case TCAPLUS_CMD_GET_TABLE_STATUS_INFO_RES:
+		if this.TCaplusGetTableStatusInfoRes == nil {
+			return errors.New("TCaplusPkgBody.TCaplusGetTableStatusInfoRes is nil")
+		}
+		if cutVer >= TCaplusPkgBodyTCaplusGetTableStatusInfoResVersion {
+
+			err = this.TCaplusGetTableStatusInfoRes.PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.TCaplusGetTableStatusInfoRes pack error\n" + err.Error())
+			}
+
+		}
+	case TCAPLUS_CMD_UPDATE_ITEM_REQ:
+		if this.TCaplusUpdateItemReq == nil {
+			return errors.New("TCaplusPkgBody.TCaplusUpdateItemReq is nil")
+		}
+		if cutVer >= TCaplusPkgBodyTCaplusUpdateItemReqVersion {
+
+			err = this.TCaplusUpdateItemReq.PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.TCaplusUpdateItemReq pack error\n" + err.Error())
+			}
+
+		}
+	case TCAPLUS_CMD_UPDATE_ITEM_RES:
+		if this.TCaplusUpdateItemRes == nil {
+			return errors.New("TCaplusPkgBody.TCaplusUpdateItemRes is nil")
+		}
+		if cutVer >= TCaplusPkgBodyTCaplusUpdateItemResVersion {
+
+			err = this.TCaplusUpdateItemRes.PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.TCaplusUpdateItemRes pack error\n" + err.Error())
+			}
+
+		}
+	case TCAPLUS_CMD_LIST_UPDATE_ITEM_REQ:
+		if this.TCaplusListUpdateItemReq == nil {
+			return errors.New("TCaplusPkgBody.TCaplusListUpdateItemReq is nil")
+		}
+		if cutVer >= TCaplusPkgBodyTCaplusListUpdateItemReqVersion {
+
+			err = this.TCaplusListUpdateItemReq.PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.TCaplusListUpdateItemReq pack error\n" + err.Error())
+			}
+
+		}
+	case TCAPLUS_CMD_LIST_UPDATE_ITEM_RES:
+		if this.TCaplusListUpdateItemRes == nil {
+			return errors.New("TCaplusPkgBody.TCaplusListUpdateItemRes is nil")
+		}
+		if cutVer >= TCaplusPkgBodyTCaplusListUpdateItemResVersion {
+
+			err = this.TCaplusListUpdateItemRes.PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.TCaplusListUpdateItemRes pack error\n" + err.Error())
+			}
+
+		}
+	case TCAPLUS_CMD_QUERY_REQ:
+		if this.TCaplusQueryReq == nil {
+			return errors.New("TCaplusPkgBody.TCaplusQueryReq is nil")
+		}
+		if cutVer >= TCaplusPkgBodyTCaplusQueryReqVersion {
+
+			err = this.TCaplusQueryReq.PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.TCaplusQueryReq pack error\n" + err.Error())
+			}
+
+		}
+	case TCAPLUS_CMD_QUERY_RES:
+		if this.TCaplusQueryRes == nil {
+			return errors.New("TCaplusPkgBody.TCaplusQueryRes is nil")
+		}
+		if cutVer >= TCaplusPkgBodyTCaplusQueryResVersion {
+
+			err = this.TCaplusQueryRes.PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.TCaplusQueryRes pack error\n" + err.Error())
+			}
+
+		}
+	case TCAPLUS_CMD_LIST_QUERY_REQ:
+		if this.TCaplusListQueryReq == nil {
+			return errors.New("TCaplusPkgBody.TCaplusListQueryReq is nil")
+		}
+		if cutVer >= TCaplusPkgBodyTCaplusListQueryReqVersion {
+
+			err = this.TCaplusListQueryReq.PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.TCaplusListQueryReq pack error\n" + err.Error())
+			}
+
+		}
+	case TCAPLUS_CMD_LIST_QUERY_RES:
+		if this.TCaplusListQueryRes == nil {
+			return errors.New("TCaplusPkgBody.TCaplusListQueryRes is nil")
+		}
+		if cutVer >= TCaplusPkgBodyTCaplusListQueryResVersion {
+
+			err = this.TCaplusListQueryRes.PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.TCaplusListQueryRes pack error\n" + err.Error())
 			}
 
 		}
@@ -25272,6 +33683,66 @@ func (this *TCaplusPkgBody) UnpackFrom(cutVer uint32, r *tdrcom.Reader, selector
 			this.LosslessMoveListElemReplaceRes.Init()
 
 		}
+	case TCAPLUS_CMD_PHYS_MOVE_INIT_FILE_REQ:
+		if this.PhysMoveInitFileReq == nil {
+			this.PhysMoveInitFileReq = NewTcaplusPhysMoveInitFileReq()
+		}
+		if cutVer >= TCaplusPkgBodyPhysMoveInitFileReqVersion {
+
+			err = this.PhysMoveInitFileReq.UnpackFrom(cutVer, r)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.PhysMoveInitFileReq unpack error\n" + err.Error())
+			}
+
+		} else {
+			this.PhysMoveInitFileReq.Init()
+
+		}
+	case TCAPLUS_CMD_PHYS_MOVE_INIT_FILE_RES:
+		if this.PhysMoveInitFileRes == nil {
+			this.PhysMoveInitFileRes = NewTcaplusPhysMoveInitFileRes()
+		}
+		if cutVer >= TCaplusPkgBodyPhysMoveInitFileResVersion {
+
+			err = this.PhysMoveInitFileRes.UnpackFrom(cutVer, r)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.PhysMoveInitFileRes unpack error\n" + err.Error())
+			}
+
+		} else {
+			this.PhysMoveInitFileRes.Init()
+
+		}
+	case TCAPLUS_CMD_PHYS_MOVE_SEND_DATA_REQ:
+		if this.PhysMoveSendDataReq == nil {
+			this.PhysMoveSendDataReq = NewTcaplusPhysMoveSendDataReq()
+		}
+		if cutVer >= TCaplusPkgBodyPhysMoveSendDataReqVersion {
+
+			err = this.PhysMoveSendDataReq.UnpackFrom(cutVer, r)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.PhysMoveSendDataReq unpack error\n" + err.Error())
+			}
+
+		} else {
+			this.PhysMoveSendDataReq.Init()
+
+		}
+	case TCAPLUS_CMD_PHYS_MOVE_SEND_DATA_RES:
+		if this.PhysMoveSendDataRes == nil {
+			this.PhysMoveSendDataRes = NewTcaplusPhysMoveSendDataRes()
+		}
+		if cutVer >= TCaplusPkgBodyPhysMoveSendDataResVersion {
+
+			err = this.PhysMoveSendDataRes.UnpackFrom(cutVer, r)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.PhysMoveSendDataRes unpack error\n" + err.Error())
+			}
+
+		} else {
+			this.PhysMoveSendDataRes.Init()
+
+		}
 	case TCAPLUS_CMD_PROTOBUF_BATCH_FIELD_GET_REQ:
 		if this.TCaplusPbBatchFieldGetReq == nil {
 			this.TCaplusPbBatchFieldGetReq = NewTCaplusProtobufBatchFieldGetReq()
@@ -25422,6 +33893,426 @@ func (this *TCaplusPkgBody) UnpackFrom(cutVer uint32, r *tdrcom.Reader, selector
 			this.TCaplusGetForSqlQueryRes.Init()
 
 		}
+	case TCAPLUS_CMD_BATCH_DELETE_REQ:
+		if this.BatchDeleteReq == nil {
+			this.BatchDeleteReq = NewTCaplusBatchDeleteReq()
+		}
+		if cutVer >= TCaplusPkgBodyBatchDeleteReqVersion {
+
+			err = this.BatchDeleteReq.UnpackFrom(cutVer, r)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.BatchDeleteReq unpack error\n" + err.Error())
+			}
+
+		} else {
+			this.BatchDeleteReq.Init()
+
+		}
+	case TCAPLUS_CMD_BATCH_DELETE_RES:
+		if this.BatchDeleteRes == nil {
+			this.BatchDeleteRes = NewTCaplusBatchDeleteRes()
+		}
+		if cutVer >= TCaplusPkgBodyBatchDeleteResVersion {
+
+			err = this.BatchDeleteRes.UnpackFrom(cutVer, r)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.BatchDeleteRes unpack error\n" + err.Error())
+			}
+
+		} else {
+			this.BatchDeleteRes.Init()
+
+		}
+	case TCAPLUS_CMD_BATCH_REPLACE_REQ:
+		if this.BatchReplaceReq == nil {
+			this.BatchReplaceReq = NewTCaplusBatchReplaceReq()
+		}
+		if cutVer >= TCaplusPkgBodyBatchReplaceReqVersion {
+
+			err = this.BatchReplaceReq.UnpackFrom(cutVer, r)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.BatchReplaceReq unpack error\n" + err.Error())
+			}
+
+		} else {
+			this.BatchReplaceReq.Init()
+
+		}
+	case TCAPLUS_CMD_BATCH_REPLACE_RES:
+		if this.BatchReplaceRes == nil {
+			this.BatchReplaceRes = NewTCaplusBatchReplaceRes()
+		}
+		if cutVer >= TCaplusPkgBodyBatchReplaceResVersion {
+
+			err = this.BatchReplaceRes.UnpackFrom(cutVer, r)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.BatchReplaceRes unpack error\n" + err.Error())
+			}
+
+		} else {
+			this.BatchReplaceRes.Init()
+
+		}
+	case TCAPLUS_CMD_BATCH_UPDATE_REQ:
+		if this.BatchUpdateReq == nil {
+			this.BatchUpdateReq = NewTCaplusBatchUpdateReq()
+		}
+		if cutVer >= TCaplusPkgBodyBatchUpdateReqVersion {
+
+			err = this.BatchUpdateReq.UnpackFrom(cutVer, r)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.BatchUpdateReq unpack error\n" + err.Error())
+			}
+
+		} else {
+			this.BatchUpdateReq.Init()
+
+		}
+	case TCAPLUS_CMD_BATCH_UPDATE_RES:
+		if this.BatchUpdateRes == nil {
+			this.BatchUpdateRes = NewTCaplusBatchUpdateRes()
+		}
+		if cutVer >= TCaplusPkgBodyBatchUpdateResVersion {
+
+			err = this.BatchUpdateRes.UnpackFrom(cutVer, r)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.BatchUpdateRes unpack error\n" + err.Error())
+			}
+
+		} else {
+			this.BatchUpdateRes.Init()
+
+		}
+	case TCAPLUS_CMD_BATCH_INSERT_REQ:
+		if this.BatchInsertReq == nil {
+			this.BatchInsertReq = NewTCaplusBatchInsertReq()
+		}
+		if cutVer >= TCaplusPkgBodyBatchInsertReqVersion {
+
+			err = this.BatchInsertReq.UnpackFrom(cutVer, r)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.BatchInsertReq unpack error\n" + err.Error())
+			}
+
+		} else {
+			this.BatchInsertReq.Init()
+
+		}
+	case TCAPLUS_CMD_BATCH_INSERT_RES:
+		if this.BatchInsertRes == nil {
+			this.BatchInsertRes = NewTCaplusBatchInsertRes()
+		}
+		if cutVer >= TCaplusPkgBodyBatchInsertResVersion {
+
+			err = this.BatchInsertRes.UnpackFrom(cutVer, r)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.BatchInsertRes unpack error\n" + err.Error())
+			}
+
+		} else {
+			this.BatchInsertRes.Init()
+
+		}
+	case TCAPLUS_CMD_LIST_GET_BATCH_REQ:
+		if this.ListGetBatchReq == nil {
+			this.ListGetBatchReq = NewTCaplusListGetBatchReq()
+		}
+		if cutVer >= TCaplusPkgBodyListGetBatchReqVersion {
+
+			err = this.ListGetBatchReq.UnpackFrom(cutVer, r)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.ListGetBatchReq unpack error\n" + err.Error())
+			}
+
+		} else {
+			this.ListGetBatchReq.Init()
+
+		}
+	case TCAPLUS_CMD_LIST_GET_BATCH_RES:
+		if this.ListGetBatchRes == nil {
+			this.ListGetBatchRes = NewTCaplusListGetBatchRes()
+		}
+		if cutVer >= TCaplusPkgBodyListGetBatchResVersion {
+
+			err = this.ListGetBatchRes.UnpackFrom(cutVer, r)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.ListGetBatchRes unpack error\n" + err.Error())
+			}
+
+		} else {
+			this.ListGetBatchRes.Init()
+
+		}
+	case TCAPLUS_CMD_LIST_ADDAFTER_BATCH_REQ:
+		if this.ListAddAfterBatchReq == nil {
+			this.ListAddAfterBatchReq = NewTCaplusListAddAfterBatchReq()
+		}
+		if cutVer >= TCaplusPkgBodyListAddAfterBatchReqVersion {
+
+			err = this.ListAddAfterBatchReq.UnpackFrom(cutVer, r)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.ListAddAfterBatchReq unpack error\n" + err.Error())
+			}
+
+		} else {
+			this.ListAddAfterBatchReq.Init()
+
+		}
+	case TCAPLUS_CMD_LIST_ADDAFTER_BATCH_RES:
+		if this.ListAddAfterBatchRes == nil {
+			this.ListAddAfterBatchRes = NewTCaplusListAddAfterBatchRes()
+		}
+		if cutVer >= TCaplusPkgBodyListAddAfterBatchResVersion {
+
+			err = this.ListAddAfterBatchRes.UnpackFrom(cutVer, r)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.ListAddAfterBatchRes unpack error\n" + err.Error())
+			}
+
+		} else {
+			this.ListAddAfterBatchRes.Init()
+
+		}
+	case TCAPLUS_CMD_LIST_REPLACE_BATCH_REQ:
+		if this.ListReplaceBatchReq == nil {
+			this.ListReplaceBatchReq = NewTCaplusListReplaceBatchReq()
+		}
+		if cutVer >= TCaplusPkgBodyListReplaceBatchReqVersion {
+
+			err = this.ListReplaceBatchReq.UnpackFrom(cutVer, r)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.ListReplaceBatchReq unpack error\n" + err.Error())
+			}
+
+		} else {
+			this.ListReplaceBatchReq.Init()
+
+		}
+	case TCAPLUS_CMD_LIST_REPLACE_BATCH_RES:
+		if this.ListReplaceBatchRes == nil {
+			this.ListReplaceBatchRes = NewTCaplusListReplaceBatchRes()
+		}
+		if cutVer >= TCaplusPkgBodyListReplaceBatchResVersion {
+
+			err = this.ListReplaceBatchRes.UnpackFrom(cutVer, r)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.ListReplaceBatchRes unpack error\n" + err.Error())
+			}
+
+		} else {
+			this.ListReplaceBatchRes.Init()
+
+		}
+	case TCAPLUS_CMD_SET_TTL_REQ:
+		if this.TCaplusSetTTLReq == nil {
+			this.TCaplusSetTTLReq = NewTCaplusSetTTLReq()
+		}
+		if cutVer >= TCaplusPkgBodyTCaplusSetTTLReqVersion {
+
+			err = this.TCaplusSetTTLReq.UnpackFrom(cutVer, r)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.TCaplusSetTTLReq unpack error\n" + err.Error())
+			}
+
+		} else {
+			this.TCaplusSetTTLReq.Init()
+
+		}
+	case TCAPLUS_CMD_SET_TTL_RES:
+		if this.TCaplusSetTTLRes == nil {
+			this.TCaplusSetTTLRes = NewTCaplusSetTTLRes()
+		}
+		if cutVer >= TCaplusPkgBodyTCaplusSetTTLResVersion {
+
+			err = this.TCaplusSetTTLRes.UnpackFrom(cutVer, r)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.TCaplusSetTTLRes unpack error\n" + err.Error())
+			}
+
+		} else {
+			this.TCaplusSetTTLRes.Init()
+
+		}
+	case TCAPLUS_CMD_GET_TTL_REQ:
+		if this.TCaplusGetTTLReq == nil {
+			this.TCaplusGetTTLReq = NewTCaplusGetTTLReq()
+		}
+		if cutVer >= TCaplusPkgBodyTCaplusGetTTLReqVersion {
+
+			err = this.TCaplusGetTTLReq.UnpackFrom(cutVer, r)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.TCaplusGetTTLReq unpack error\n" + err.Error())
+			}
+
+		} else {
+			this.TCaplusGetTTLReq.Init()
+
+		}
+	case TCAPLUS_CMD_GET_TTL_RES:
+		if this.TCaplusGetTTLRes == nil {
+			this.TCaplusGetTTLRes = NewTCaplusGetTTLRes()
+		}
+		if cutVer >= TCaplusPkgBodyTCaplusGetTTLResVersion {
+
+			err = this.TCaplusGetTTLRes.UnpackFrom(cutVer, r)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.TCaplusGetTTLRes unpack error\n" + err.Error())
+			}
+
+		} else {
+			this.TCaplusGetTTLRes.Init()
+
+		}
+	case TCAPLUS_CMD_GET_TABLE_STATUS_INFO_REQ:
+		if this.TCaplusGetTableStatusInfoReq == nil {
+			this.TCaplusGetTableStatusInfoReq = NewTCaplusGetTableStatusInfoReq()
+		}
+		if cutVer >= TCaplusPkgBodyTCaplusGetTableStatusInfoReqVersion {
+
+			err = this.TCaplusGetTableStatusInfoReq.UnpackFrom(cutVer, r)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.TCaplusGetTableStatusInfoReq unpack error\n" + err.Error())
+			}
+
+		} else {
+			this.TCaplusGetTableStatusInfoReq.Init()
+
+		}
+	case TCAPLUS_CMD_GET_TABLE_STATUS_INFO_RES:
+		if this.TCaplusGetTableStatusInfoRes == nil {
+			this.TCaplusGetTableStatusInfoRes = NewTCaplusGetTableStatusInfoRes()
+		}
+		if cutVer >= TCaplusPkgBodyTCaplusGetTableStatusInfoResVersion {
+
+			err = this.TCaplusGetTableStatusInfoRes.UnpackFrom(cutVer, r)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.TCaplusGetTableStatusInfoRes unpack error\n" + err.Error())
+			}
+
+		} else {
+			this.TCaplusGetTableStatusInfoRes.Init()
+
+		}
+	case TCAPLUS_CMD_UPDATE_ITEM_REQ:
+		if this.TCaplusUpdateItemReq == nil {
+			this.TCaplusUpdateItemReq = NewTCaplusUpdateItemReq()
+		}
+		if cutVer >= TCaplusPkgBodyTCaplusUpdateItemReqVersion {
+
+			err = this.TCaplusUpdateItemReq.UnpackFrom(cutVer, r)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.TCaplusUpdateItemReq unpack error\n" + err.Error())
+			}
+
+		} else {
+			this.TCaplusUpdateItemReq.Init()
+
+		}
+	case TCAPLUS_CMD_UPDATE_ITEM_RES:
+		if this.TCaplusUpdateItemRes == nil {
+			this.TCaplusUpdateItemRes = NewTCaplusUpdateItemRes()
+		}
+		if cutVer >= TCaplusPkgBodyTCaplusUpdateItemResVersion {
+
+			err = this.TCaplusUpdateItemRes.UnpackFrom(cutVer, r)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.TCaplusUpdateItemRes unpack error\n" + err.Error())
+			}
+
+		} else {
+			this.TCaplusUpdateItemRes.Init()
+
+		}
+	case TCAPLUS_CMD_LIST_UPDATE_ITEM_REQ:
+		if this.TCaplusListUpdateItemReq == nil {
+			this.TCaplusListUpdateItemReq = NewTCaplusListUpdateItemReq()
+		}
+		if cutVer >= TCaplusPkgBodyTCaplusListUpdateItemReqVersion {
+
+			err = this.TCaplusListUpdateItemReq.UnpackFrom(cutVer, r)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.TCaplusListUpdateItemReq unpack error\n" + err.Error())
+			}
+
+		} else {
+			this.TCaplusListUpdateItemReq.Init()
+
+		}
+	case TCAPLUS_CMD_LIST_UPDATE_ITEM_RES:
+		if this.TCaplusListUpdateItemRes == nil {
+			this.TCaplusListUpdateItemRes = NewTCaplusListUpdateItemRes()
+		}
+		if cutVer >= TCaplusPkgBodyTCaplusListUpdateItemResVersion {
+
+			err = this.TCaplusListUpdateItemRes.UnpackFrom(cutVer, r)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.TCaplusListUpdateItemRes unpack error\n" + err.Error())
+			}
+
+		} else {
+			this.TCaplusListUpdateItemRes.Init()
+
+		}
+	case TCAPLUS_CMD_QUERY_REQ:
+		if this.TCaplusQueryReq == nil {
+			this.TCaplusQueryReq = NewTCaplusQueryReq()
+		}
+		if cutVer >= TCaplusPkgBodyTCaplusQueryReqVersion {
+
+			err = this.TCaplusQueryReq.UnpackFrom(cutVer, r)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.TCaplusQueryReq unpack error\n" + err.Error())
+			}
+
+		} else {
+			this.TCaplusQueryReq.Init()
+
+		}
+	case TCAPLUS_CMD_QUERY_RES:
+		if this.TCaplusQueryRes == nil {
+			this.TCaplusQueryRes = NewTCaplusQueryRes()
+		}
+		if cutVer >= TCaplusPkgBodyTCaplusQueryResVersion {
+
+			err = this.TCaplusQueryRes.UnpackFrom(cutVer, r)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.TCaplusQueryRes unpack error\n" + err.Error())
+			}
+
+		} else {
+			this.TCaplusQueryRes.Init()
+
+		}
+	case TCAPLUS_CMD_LIST_QUERY_REQ:
+		if this.TCaplusListQueryReq == nil {
+			this.TCaplusListQueryReq = NewTCaplusListQueryReq()
+		}
+		if cutVer >= TCaplusPkgBodyTCaplusListQueryReqVersion {
+
+			err = this.TCaplusListQueryReq.UnpackFrom(cutVer, r)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.TCaplusListQueryReq unpack error\n" + err.Error())
+			}
+
+		} else {
+			this.TCaplusListQueryReq.Init()
+
+		}
+	case TCAPLUS_CMD_LIST_QUERY_RES:
+		if this.TCaplusListQueryRes == nil {
+			this.TCaplusListQueryRes = NewTCaplusListQueryRes()
+		}
+		if cutVer >= TCaplusPkgBodyTCaplusListQueryResVersion {
+
+			err = this.TCaplusListQueryRes.UnpackFrom(cutVer, r)
+			if err != nil {
+				return errors.New("TCaplusPkgBody.TCaplusListQueryRes unpack error\n" + err.Error())
+			}
+
+		} else {
+			this.TCaplusListQueryRes.Init()
+
+		}
 	}
 
 	return err
@@ -25429,7 +34320,7 @@ func (this *TCaplusPkgBody) UnpackFrom(cutVer uint32, r *tdrcom.Reader, selector
 
 const (
 	TCaplusPkgBaseVersion    uint32 = 1
-	TCaplusPkgCurrentVersion uint32 = 117
+	TCaplusPkgCurrentVersion uint32 = 126
 )
 
 // TCaplusPkg

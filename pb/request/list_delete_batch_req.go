@@ -67,7 +67,7 @@ func (req *listDeleteBatchRequest) AddRecord(index int32) (*record.Record, error
 	rec.KeySet = req.pkg.Head.KeyInfo
 	rec.ShardingKey = &req.pkg.Head.SplitTableKeyBuff
 	rec.ShardingKeyLen = &req.pkg.Head.SplitTableKeyBuffLen
-
+	rec.Condition = &req.pkg.Body.ListDeleteBatchReq.Condition
 	req.record = rec
 	return rec, nil
 }

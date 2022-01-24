@@ -337,3 +337,77 @@ func TestListGetAllMultiResp(t *testing.T) {
 		return
 	}
 }
+
+// 条件符合
+func TestListGetAllWithCondition(t *testing.T) {
+	data := &tcaplusservice.ListUser{}
+	data.Id = 1
+	data.Name = "a"
+	oldJson := tools.StToJson(data)
+	fmt.Println(oldJson)
+
+	client, req := tools.InitPBClientAndReqWithTableName(cmd.TcaplusApiListGetAllReq, "list_user")
+
+	client.ListDeleteAll(data)
+	for i := int32(1); i <= 10; i++ {
+		data.Rank = i
+		client.ListAddAfter(data, -1)
+	}
+	defer client.ListDeleteAll(data)
+
+	rec, err := req.AddRecord(0)
+	if err != nil {
+		t.Errorf("AddRecord fail, %s", err.Error())
+		return
+	}
+
+	if _, err := rec.SetPBData(data); err != nil {
+		t.Errorf("SetData fail, %s", err.Error())
+		return
+	}
+
+	rec.SetCondition("rank > 2 and rank< 7")
+
+	if err := client.SendRequest(req); err != nil {
+		t.Errorf("SendRequest fail, %s", err.Error())
+		return
+	}
+
+	//recv resp
+	resp, err := tools.RecvResponse(client)
+	if err != nil {
+		t.Errorf("recvResponse fail, %s", err.Error())
+		return
+	}
+
+	if err := resp.GetResult(); err != 0 {
+		t.Errorf("resp.GetResult err , %s", terror.GetErrMsg(err))
+		return
+	}
+
+	if 4 != resp.GetRecordCount() {
+		t.Errorf("resp.GetRecordCount() %d != 4", resp.GetRecordCount())
+		return
+	}
+
+	for i := 0; i < resp.GetRecordCount(); i++ {
+		record, err := resp.FetchRecord()
+		if err != nil {
+			t.Errorf("FetchRecord failed %s", err.Error())
+			return
+		}
+
+		newData := &tcaplusservice.ListUser{}
+		if err := record.GetPBData(newData); err != nil {
+			t.Errorf("record.GetData failed %s", err.Error())
+			return
+		}
+
+		newJson := tools.StToJson(newData)
+		fmt.Println(newJson)
+		if newData.Rank <= 2 || newData.Rank >= 7 {
+			t.Errorf("newData.Rank <= 2 || newData.Rank >= 7")
+			return
+		}
+	}
+}

@@ -8,12 +8,16 @@ import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/tcaplus_protocol_cs"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/terror"
 	"testing"
+	"time"
+	"unsafe"
 )
 
 // 记录已满继续插入
 func TestListAddAfterOnListFull(t *testing.T) {
+	uin := time.Now().UnixNano()
+	key := *(*uint32)(unsafe.Pointer(&uin))
 	data := tcaplus_tb.NewTable_Traverser_List()
-	data.Key = 1
+	data.Key = key
 	data.Name = 255
 	data.Level = 1
 	data.Value1 = "value1"
@@ -453,8 +457,10 @@ func TestListAddAfterOnListFull(t *testing.T) {
 
 // 插入记录到末尾
 func TestListAddAfterToTail(t *testing.T) {
+	uin := time.Now().UnixNano()
+	key := *(*uint32)(unsafe.Pointer(&uin))
 	data := tcaplus_tb.NewTable_Traverser_List()
-	data.Key = 1
+	data.Key = key
 	data.Name = 255
 	data.Level = 1
 	data.Value1 = "value1"
@@ -628,8 +634,10 @@ func TestListAddAfterToTail(t *testing.T) {
 
 // 插入记录到开头
 func TestListAddAfterToHead(t *testing.T) {
+	uin := time.Now().UnixNano()
+	key := *(*uint32)(unsafe.Pointer(&uin))
 	data := tcaplus_tb.NewTable_Traverser_List()
-	data.Key = 1
+	data.Key = key
 	data.Name = 255
 	data.Level = 1
 	data.Value1 = "value1"
@@ -803,8 +811,10 @@ func TestListAddAfterToHead(t *testing.T) {
 
 // 插入到一条不存在index之后
 func TestListAddAfterIndexNotExist(t *testing.T) {
+	uin := time.Now().UnixNano()
+	key := *(*uint32)(unsafe.Pointer(&uin))
 	data := tcaplus_tb.NewTable_Traverser_List()
-	data.Key = 1
+	data.Key = key
 	data.Name = 255
 	data.Level = 1
 	data.Value1 = "value1"
@@ -950,8 +960,10 @@ func TestListAddAfterIndexNotExist(t *testing.T) {
 
 // 插入记录到已存在的index后
 func TestListAddAfterIndexExist(t *testing.T) {
+	uin := time.Now().UnixNano()
+	key := *(*uint32)(unsafe.Pointer(&uin))
 	data := tcaplus_tb.NewTable_Traverser_List()
-	data.Key = 1
+	data.Key = key
 	data.Name = 255
 	data.Level = 1
 	data.Value1 = "value1"
@@ -1192,8 +1204,10 @@ func TestListAddAfterIndexExist(t *testing.T) {
 
 // 插入记录且记录key不存在
 func TestListAddAfterKeyNotExist(t *testing.T) {
+	uin := time.Now().UnixNano()
+	key := *(*uint32)(unsafe.Pointer(&uin))
 	data := tcaplus_tb.NewTable_Traverser_List()
-	data.Key = 1
+	data.Key = key
 	data.Name = 255
 	data.Level = 1
 	data.Value1 = "value1"

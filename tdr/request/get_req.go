@@ -68,6 +68,7 @@ func (req *getRequest) AddRecord(index int32) (*record.Record, error) {
 	rec.ShardingKeyLen = &req.pkg.Head.SplitTableKeyBuffLen
 	rec.KeySet = req.pkg.Head.KeyInfo
 	rec.ValueSet = req.pkg.Body.GetReq.ValueInfo
+	rec.Condition = &req.pkg.Body.GetReq.Condition
 	req.record = rec
 	return rec, nil
 }

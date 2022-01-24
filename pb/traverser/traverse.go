@@ -50,8 +50,9 @@ type Traverser struct {
 
 	seqForSync int32
 
-	client ClientInf
-	tm     *TraverserManager
+	client    ClientInf
+	tm        *TraverserManager
+	condition string
 }
 
 func newTraverser(zoneId uint32, table string) *Traverser {
@@ -165,6 +166,20 @@ func (t *Traverser) SetFieldNames(valueNameList []string) error {
 	return nil
 }
 
+func (t *Traverser) SetCondition(query string) error {
+	if TraverseStateReady != t.state {
+		log.ERR("Traverser state %d not ready", t.state)
+		return &terror.ErrorCode{Code: terror.API_ERR_INVALID_OBJ_STATUE}
+	}
+	if int64(len(query)) > tcaplus_protocol_cs.TCAPLUS_MAX_EXPR_TEXT_LEN {
+		log.ERR("invalid condition.size=%d", len(query))
+		return &terror.ErrorCode{Code: terror.GEN_ERR_INVALID_ARGUMENTS}
+	}
+	t.condition = query
+
+	return nil
+}
+
 func (t *Traverser) sendGetShardListRequest() error {
 	req, err := t.client.NewRequest(t.zoneId, t.tableName, cmd.TcaplusApiGetShardListReq)
 	if err != nil {
@@ -230,6 +245,7 @@ func (t *Traverser) sendTraverseRequest() error {
 	if t.nameSet != nil {
 		p.ValueInfo = t.nameSet
 	}
+	p.Condition = t.condition
 
 	err = t.client.SendRequest(req)
 	if err != nil {

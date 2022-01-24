@@ -314,3 +314,121 @@ func TestListGetIndexNotExist(t *testing.T) {
 		return
 	}
 }
+
+// 条件符合
+func TestListGetWithCondition(t *testing.T) {
+	data := &tcaplusservice.ListUser{}
+	data.Id = 1
+	data.Name = "a"
+	data.Rank = 100
+	oldJson := tools.StToJson(data)
+	fmt.Println(oldJson)
+
+	client, req := tools.InitPBClientAndReqWithTableName(cmd.TcaplusApiListGetReq, "list_user")
+
+	client.ListDeleteAll(data)
+	client.ListAddAfter(data, -1)
+	defer client.ListDeleteAll(data)
+
+	rec, err := req.AddRecord(0)
+	if err != nil {
+		t.Errorf("AddRecord fail, %s", err.Error())
+		return
+	}
+
+	if _, err := rec.SetPBData(data); err != nil {
+		t.Errorf("SetData fail, %s", err.Error())
+		return
+	}
+
+	rec.SetCondition("rank == 0 OR $.LastAccessTime > \"2021-01-01 00:00:00\"")
+
+	if err := client.SendRequest(req); err != nil {
+		t.Errorf("SendRequest fail, %s", err.Error())
+		return
+	}
+
+	//recv resp
+	resp, err := tools.RecvResponse(client)
+	if err != nil {
+		t.Errorf("recvResponse fail, %s", err.Error())
+		return
+	}
+
+	if err := resp.GetResult(); err != 0 {
+		t.Errorf("resp.GetResult err , %s", terror.GetErrMsg(err))
+		return
+	}
+
+	if 1 != resp.GetRecordCount() {
+		t.Errorf("resp.GetRecordCount() %d != 1", resp.GetRecordCount())
+		return
+	}
+
+	for i := 0; i < resp.GetRecordCount(); i++ {
+		record, err := resp.FetchRecord()
+		if err != nil {
+			t.Errorf("FetchRecord failed %s", err.Error())
+			return
+		}
+
+		newData := &tcaplusservice.ListUser{}
+		if err := record.GetPBData(newData); err != nil {
+			t.Errorf("record.GetData failed %s", err.Error())
+			return
+		}
+
+		newJson := tools.StToJson(newData)
+		fmt.Println(newJson)
+		if newJson != oldJson {
+			t.Errorf("resData != reqData")
+			return
+		}
+	}
+}
+
+// 条件不符
+func TestListGetWithCondition_Fail(t *testing.T) {
+	data := &tcaplusservice.ListUser{}
+	data.Id = 1
+	data.Name = "a"
+	data.Rank = 100
+	oldJson := tools.StToJson(data)
+	fmt.Println(oldJson)
+
+	client, req := tools.InitPBClientAndReqWithTableName(cmd.TcaplusApiListGetReq, "list_user")
+
+	client.ListDeleteAll(data)
+	client.ListAddAfter(data, -1)
+	defer client.ListDeleteAll(data)
+
+	rec, err := req.AddRecord(0)
+	if err != nil {
+		t.Errorf("AddRecord fail, %s", err.Error())
+		return
+	}
+
+	if _, err := rec.SetPBData(data); err != nil {
+		t.Errorf("SetData fail, %s", err.Error())
+		return
+	}
+
+	rec.SetCondition("rank == 0")
+
+	if err := client.SendRequest(req); err != nil {
+		t.Errorf("SendRequest fail, %s", err.Error())
+		return
+	}
+
+	//recv resp
+	resp, err := tools.RecvResponse(client)
+	if err != nil {
+		t.Errorf("recvResponse fail, %s", err.Error())
+		return
+	}
+
+	if err := resp.GetResult(); err != 281 {
+		t.Errorf("resp.GetResult err , %s", terror.GetErrMsg(err))
+		return
+	}
+}

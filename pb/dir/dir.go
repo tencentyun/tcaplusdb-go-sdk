@@ -281,8 +281,8 @@ func (dir *DirServer) signUp() error {
 	req.Body.ReqSignUpApp.ClientInfo.ApiVersion = version.MAJOR
 	req.Body.ReqSignUpApp.ClientInfo.DetailVer = version.GetModuleName()
 	req.Body.ReqSignUpApp.ClientInfo.Version = version.Version
-	//req.Body.ReqSignUpApp.ClientInfo.GitSHA1 = version.GitCommitId
-	//req.Body.ReqSignUpApp.ClientInfo.GitBranch = version.GitBranch
+	req.Body.ReqSignUpApp.ClientInfo.GitSHA1 = version.GitCommitId
+	req.Body.ReqSignUpApp.ClientInfo.GitBranch = version.GitBranch
 	req.Body.ReqSignUpApp.ClientInfo.Platform = int16(tcapdir_protocol_cs.TCAPDIR_PLATFORM_LINUX64)
 	req.Body.ReqSignUpApp.ClientInfo.TableCount = 0
 	req.Body.ReqSignUpApp.ClientInfo.TraitBits = 0

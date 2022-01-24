@@ -50,6 +50,11 @@ func newBatchGetRequest(appId uint64, zoneId uint32, tableName string, cmd int,
 }
 
 func (req *batchGetRequest) AddRecord(index int32) (*record.Record, error) {
+	if len(req.record) >= 1024 {
+		logger.ERR("record num > 1024")
+		return nil, &terror.ErrorCode{Code: terror.RecordNumOverMax}
+	}
+
 	if req.pkg == nil {
 		logger.ERR("Request can not second use")
 		return nil, &terror.ErrorCode{Code: terror.RequestHasHasNoPkg, Message: "Request can not second use"}
@@ -75,7 +80,7 @@ func (req *batchGetRequest) AddRecord(index int32) (*record.Record, error) {
 	rec.SplitTableKeyBuff = new(tcaplus_protocol_cs.SplitTableKeyBuff)
 	req.pkg.Body.BatchGetReq.SplitTableKeyBuffs = append(req.pkg.Body.BatchGetReq.SplitTableKeyBuffs,
 		rec.SplitTableKeyBuff)
-
+	rec.Condition = &req.pkg.Body.BatchGetReq.Condition
 	req.record = append(req.record, rec)
 	return rec, nil
 }

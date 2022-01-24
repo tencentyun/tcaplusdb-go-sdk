@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/autotest/unittest/table/tcaplusservice"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/autotest/unittest/tools"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/cmd"
@@ -365,3 +366,102 @@ func TestPBGetBypartkeyMultiRespSuccess_256B(t *testing.T) {
 	}
 }
 */
+
+// case 附带条件
+func TestPBGetBypartkeyWithCondition(t *testing.T) {
+	client, req := tools.InitPBClientAndReqWithTableName(cmd.TcaplusApiGetByPartkeyReq, "user")
+
+	oldMsg := &tcaplusservice.User{}
+	oldMsg.Id = 1
+	oldMsg.Name = "aaa"
+	oldMsg.Rank = 1
+	client.Insert(oldMsg)
+	defer client.Delete(oldMsg)
+
+	oldMsg.Id = 2
+	oldMsg.Name = "aaa"
+	client.Insert(oldMsg)
+	defer func() {
+		oldMsg.Id = 2
+		oldMsg.Name = "aaa"
+		client.Delete(oldMsg)
+	}()
+
+	oldMsg.Id = 3
+	oldMsg.Name = "bbb"
+	client.Insert(oldMsg)
+	defer func() {
+		oldMsg.Id = 3
+		oldMsg.Name = "bbb"
+		client.Delete(oldMsg)
+	}()
+
+	oldMsg.Id = 4
+	oldMsg.Name = "bbb"
+	client.Insert(oldMsg)
+	defer func() {
+		oldMsg.Id = 4
+		oldMsg.Name = "bbb"
+		client.Delete(oldMsg)
+	}()
+
+	oldMsg.Id = 5
+	oldMsg.Name = "aaa"
+	client.Insert(oldMsg)
+	defer func() {
+		oldMsg.Id = 5
+		oldMsg.Name = "aaa"
+		client.Delete(oldMsg)
+	}()
+
+	//add record
+	rec, err := req.AddRecord(0)
+	if err != nil {
+		t.Errorf("AddRecord fail, %s", err.Error())
+		return
+	}
+
+	oldMsg.Id = 1
+	oldMsg.Name = "aaa"
+	if _, err := rec.SetPBPartKeys(oldMsg, []string{"id", "name"}); err != nil {
+		t.Errorf("SetData fail, %s", err.Error())
+		return
+	}
+
+	// 条件
+	rec.SetCondition("id > 0")
+
+	if err := client.SendRequest(req); err != nil {
+		t.Errorf("SendRequest fail, %s", err.Error())
+		return
+	}
+
+	//recv resp
+	resp, err := tools.RecvResponse(client)
+	if err != nil {
+		t.Errorf("recvResponse fail, %s", err.Error())
+		return
+	}
+
+	if err := resp.GetResult(); err != 0 {
+		t.Errorf("resp.GetResult err %d, %s", err, terror.GetErrMsg(err))
+		return
+	}
+
+	for i := 0; i < resp.GetRecordCount(); i++ {
+		record, err := resp.FetchRecord()
+		if err != nil {
+			t.Errorf("FetchRecord failed %s", err.Error())
+			return
+		}
+
+		newMsg := &tcaplusservice.User{}
+		err = record.GetPBData(newMsg)
+		if err != nil {
+			t.Errorf("GetPBData failed %s", err.Error())
+			return
+		}
+
+		fmt.Println(newMsg)
+	}
+}

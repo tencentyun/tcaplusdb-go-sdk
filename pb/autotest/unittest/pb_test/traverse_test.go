@@ -2,16 +2,16 @@ package api
 
 import (
 	"fmt"
-	"github.com/tencentyun/tcaplusdb-go-sdk/pb/autotest/unittest/cfg"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/autotest/unittest/table/tcaplusservice"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/autotest/unittest/tools"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/terror"
 	"testing"
 	"time"
 )
 
 func TestPBTraverse(t *testing.T) {
 	client := tools.InitPBSyncClient()
-	tra := client.GetTraverser(cfg.ApiConfig.ZoneId, "game_players")
+	tra := client.GetTraverser(1, "game_players")
 	defer tra.Stop()
 
 	msg := &tcaplusservice.GamePlayers{}
@@ -96,4 +96,90 @@ func TestPBSyncTraverse2(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 
+}
+
+// 条件符合
+func TestPBTraverseCondition(t *testing.T) {
+	client := tools.InitPBSyncClient()
+	tra := client.GetTraverser(1, "user")
+	defer tra.Stop()
+
+	msg := &tcaplusservice.User{}
+	msg.Id = 1
+	msg.Name = "aaa"
+	client.Insert(msg)
+	defer func() {
+		msg.Id = 1
+		msg.Name = "aaa"
+		client.Delete(msg)
+	}()
+
+	msg.Id = 2
+	msg.Name = "bbb"
+	client.Insert(msg)
+	defer func() {
+		msg.Id = 2
+		msg.Name = "bbb"
+		client.Delete(msg)
+	}()
+
+	msg.Id = 3
+	msg.Name = "ccc"
+	client.Insert(msg)
+	defer func() {
+		msg.Id = 3
+		msg.Name = "ccc"
+		client.Delete(msg)
+	}()
+
+	msg.Id = 4
+	msg.Name = "ddd"
+	client.Insert(msg)
+	defer func() {
+		msg.Id = 4
+		msg.Name = "ddd"
+		client.Delete(msg)
+	}()
+
+	msg.Id = 5
+	msg.Name = "eee"
+	client.Insert(msg)
+	defer func() {
+		msg.Id = 5
+		msg.Name = "eee"
+		client.Delete(msg)
+	}()
+
+	tra.SetCondition("id > 2 AND name != \"eee\"")
+
+	resps, err := client.DoTraverse(tra, 60*time.Second)
+	if err != nil {
+		t.Errorf("RecvResponse fail, %s", err.Error())
+		return
+	}
+
+	for _, resp := range resps {
+		if err := resp.GetResult(); err != 0 {
+			t.Errorf("resp.GetResult err %d, %s", err, terror.GetErrMsg(err))
+			return
+		}
+
+		for i := 0; i < resp.GetRecordCount(); i++ {
+			record, err := resp.FetchRecord()
+			if err != nil {
+				t.Errorf("FetchRecord failed %s", err.Error())
+				return
+			}
+
+			newMsg := &tcaplusservice.User{}
+			err = record.GetPBData(newMsg)
+			if err != nil {
+				t.Errorf("GetPBData failed %s", err.Error())
+				return
+			}
+
+			newJson := tools.StToJson(newMsg)
+			fmt.Println(newJson)
+		}
+	}
 }

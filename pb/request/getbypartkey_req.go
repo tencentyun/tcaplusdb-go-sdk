@@ -67,6 +67,7 @@ func (req *getByPartKeyRequest) AddRecord(index int32) (*record.Record, error) {
 	rec.ShardingKey = &req.pkg.Head.SplitTableKeyBuff
 	rec.ShardingKeyLen = &req.pkg.Head.SplitTableKeyBuffLen
 	rec.KeySet = req.pkg.Head.KeyInfo
+	rec.Condition = &req.pkg.Body.GetByPartKeyReq.Condition
 	req.record = rec
 	return rec, nil
 }

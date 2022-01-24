@@ -59,6 +59,7 @@ func (req *deleteRequest) AddRecord(index int32) (*record.Record, error) {
 	rec.ShardingKey = &req.pkg.Head.SplitTableKeyBuff
 	rec.ShardingKeyLen = &req.pkg.Head.SplitTableKeyBuffLen
 	rec.KeySet = req.pkg.Head.KeyInfo
+	rec.Condition = &req.pkg.Body.DeleteReq.Condition
 	req.record = rec
 	return rec, nil
 }

@@ -3,7 +3,7 @@
 //     go code compiler
 //     author: cowhuang@tencent.com
 //
-// create time: 2021-05-27 15:40:56
+// create time: 2021-07-08 12:01:03
 package tcapdir_protocol_cs
 
 import (
@@ -47,6 +47,7 @@ const LONG_ERROR_MSG_LEN int64 = 10240
 const MAX_DBNAME_LEN int64 = 128
 const MAX_DBFIELD_NUM int64 = 256
 const MAX_DEFAULT_LEN int64 = 64
+const TCAPLUS_MAX_FILE_NAME_LEN int64 = 4096
 
 // 每个服务(app)提供的最多的tcapdb进程的个数
 const TCAPLUS_MAX_TCAPDB_CNT int64 = 1024
@@ -62,12 +63,19 @@ const MAX_MODIFY_WRITELIST_ZONE_COUNT int64 = 200
 
 // 索引名的最大长度
 const TCAPLUS_MAX_INDEX_NAME_LEN int64 = 1024
+
+// namespace的最大长度
+const TCAPLUS_MAX_NAMESPACE_LEN int64 = 1024
+
+// 物理搬迁文件数量，包含索引文件和shard文件
+const MAX_LOSSLESS_MOVE_SHARD_FILE_COUNT int64 = 10
 const META_TCAPLUS_TABLE_TYPE_GENERIC int64 = 0
 const META_TCAPLUS_TABLE_TYPE_LIST int64 = 1
 
 // 操作成功
 const TCAPLUS_OP_RESULT_OK int64 = 0x0000
 const DATA_EXPIRE_RULE_LAST_ACCESS_TIME int64 = 1
+const DATA_EXPIRE_RULE_TIME_TO_LIVE int64 = 2
 
 // 普通慢启动
 const NORMAL_START int64 = 0
@@ -110,6 +118,15 @@ const AUTH_SUCCEED int64 = 0
 
 // 白名单校验未通过
 const AUTH_FAILED_WHITELIST int64 = 1
+
+// 相对时间
+const TYPE_RELATIVE_TIME int64 = 0
+
+// 绝对时间
+const TYPE_ABSOLUTE_TIME int64 = 1
+
+// 未设置ttl
+const TYPE_NOT_SET_TTL int64 = 3
 const (
 	TCaplusKeyFieldBaseVersion    uint32 = 1
 	TCaplusKeyFieldCurrentVersion uint32 = 1
@@ -2439,13 +2456,100 @@ func (this *DataExpireRuleLastAccessTime) UnpackFrom(cutVer uint32, r *tdrcom.Re
 }
 
 const (
-	DataExpireUnionBaseVersion    uint32 = 3
-	DataExpireUnionCurrentVersion uint32 = 84
+	DataExpireRuleTimeToLiveBaseVersion    uint32 = 118
+	DataExpireRuleTimeToLiveCurrentVersion uint32 = 118
+)
+
+// DataExpireRuleTimeToLive
+type DataExpireRuleTimeToLive struct {
+	Interval uint64 `tdr_field:"Interval"`
+}
+
+func NewDataExpireRuleTimeToLive() *DataExpireRuleTimeToLive {
+	obj := new(DataExpireRuleTimeToLive)
+	obj.Init()
+	return obj
+}
+
+func (this *DataExpireRuleTimeToLive) GetBaseVersion() uint32 {
+	return DataExpireRuleTimeToLiveBaseVersion
+}
+
+func (this *DataExpireRuleTimeToLive) GetCurrentVersion() uint32 {
+	return DataExpireRuleTimeToLiveCurrentVersion
+}
+
+func (this *DataExpireRuleTimeToLive) Init() {
+	this.Interval = 0
+
+}
+
+func (this *DataExpireRuleTimeToLive) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("DataExpireRuleTimeToLive Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *DataExpireRuleTimeToLive) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > DataExpireRuleTimeToLiveCurrentVersion {
+		cutVer = DataExpireRuleTimeToLiveCurrentVersion
+	}
+	// check cut version
+	if cutVer < DataExpireRuleTimeToLiveBaseVersion {
+		return errors.New("DataExpireRuleTimeToLive cut version must large than DataExpireRuleTimeToLiveBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, this.Interval)
+	if err != nil {
+		return errors.New("DataExpireRuleTimeToLive.Interval pack error\n" + err.Error())
+	}
+
+	return nil
+}
+
+func (this *DataExpireRuleTimeToLive) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("DataExpireRuleTimeToLive data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *DataExpireRuleTimeToLive) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > DataExpireRuleTimeToLiveCurrentVersion {
+		cutVer = DataExpireRuleTimeToLiveCurrentVersion
+	}
+	// check version
+	if cutVer < DataExpireRuleTimeToLiveBaseVersion {
+		errors.New("DataExpireRuleTimeToLive cut version must large than DataExpireRuleTimeToLiveBaseVersion\n")
+	}
+
+	err = binary.Read(r, binary.BigEndian, &this.Interval)
+	if err != nil {
+		return errors.New("DataExpireRuleTimeToLive.Interval unpack error\n" + err.Error())
+	}
+
+	return err
+}
+
+const (
+	DataExpireUnionBaseVersion           uint32 = 3
+	DataExpireUnionCurrentVersion        uint32 = 118
+	DataExpireUnionRuleTimeToLiveVersion uint32 = 118
 )
 
 // DataExpireUnion
 type DataExpireUnion struct {
 	RuleLastAccessTime *DataExpireRuleLastAccessTime `tdr_field:"RuleLastAccessTime"`
+
+	RuleTimeToLive *DataExpireRuleTimeToLive `tdr_field:"RuleTimeToLive"`
 }
 
 func NewDataExpireUnion(selector int64) *DataExpireUnion {
@@ -2466,6 +2570,9 @@ func (this *DataExpireUnion) Init(selector int64) {
 	switch selector {
 	case DATA_EXPIRE_RULE_LAST_ACCESS_TIME:
 		this.RuleLastAccessTime = NewDataExpireRuleLastAccessTime()
+
+	case DATA_EXPIRE_RULE_TIME_TO_LIVE:
+		this.RuleTimeToLive = NewDataExpireRuleTimeToLive()
 
 	}
 }
@@ -2502,6 +2609,18 @@ func (this *DataExpireUnion) PackTo(cutVer uint32, w *tdrcom.Writer, selector in
 			return errors.New("DataExpireUnion.RuleLastAccessTime pack error\n" + err.Error())
 		}
 
+	case DATA_EXPIRE_RULE_TIME_TO_LIVE:
+		if this.RuleTimeToLive == nil {
+			return errors.New("DataExpireUnion.RuleTimeToLive is nil")
+		}
+		if cutVer >= DataExpireUnionRuleTimeToLiveVersion {
+
+			err = this.RuleTimeToLive.PackTo(cutVer, w)
+			if err != nil {
+				return errors.New("DataExpireUnion.RuleTimeToLive pack error\n" + err.Error())
+			}
+
+		}
 	}
 
 	return nil
@@ -2536,6 +2655,21 @@ func (this *DataExpireUnion) UnpackFrom(cutVer uint32, r *tdrcom.Reader, selecto
 			return errors.New("DataExpireUnion.RuleLastAccessTime unpack error\n" + err.Error())
 		}
 
+	case DATA_EXPIRE_RULE_TIME_TO_LIVE:
+		if this.RuleTimeToLive == nil {
+			this.RuleTimeToLive = NewDataExpireRuleTimeToLive()
+		}
+		if cutVer >= DataExpireUnionRuleTimeToLiveVersion {
+
+			err = this.RuleTimeToLive.UnpackFrom(cutVer, r)
+			if err != nil {
+				return errors.New("DataExpireUnion.RuleTimeToLive unpack error\n" + err.Error())
+			}
+
+		} else {
+			this.RuleTimeToLive.Init()
+
+		}
 	}
 
 	return err
@@ -2543,7 +2677,7 @@ func (this *DataExpireUnion) UnpackFrom(cutVer uint32, r *tdrcom.Reader, selecto
 
 const (
 	DataExpireRuleBaseVersion    uint32 = 3
-	DataExpireRuleCurrentVersion uint32 = 84
+	DataExpireRuleCurrentVersion uint32 = 118
 )
 
 // DataExpireRule
@@ -2640,7 +2774,7 @@ func (this *DataExpireRule) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
 
 const (
 	DataExpireBaseVersion    uint32 = 3
-	DataExpireCurrentVersion uint32 = 84
+	DataExpireCurrentVersion uint32 = 118
 )
 
 // DataExpire
@@ -6107,6 +6241,115 @@ func (this *DeleteIndexResInfo) UnpackFrom(cutVer uint32, r *tdrcom.Reader) erro
 	err = binary.Read(r, binary.BigEndian, &this.Result)
 	if err != nil {
 		return errors.New("DeleteIndexResInfo.Result unpack error\n" + err.Error())
+	}
+
+	return err
+}
+
+const (
+	PhysMoveMigrateFileInfoBaseVersion    uint32 = 119
+	PhysMoveMigrateFileInfoCurrentVersion uint32 = 119
+)
+
+// PhysMoveMigrateFileInfo
+type PhysMoveMigrateFileInfo struct {
+	FileName string `tdr_field:"FileName"`
+
+	FileSize uint64 `tdr_field:"FileSize"`
+}
+
+func NewPhysMoveMigrateFileInfo() *PhysMoveMigrateFileInfo {
+	obj := new(PhysMoveMigrateFileInfo)
+	obj.Init()
+	return obj
+}
+
+func (this *PhysMoveMigrateFileInfo) GetBaseVersion() uint32 {
+	return PhysMoveMigrateFileInfoBaseVersion
+}
+
+func (this *PhysMoveMigrateFileInfo) GetCurrentVersion() uint32 {
+	return PhysMoveMigrateFileInfoCurrentVersion
+}
+
+func (this *PhysMoveMigrateFileInfo) Init() {
+
+	this.FileSize = 0
+
+}
+
+func (this *PhysMoveMigrateFileInfo) Pack(cutVer uint32) ([]byte, error) {
+	w := tdrcom.NewWriter()
+	if err := this.PackTo(cutVer, w); err != nil {
+		return nil, errors.New("PhysMoveMigrateFileInfo Pack error\n" + err.Error())
+	} else {
+		return w.Bytes(), nil
+	}
+}
+
+func (this *PhysMoveMigrateFileInfo) PackTo(cutVer uint32, w *tdrcom.Writer) error {
+	// adjust cut version
+	if cutVer == 0 || cutVer > PhysMoveMigrateFileInfoCurrentVersion {
+		cutVer = PhysMoveMigrateFileInfoCurrentVersion
+	}
+	// check cut version
+	if cutVer < PhysMoveMigrateFileInfoBaseVersion {
+		return errors.New("PhysMoveMigrateFileInfo cut version must large than PhysMoveMigrateFileInfoBaseVersion\n")
+	}
+
+	var err error
+
+	err = binary.Write(w, binary.BigEndian, uint32(len(this.FileName))+1)
+	if err != nil {
+		return errors.New("PhysMoveMigrateFileInfo.FileName string size pack error\n" + err.Error())
+	}
+	err = binary.Write(w, binary.BigEndian, append([]byte(this.FileName), 0))
+	if err != nil {
+		return errors.New("PhysMoveMigrateFileInfo.FileName string content pack error\n" + err.Error())
+	}
+
+	err = binary.Write(w, binary.BigEndian, this.FileSize)
+	if err != nil {
+		return errors.New("PhysMoveMigrateFileInfo.FileSize pack error\n" + err.Error())
+	}
+
+	return nil
+}
+
+func (this *PhysMoveMigrateFileInfo) Unpack(cutVer uint32, data []byte) error {
+	if nil == data {
+		return errors.New("PhysMoveMigrateFileInfo data is nil")
+	}
+	return this.UnpackFrom(cutVer, tdrcom.NewReader(data))
+}
+
+func (this *PhysMoveMigrateFileInfo) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
+	var err error = nil
+	// adjust version
+	if cutVer == 0 || cutVer > PhysMoveMigrateFileInfoCurrentVersion {
+		cutVer = PhysMoveMigrateFileInfoCurrentVersion
+	}
+	// check version
+	if cutVer < PhysMoveMigrateFileInfoBaseVersion {
+		errors.New("PhysMoveMigrateFileInfo cut version must large than PhysMoveMigrateFileInfoBaseVersion\n")
+	}
+
+	var FileNameSize uint32
+	err = binary.Read(r, binary.BigEndian, &FileNameSize)
+	if err != nil {
+		return errors.New("PhysMoveMigrateFileInfo.FileName string size unpack error\n" + err.Error())
+	}
+
+	FileNameBytes := make([]byte, FileNameSize)
+	err = binary.Read(r, binary.BigEndian, FileNameBytes)
+	if err != nil {
+		return errors.New("PhysMoveMigrateFileInfo.FileName string content unpack error\n" + err.Error())
+	}
+	this.FileName = string(FileNameBytes[:len(FileNameBytes)-1])
+
+	err = binary.Read(r, binary.BigEndian, &this.FileSize)
+	if err != nil {
+		return errors.New("PhysMoveMigrateFileInfo.FileSize unpack error\n" + err.Error())
 	}
 
 	return err

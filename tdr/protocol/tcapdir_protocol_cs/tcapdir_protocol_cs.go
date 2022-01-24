@@ -3,7 +3,7 @@
 //     go code compiler
 //     author: cowhuang@tencent.com
 //
-// create time: 2021-05-27 15:40:56
+// create time: 2021-07-08 12:01:03
 package tcapdir_protocol_cs
 
 import (
@@ -2016,8 +2016,10 @@ func (this *QosReport) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
 }
 
 const (
-	ReqSignUpAppBaseVersion    uint32 = 1
-	ReqSignUpAppCurrentVersion uint32 = 112
+	ReqSignUpAppBaseVersion        uint32 = 1
+	ReqSignUpAppCurrentVersion     uint32 = 121
+	ReqSignUpAppUserNameVersion    uint32 = 121
+	ReqSignUpAppPasswordMd5Version uint32 = 121
 )
 
 // ReqSignUpApp
@@ -2031,6 +2033,10 @@ type ReqSignUpApp struct {
 	TableCount int16 `tdr_field:"TableCount"`
 
 	TableList []*TableInfo `tdr_field:"TableList" tdr_count:"256" tdr_refer:"TableCount"`
+
+	UserName string `tdr_field:"UserName"`
+
+	PasswordMd5 string `tdr_field:"PasswordMd5"`
 }
 
 func NewReqSignUpApp() *ReqSignUpApp {
@@ -2117,6 +2123,31 @@ func (this *ReqSignUpApp) PackTo(cutVer uint32, w *tdrcom.Writer) error {
 		}
 	}
 
+	if cutVer >= ReqSignUpAppUserNameVersion {
+
+		err = binary.Write(w, binary.BigEndian, uint32(len(this.UserName))+1)
+		if err != nil {
+			return errors.New("ReqSignUpApp.UserName string size pack error\n" + err.Error())
+		}
+		err = binary.Write(w, binary.BigEndian, append([]byte(this.UserName), 0))
+		if err != nil {
+			return errors.New("ReqSignUpApp.UserName string content pack error\n" + err.Error())
+		}
+
+	}
+	if cutVer >= ReqSignUpAppPasswordMd5Version {
+
+		err = binary.Write(w, binary.BigEndian, uint32(len(this.PasswordMd5))+1)
+		if err != nil {
+			return errors.New("ReqSignUpApp.PasswordMd5 string size pack error\n" + err.Error())
+		}
+		err = binary.Write(w, binary.BigEndian, append([]byte(this.PasswordMd5), 0))
+		if err != nil {
+			return errors.New("ReqSignUpApp.PasswordMd5 string content pack error\n" + err.Error())
+		}
+
+	}
+
 	return nil
 }
 
@@ -2188,12 +2219,44 @@ func (this *ReqSignUpApp) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
 
 	}
 
+	if cutVer >= ReqSignUpAppUserNameVersion {
+
+		var UserNameSize uint32
+		err = binary.Read(r, binary.BigEndian, &UserNameSize)
+		if err != nil {
+			return errors.New("ReqSignUpApp.UserName string size unpack error\n" + err.Error())
+		}
+
+		UserNameBytes := make([]byte, UserNameSize)
+		err = binary.Read(r, binary.BigEndian, UserNameBytes)
+		if err != nil {
+			return errors.New("ReqSignUpApp.UserName string content unpack error\n" + err.Error())
+		}
+		this.UserName = string(UserNameBytes[:len(UserNameBytes)-1])
+
+	}
+	if cutVer >= ReqSignUpAppPasswordMd5Version {
+
+		var PasswordMd5Size uint32
+		err = binary.Read(r, binary.BigEndian, &PasswordMd5Size)
+		if err != nil {
+			return errors.New("ReqSignUpApp.PasswordMd5 string size unpack error\n" + err.Error())
+		}
+
+		PasswordMd5Bytes := make([]byte, PasswordMd5Size)
+		err = binary.Read(r, binary.BigEndian, PasswordMd5Bytes)
+		if err != nil {
+			return errors.New("ReqSignUpApp.PasswordMd5 string content unpack error\n" + err.Error())
+		}
+		this.PasswordMd5 = string(PasswordMd5Bytes[:len(PasswordMd5Bytes)-1])
+
+	}
 	return err
 }
 
 const (
 	ResSignUpAppBaseVersion    uint32 = 1
-	ResSignUpAppCurrentVersion uint32 = 107
+	ResSignUpAppCurrentVersion uint32 = 120
 )
 
 // ResSignUpApp
@@ -2733,9 +2796,11 @@ func (this *ResGetDirServerList) UnpackFrom(cutVer uint32, r *tdrcom.Reader) err
 }
 
 const (
-	ReqGetTablesAndAccessBaseVersion       uint32 = 3
-	ReqGetTablesAndAccessCurrentVersion    uint32 = 85
-	ReqGetTablesAndAccessIdentityIdVersion uint32 = 85
+	ReqGetTablesAndAccessBaseVersion        uint32 = 3
+	ReqGetTablesAndAccessCurrentVersion     uint32 = 121
+	ReqGetTablesAndAccessIdentityIdVersion  uint32 = 85
+	ReqGetTablesAndAccessUserNameVersion    uint32 = 121
+	ReqGetTablesAndAccessPasswordMd5Version uint32 = 121
 )
 
 // ReqGetTablesAndAccess
@@ -2747,6 +2812,10 @@ type ReqGetTablesAndAccess struct {
 	Version string `tdr_field:"Version"`
 
 	IdentityId string `tdr_field:"IdentityId"`
+
+	UserName string `tdr_field:"UserName"`
+
+	PasswordMd5 string `tdr_field:"PasswordMd5"`
 }
 
 func NewReqGetTablesAndAccess() *ReqGetTablesAndAccess {
@@ -2823,6 +2892,30 @@ func (this *ReqGetTablesAndAccess) PackTo(cutVer uint32, w *tdrcom.Writer) error
 		}
 
 	}
+	if cutVer >= ReqGetTablesAndAccessUserNameVersion {
+
+		err = binary.Write(w, binary.BigEndian, uint32(len(this.UserName))+1)
+		if err != nil {
+			return errors.New("ReqGetTablesAndAccess.UserName string size pack error\n" + err.Error())
+		}
+		err = binary.Write(w, binary.BigEndian, append([]byte(this.UserName), 0))
+		if err != nil {
+			return errors.New("ReqGetTablesAndAccess.UserName string content pack error\n" + err.Error())
+		}
+
+	}
+	if cutVer >= ReqGetTablesAndAccessPasswordMd5Version {
+
+		err = binary.Write(w, binary.BigEndian, uint32(len(this.PasswordMd5))+1)
+		if err != nil {
+			return errors.New("ReqGetTablesAndAccess.PasswordMd5 string size pack error\n" + err.Error())
+		}
+		err = binary.Write(w, binary.BigEndian, append([]byte(this.PasswordMd5), 0))
+		if err != nil {
+			return errors.New("ReqGetTablesAndAccess.PasswordMd5 string content pack error\n" + err.Error())
+		}
+
+	}
 
 	return nil
 }
@@ -2890,6 +2983,38 @@ func (this *ReqGetTablesAndAccess) UnpackFrom(cutVer uint32, r *tdrcom.Reader) e
 			return errors.New("ReqGetTablesAndAccess.IdentityId string content unpack error\n" + err.Error())
 		}
 		this.IdentityId = string(IdentityIdBytes[:len(IdentityIdBytes)-1])
+
+	}
+	if cutVer >= ReqGetTablesAndAccessUserNameVersion {
+
+		var UserNameSize uint32
+		err = binary.Read(r, binary.BigEndian, &UserNameSize)
+		if err != nil {
+			return errors.New("ReqGetTablesAndAccess.UserName string size unpack error\n" + err.Error())
+		}
+
+		UserNameBytes := make([]byte, UserNameSize)
+		err = binary.Read(r, binary.BigEndian, UserNameBytes)
+		if err != nil {
+			return errors.New("ReqGetTablesAndAccess.UserName string content unpack error\n" + err.Error())
+		}
+		this.UserName = string(UserNameBytes[:len(UserNameBytes)-1])
+
+	}
+	if cutVer >= ReqGetTablesAndAccessPasswordMd5Version {
+
+		var PasswordMd5Size uint32
+		err = binary.Read(r, binary.BigEndian, &PasswordMd5Size)
+		if err != nil {
+			return errors.New("ReqGetTablesAndAccess.PasswordMd5 string size unpack error\n" + err.Error())
+		}
+
+		PasswordMd5Bytes := make([]byte, PasswordMd5Size)
+		err = binary.Read(r, binary.BigEndian, PasswordMd5Bytes)
+		if err != nil {
+			return errors.New("ReqGetTablesAndAccess.PasswordMd5 string content unpack error\n" + err.Error())
+		}
+		this.PasswordMd5 = string(PasswordMd5Bytes[:len(PasswordMd5Bytes)-1])
 
 	}
 	return err
@@ -5421,7 +5546,7 @@ func (this *TcapdirCSHead) UnpackFrom(cutVer uint32, r *tdrcom.Reader) error {
 
 const (
 	TcapdirCSBodyBaseVersion                      uint32 = 1
-	TcapdirCSBodyCurrentVersion                   uint32 = 117
+	TcapdirCSBodyCurrentVersion                   uint32 = 121
 	TcapdirCSBodyResGetDirServerListVersion       uint32 = 3
 	TcapdirCSBodyReqGetTablesAndAccessVersion     uint32 = 3
 	TcapdirCSBodyResGetTablesAndAccessVersion     uint32 = 3
@@ -6094,7 +6219,7 @@ func (this *TcapdirCSBody) UnpackFrom(cutVer uint32, r *tdrcom.Reader, selector 
 
 const (
 	TCapdirCSPkgBaseVersion    uint32 = 1
-	TCapdirCSPkgCurrentVersion uint32 = 117
+	TCapdirCSPkgCurrentVersion uint32 = 121
 )
 
 // TCapdirCSPkg

@@ -59,7 +59,7 @@ type Conn struct {
 	parseFunc  ParseFunc        //通过parse判断是否收到完整包
 	cbFunc     RecvCallBackFunc //收到响应后会调用回调
 	cbPara     interface{}      //回调参数
-	timeout    time.Duration    //connect 超时时间
+	timeout    time.Duration    //connect read write超时时间
 	createTime time.Time
 
 	sendChan chan *Buf
@@ -117,6 +117,13 @@ func NewConn(url string, timeout time.Duration,
 		sendChan:   make(chan *Buf, common.ConfigProcConBufDepth-1),
 		wrSize:     writeIoSize,
 	}
+	if PkgMemorySize == 0 {
+		if writeIoSize > 1*1024*1024 && writeIoSize < 11*1024*1024 {
+			PkgMemorySize = writeIoSize
+		} else {
+			PkgMemorySize = 1 * 1024 * 1024 //小内存块大小默认1MB
+		}
+	}
 	go cn.connect()
 	return cn, nil
 }
@@ -171,7 +178,7 @@ func (c *Conn) SendRoutine() {
 
 	proc := func(buf *Buf) {
 		// 设置30秒的发送超时，防止一直卡住
-		c.netConn.SetWriteDeadline(common.TimeNow.Add(ConfigReadWriteTimeOut * time.Second))
+		c.netConn.SetWriteDeadline(common.TimeNow.Add(c.timeout))
 		var length = len(c.sendChan)
 		c.sendPkg(buf)
 		for index := 0; index < length; index++ {
@@ -236,7 +243,6 @@ func (c *Conn) recvRoutine() {
 				c.rd = GetPKGMemory(c.rd)
 			}
 			// 读取网络报文
-			c.netConn.SetReadDeadline(common.TimeNow.Add(ConfigReadWriteTimeOut * time.Second))
 			n, err := c.rd.ReadFromNetConn(c.netConn)
 			if err != nil {
 				atomic.StoreInt32(&c.stat, ReadErr)

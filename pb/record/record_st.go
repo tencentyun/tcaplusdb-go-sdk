@@ -15,6 +15,7 @@ import (
 	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"math"
 	"reflect"
 	"strconv"
 	"strings"
@@ -94,7 +95,10 @@ func (r *Record) SetDataWithIndexAndField(data TdrTableSt, FieldNameList []strin
 	if "" == IndexName {
 		fullkeyMap = keyMap
 	} else {
-		fullKeyList := strings.Split(data.GetTDRDBFeilds().PrimaryKey, ",")
+		primaryKey := data.GetTDRDBFeilds().PrimaryKey
+		// 去掉空格
+		primaryKey = strings.Replace(primaryKey, " ", "", -1)
+		fullKeyList := strings.Split(primaryKey, ",")
 		for _, v := range fullKeyList {
 			if len(v) > 0 {
 				fullkeyMap[v] = true
@@ -169,7 +173,7 @@ func (r *Record) SetDataWithIndexAndField(data TdrTableSt, FieldNameList []strin
 				}
 			}
 			// 如果后面未设置feiledname，在这里先设置获取所有字段。
-			if r.Cmd == cmd.TcaplusApiListGetReq {
+			if r.Cmd == cmd.TcaplusApiListGetReq || r.Cmd == cmd.TcaplusApiBatchGetReq {
 				logger.DEBUG("set value fieldTag :%s", fieldTag)
 				r.ValueMap[fieldTag] = []byte{}
 			}
@@ -404,6 +408,49 @@ func (r *Record) SetData(data TdrTableSt) error {
 }
 
 /**
+	@brief  设置过滤条件
+	@param [IN] query     过滤条件例如：fieldValue > 4
+	@retval int     错误码
+**/
+func (r *Record) SetCondition(query string) int {
+	if r.Condition == nil {
+		logger.ERR("cmd(%d) not support condition", r.Cmd)
+		return terror.GEN_ERR_INVALID_ARGUMENTS
+	}
+	if int64(len(query)) > tcaplus_protocol_cs.TCAPLUS_MAX_EXPR_TEXT_LEN {
+		logger.ERR("SetCondition query length %d larger max %d", len(query),
+			tcaplus_protocol_cs.TCAPLUS_MAX_EXPR_TEXT_LEN)
+		return terror.GEN_ERR_INVALID_ARGUMENTS
+	}
+	*r.Condition = query
+	return 0
+}
+
+/**
+	@brief  设置附加操作
+	@param [IN] operation     附加操作：PUSH gameids #[-1][$=123]
+	@param [IN] operateOption 附加操作类型 0|1
+	@retval int     错误码
+**/
+func (r *Record) SetOperation(operation string, operateOption int32) int {
+	if r.Operation == nil {
+		logger.ERR("cmd(%d) not support operation", r.Cmd)
+		return terror.GEN_ERR_INVALID_ARGUMENTS
+	}
+	if int64(len(operation)) > tcaplus_protocol_cs.TCAPLUS_MAX_EXPR_TEXT_LEN {
+		logger.ERR("invalid condition.size=%d", len(operation))
+		return terror.GEN_ERR_INVALID_ARGUMENTS
+	}
+
+	*r.Operation = operation
+	if r.OperateOption != nil {
+		*r.OperateOption = operateOption
+	}
+
+	return 0
+}
+
+/**
 	@brief  基于TDR描述读取record数据
 	@param [IN] data     基于TDR描述record接口数据，tdr的xml通过工具生成的go结构体，包含的TdrTableSt接口的一系列方法
 	@retval error     错误码
@@ -464,7 +511,7 @@ func (r *Record) GetData(data TdrTableSt) error {
 
 		//field 不存在则不解析
 		if _, exist := findMap[fieldTag]; !exist {
-			logger.INFO("st field name %s tag %s not exist", fieldName, fieldTag)
+			logger.DEBUG("st field name %s tag %s not exist", fieldName, fieldTag)
 			continue
 		}
 
@@ -918,7 +965,89 @@ func (r *Record) AddValueOperation(FieldName string, FieldBuff []byte, FieldLen 
 	}
 	r.UpdFieldSet.Fields = append(r.UpdFieldSet.Fields, Fields)
 	return nil
+}
 
+/** brief  自增自减字段操作
+ *  param  [in] field_name         字段名称
+ *  param  [in] incData            加减数值，和表中定义的字段类型保持一致
+ *  param  [in] operation          操作类型，cmd.TcaplusApiOpPlus 加操作 cmd.TcaplusApiOpMinus 减操作
+ *  param [IN] lower_limit         操作结果值下限，如果比这个值小，返回 TcapErrCode::SVR_ERR_FAIL_OUT_OF_USER_DEF_RANGE
+									支持double类型，int64(math.Float64bits(3.1415))
+ *  param [IN] upper_limit         操作结果值上限，如果比这个值大，返回 TcapErrCode::SVR_ERR_FAIL_OUT_OF_USER_DEF_RANGE
+									支持double类型，int64(math.Float64bits(3.1415))
+ *  note                           lower_limit == upper_limit 时，存储端不对操作结果进行范围检测
+*/
+func (r *Record) SetIncValue(fieldName string, incData interface{},
+	operation uint32, lowerLimit int64, upperLimit int64) error {
+	if operation < cmd.TcaplusApiOpPlus || operation > cmd.TcaplusApiOpMinus {
+		return &terror.ErrorCode{Code: terror.API_ERR_PARAMETER_INVALID, Message: "AddValueOperation invalid param"}
+	}
+
+	//check type
+	var value []byte
+	LowerUpperLimitType := byte(7) //CAPLUS_RECORD_TYPE_DOUBLE=10 CAPLUS_RECORD_TYPE_INT64=7
+	if incData != nil {
+		switch t := incData.(type) {
+		case int8:
+			value = make([]byte, 1, 1)
+			value[0] = byte(t)
+			break
+		case int16:
+			value = make([]byte, 2, 2)
+			binary.LittleEndian.PutUint16(value, uint16(t))
+			break
+		case int32:
+			value = make([]byte, 4, 4)
+			binary.LittleEndian.PutUint32(value, uint32(t))
+			break
+		case int64:
+			value = make([]byte, 8, 8)
+			binary.LittleEndian.PutUint64(value, uint64(t))
+			break
+		case uint8:
+			value = make([]byte, 1, 1)
+			value[0] = t
+			break
+		case uint16:
+			value = make([]byte, 2, 2)
+			binary.LittleEndian.PutUint16(value, t)
+			break
+		case uint32:
+			value = make([]byte, 4, 4)
+			binary.LittleEndian.PutUint32(value, t)
+			break
+		case uint64:
+			value = make([]byte, 8, 8)
+			binary.LittleEndian.PutUint64(value, t)
+			break
+		case float32:
+			value = make([]byte, 4, 4)
+			binary.LittleEndian.PutUint32(value, math.Float32bits(t))
+			LowerUpperLimitType = 10
+			break
+		case float64:
+			value = make([]byte, 8, 8)
+			binary.LittleEndian.PutUint64(value, math.Float64bits(t))
+			LowerUpperLimitType = 10
+			break
+		default:
+			logger.ERR("value type not support %v", t)
+			return &terror.ErrorCode{Code: terror.RecordValueTypeInvalid, Message: "value type not support increase"}
+		}
+	}
+
+	r.UpdFieldSet.FieldNum += 1
+	Fields := &tcaplus_protocol_cs.TCaplusUpdField{
+		FieldName:           fieldName,
+		FieldLen:            uint32(len(value)),
+		FieldBuff:           value,
+		FieldOperation:      operation,
+		LowerLimit:          lowerLimit,
+		UpperLimit:          upperLimit,
+		LowerUpperLimitType: LowerUpperLimitType,
+	}
+	r.UpdFieldSet.Fields = append(r.UpdFieldSet.Fields, Fields)
+	return nil
 }
 
 /**
@@ -1023,13 +1152,22 @@ func (r *Record) setPBDataCommon(message proto.Message, keys, values []string) (
 			logger.ERR(errMsg)
 			return nil, &terror.ErrorCode{Code: terror.API_ERR_PARAMETER_INVALID, Message: errMsg}
 		}
-		fieldMap, err := r.CheckValues(values)
-		if err != nil {
-			errMsg := fmt.Sprintf("CheckValues error:%s", err)
-			logger.ERR(errMsg)
-			return nil, &terror.ErrorCode{Code: terror.API_ERR_PARAMETER_INVALID, Message: errMsg}
+		if r.Cmd == cmd.TcaplusApiPBFieldGetReq || r.Cmd == cmd.TcaplusApiPBFieldUpdateReq {
+			for _, v := range values {
+				r.ValueMap[v] = nil
+				r.PBFieldMap[v] = true
+			}
+			r.ValueMap["$"], _ = proto.Marshal(message)
+			r.PBFieldMap["$"] = true
+		} else {
+			fieldMap, err := r.CheckValues(values)
+			if err != nil {
+				errMsg := fmt.Sprintf("CheckValues error:%s", err)
+				logger.ERR(errMsg)
+				return nil, &terror.ErrorCode{Code: terror.API_ERR_PARAMETER_INVALID, Message: errMsg}
+			}
+			r.setPBValues(message, fieldMap)
 		}
-		r.setPBValues(message, fieldMap)
 	}
 
 	data := &idl.Tbl_Idl{Key: keybuf, Klen: int32(len(keybuf)), Value: buf, Vlen: int32(len(buf))}
@@ -1055,6 +1193,18 @@ func (r *Record) GetTableShardingKey(message proto.Message) []byte {
     @retval error      错误码
 **/
 func (r *Record) GetPBData(message proto.Message) error {
+	if r.Cmd == cmd.TcaplusApiGetTtlRes || r.Cmd == cmd.TcaplusApiSetTtlRes {
+		buf, err := r.getKeyBlob("key")
+		if err != nil {
+			return err
+		}
+		err = proto.Unmarshal(buf[2:], message)
+		if err != nil {
+			logger.ERR(err.Error())
+			return err
+		}
+		return nil
+	}
 	return r.GetPBDataWithValues(message, nil)
 }
 
@@ -1088,6 +1238,16 @@ func (r *Record) GetPBFieldValues(message proto.Message) error {
 		logger.ERR(err.Error())
 		return &terror.ErrorCode{Code: terror.API_ERR_UNPACK_MESSAGE}
 	}
+
+	if r.Cmd == cmd.TcaplusApiPBFieldGetRes || r.Cmd == cmd.TcaplusApiPBFieldUpdateRes {
+		err = proto.UnmarshalOptions{Merge: true}.Unmarshal(r.ValueMap["$"], message)
+		if err != nil {
+			logger.ERR(err.Error())
+			return &terror.ErrorCode{Code: terror.API_ERR_UNPACK_MESSAGE}
+		}
+		return nil
+	}
+
 	for numPath, v := range r.ValueMap {
 		tmp := message
 		nums := msgDesGrp.NumberMap[numPath]
@@ -1111,20 +1271,18 @@ func (r *Record) GetPBFieldValues(message proto.Message) error {
 // 获取指定value， values不为空时，将 values 以外的字段置空
 func (r *Record) GetPBDataWithValues(message proto.Message, values []string) error {
 	data := &idl.Tbl_Idl{}
-	err := r.GetData(data)
-	if err != nil {
-		value, exist := r.ValueMap["value"]
-		if !exist {
-			return err
-		}
-		_, exist = r.ValueMap["vlen"]
-		if !exist {
-			data.Value = value
-		} else {
-			data.Value = value[2:]
-		}
+	value, exist := r.ValueMap["value"]
+	if !exist {
+		return &terror.ErrorCode{Code: terror.API_ERR_UNPACK_MESSAGE, Message: "rsp not has pb value"}
 	}
-	err = proto.Unmarshal(data.Value, message)
+	_, exist = r.ValueMap["vlen"]
+	if !exist {
+		data.Value = value
+	} else {
+		data.Value = value[2:]
+	}
+
+	err := proto.Unmarshal(data.Value, message)
 	if err != nil {
 		logger.ERR(err.Error())
 		return &terror.ErrorCode{Code: terror.API_ERR_UNPACK_MESSAGE}
@@ -1233,4 +1391,72 @@ func (r *Record) GetPBKey(msg proto.Message) ([]byte, error) {
 		}
 	}
 	return buf[2:], nil
+}
+
+/**
+@brief  设置记录的生存时间，或者说过期时间，即记录多久之后过期，过期的记录将不会被访问到
+@param [IN] ttl 生存时间（过期时间），时间单位为毫秒，如果是相对时间，比如该参数值为10，则表示记录写入10ms之后过期，该参数值为0，则表示记录永不过期
+												   如果是绝对时间，比如该参数值为1599105600000, 则表示记录到"20200903 12:00:00"之后过期，该参数值为0，则表示记录永不过期
+@param [IN] is_absolute_time 时间类型是否为绝对时间，true表示绝对时间，false表示相对时间，默认是false，即相对时间
+@retval 0                       设置成功
+@retval 非0                     设置失败，具体错误参见 \link ErrorCode \endlink
+@note   该函数当前只支持 TCAPLUS_API_SET_TTL_REQ 响应
+@note   设置的ttl值最大不能超过uint64_t最大值的一半，即ttl最大值为 ULONG_MAX/2，超过该值接口会强制设置为该值
+@note   设置ttl的请求，在服务端不会增加对应记录的版本号
+@note   对于list表，当某个key下面所有记录因为过期删除后，会直接将索引记录也删除
+@note   对于设置了ttl的记录，如果是getbypartkey查询，并且只需要返回key字段（即不需要返回value字段）时，此时不会检查该记录是否过期
+@note   对于删除操作(generic表和list表的删除)，均不会检验记录是否过期
+*/
+func (r *Record) SetTTL(ttl uint64, isAbsoluteTime bool) int {
+	if r.Cmd != cmd.TcaplusApiSetTtlReq {
+		logger.ERR("expect cmd is TCAPLUS_API_SET_TTL_REQ(%d)", cmd.TcaplusApiSetTtlReq)
+		return terror.GEN_ERR_ERR
+	}
+
+	if r.Ttl == nil {
+		logger.ERR("Record ttl is nil")
+		return terror.GEN_ERR_ERR
+	}
+
+	if r.TtlType == nil {
+		logger.ERR("Record ttl type is nil")
+		return terror.GEN_ERR_ERR
+	}
+
+	//如果ttl的值大于最大值的一半时，将强制设置为最大值的一半
+	if ttl > math.MaxUint64/2 {
+		ttl = math.MaxUint64 / 2
+	}
+
+	*r.Ttl = ttl
+
+	// 如果是绝对时间，则设置ttl_type值为1
+	if isAbsoluteTime {
+		*r.TtlType = uint8(tcaplus_protocol_cs.TYPE_ABSOLUTE_TIME)
+	} else { //如果是相对时间，则设置ttl_type值为0
+		*r.TtlType = uint8(tcaplus_protocol_cs.TYPE_RELATIVE_TIME)
+	}
+
+	return 0
+}
+
+/**
+    @brief 专用于 getttl 方法，设置过期
+    @param [IN] ttl 单位 ms
+    @retval error 错误码
+**/
+func (r *Record) GetTTL(ttl *uint64) int {
+	if r.Cmd != cmd.TcaplusApiGetTtlRes {
+		logger.ERR("expect cmd is TCAPLUS_API_GET_TTL_RES(%d)", cmd.TcaplusApiGetTtlRes)
+		return terror.GEN_ERR_ERR
+	}
+
+	if r.Ttl == nil {
+		logger.ERR("Record ttl is nil")
+		return terror.GEN_ERR_ERR
+	}
+
+	*ttl = *r.Ttl
+
+	return 0
 }

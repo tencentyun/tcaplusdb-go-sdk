@@ -544,3 +544,155 @@ func TestPBReplaceSuccess_Record_Exist_Flag_3(t *testing.T) {
 	client.Delete(oldMsg)
 
 }
+
+// case 更新附带条件与操作
+func TestPBReplaceWithOperateCondition(t *testing.T) {
+	client, req := tools.InitPBClientAndReqWithTableName(cmd.TcaplusApiReplaceReq, "user")
+
+	oldMsg := &tcaplusservice.User{}
+	oldMsg.Id = 1
+	oldMsg.Name = "a"
+	oldMsg.Rank = 1
+	client.Insert(oldMsg)
+	defer client.Delete(oldMsg)
+	oldJson := tools.StToJson(oldMsg)
+	fmt.Println(oldJson)
+
+	//add record
+	rec, err := req.AddRecord(0)
+	if err != nil {
+		t.Errorf("AddRecord fail, %s", err.Error())
+		return
+	}
+
+	if _, err := rec.SetPBData(oldMsg); err != nil {
+		t.Errorf("SetData fail, %s", err.Error())
+		return
+	}
+
+	// 条件
+	rec.SetCondition("rank == 1")
+	// 操作
+	rec.SetOperation("PUSH gameids #[-1][$=123]", 0)
+
+	req.SetResultFlag(2)
+
+	if err := client.SendRequest(req); err != nil {
+		t.Errorf("SendRequest fail, %s", err.Error())
+		return
+	}
+
+	//recv resp
+	resp, err := tools.RecvResponse(client)
+	if err != nil {
+		t.Errorf("recvResponse fail, %s", err.Error())
+		return
+	}
+
+	if err := resp.GetResult(); err != 0 {
+		t.Errorf("resp.GetResult err %d, %s", err, terror.GetErrMsg(err))
+		return
+	}
+
+	if 1 != resp.GetRecordCount() {
+		t.Errorf("resp.GetRecordCount() %d != 1", resp.GetRecordCount())
+		return
+	}
+
+	for i := 0; i < resp.GetRecordCount(); i++ {
+		record, err := resp.FetchRecord()
+		if err != nil {
+			t.Errorf("FetchRecord failed %s", err.Error())
+			return
+		}
+
+		newMsg := &tcaplusservice.User{}
+		err = record.GetPBData(newMsg)
+		if err != nil {
+			t.Errorf("GetPBData failed %s", err.Error())
+			return
+		}
+
+		newJson := tools.StToJson(newMsg)
+		fmt.Println(newJson)
+		if newMsg.Gameids[0] != 123 {
+			t.Errorf("newMsg.Gameids[0] != 123")
+			return
+		}
+	}
+}
+
+// case 更新附带条件
+func TestPBReplaceWithCondition(t *testing.T) {
+	client, req := tools.InitPBClientAndReqWithTableName(cmd.TcaplusApiReplaceReq, "user")
+
+	oldMsg := &tcaplusservice.User{}
+	oldMsg.Id = 1
+	oldMsg.Name = "a"
+	oldMsg.Rank = 1
+	client.Insert(oldMsg)
+	defer client.Delete(oldMsg)
+	oldJson := tools.StToJson(oldMsg)
+	fmt.Println(oldJson)
+
+	//add record
+	rec, err := req.AddRecord(0)
+	if err != nil {
+		t.Errorf("AddRecord fail, %s", err.Error())
+		return
+	}
+
+	oldMsg.Rank = 100
+	if _, err := rec.SetPBData(oldMsg); err != nil {
+		t.Errorf("SetData fail, %s", err.Error())
+		return
+	}
+
+	rec.SetCondition("rank == 1")
+
+	req.SetResultFlag(2)
+
+	if err := client.SendRequest(req); err != nil {
+		t.Errorf("SendRequest fail, %s", err.Error())
+		return
+	}
+
+	//recv resp
+	resp, err := tools.RecvResponse(client)
+	if err != nil {
+		t.Errorf("recvResponse fail, %s", err.Error())
+		return
+	}
+
+	if err := resp.GetResult(); err != 0 {
+		t.Errorf("resp.GetResult err %d, %s", err, terror.GetErrMsg(err))
+		return
+	}
+
+	if 1 != resp.GetRecordCount() {
+		t.Errorf("resp.GetRecordCount() %d != 1", resp.GetRecordCount())
+		return
+	}
+
+	for i := 0; i < resp.GetRecordCount(); i++ {
+		record, err := resp.FetchRecord()
+		if err != nil {
+			t.Errorf("FetchRecord failed %s", err.Error())
+			return
+		}
+
+		newMsg := &tcaplusservice.User{}
+		err = record.GetPBData(newMsg)
+		if err != nil {
+			t.Errorf("GetPBData failed %s", err.Error())
+			return
+		}
+
+		newJson := tools.StToJson(newMsg)
+		fmt.Println(newJson)
+		if newMsg.Rank != 100 {
+			t.Errorf("newMsg.Rank != 100")
+			return
+		}
+	}
+}

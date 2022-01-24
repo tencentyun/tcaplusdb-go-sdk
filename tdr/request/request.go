@@ -108,6 +108,7 @@ type commonInterface interface {
 							2表示: 操作成功，响应返回变更记录的所有字段最新数据
 							3表示: 操作成功，响应返回变更记录的所有字段旧数据
 	@retval error      错误码
+	NOTE：SetResultFlag有历史包袱，某些场景并不准确，推荐使用SetResultFlagForSuccess
 	**/
 	SetResultFlag(flag int) error
 
@@ -472,6 +473,24 @@ func NewRequest(appId uint64, zoneId uint32, tableName string, cmd int, isPB boo
 		req.commonInterface, err = newTraverseRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
 	case tcaplusCmd.TcaplusApiGetTableRecordCountReq:
 		req.commonInterface, err = newCountRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
+	case tcaplusCmd.TcaplusApiBatchInsertReq:
+		req.commonInterface, err = newBatchInsertRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
+	case tcaplusCmd.TcaplusApiBatchDeleteReq:
+		req.commonInterface, err = newBatchDeleteRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
+	case tcaplusCmd.TcaplusApiBatchReplaceReq:
+		req.commonInterface, err = newBatchReplaceRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
+	case tcaplusCmd.TcaplusApiBatchUpdateReq:
+		req.commonInterface, err = newBatchUpdateRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
+	case tcaplusCmd.TcaplusApiGetTtlReq:
+		req.commonInterface, err = newGetTtlRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
+	case tcaplusCmd.TcaplusApiSetTtlReq:
+		req.commonInterface, err = newSetTtlRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
+	case tcaplusCmd.TcaplusApiListGetBatchReq:
+		req.commonInterface, err = newListGetBatchRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
+	case tcaplusCmd.TcaplusApiListAddAfterBatchReq:
+		req.commonInterface, err = newListAddAfterBatchRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
+	case tcaplusCmd.TcaplusApiListReplaceBatchReq:
+		req.commonInterface, err = newListReplaceBatchRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
 	default:
 		logger.ERR("invalid cmd %d", cmd)
 		return nil, &terror.ErrorCode{Code: terror.InvalidCmd}
@@ -522,7 +541,7 @@ func keyHashCode(keySet *tcaplus_protocol_cs.TCaplusKeySet) (uint32, error) {
 	return crc32.ChecksumIEEE(buf), nil
 }
 
-var allowd_flag_cmd_map = [][]uint32{
+var allowdFlagCmdMap = [][]uint32{
 	/* bit1 (0x00000001): TCAPLUS_FLAG_FETCH_ONLY_IF_MODIFIED */
 	{tcaplusCmd.TcaplusApiGetReq,
 		tcaplusCmd.TcaplusApiListGetReq,
@@ -544,28 +563,30 @@ var allowd_flag_cmd_map = [][]uint32{
 	{tcaplusCmd.TcaplusApiListDeleteReq,
 		tcaplusCmd.TcaplusApiListDeleteAllReq,
 		tcaplusCmd.TcaplusApiListDeleteBatchReq},
+	/* bit5 (0x00000010): TcaplusFlagInsertRecordIfNotExist int32 = 16 PB的FieldUpdate使用，数据不存在则插入*/
+	{tcaplusCmd.TcaplusApiPBFieldUpdateReq},
 }
 
 func manipulateFlags(pkg *tcaplus_protocol_cs.TCaplusPkg, flags int32, clear bool) int {
 	if pkg == nil {
-		return -1
+		return int(terror.RequestHasHasNoPkg)
 	}
 
 	// 针对每个flag检查合法
-	for i := 0; i < len(allowd_flag_cmd_map); i++ {
+	for i := 0; i < len(allowdFlagCmdMap); i++ {
 		if ((1 << uint32(i)) & flags) != 0 {
 			continue
 		}
 
 		k := 0
-		for ; k < len(allowd_flag_cmd_map[i]); k++ {
-			if allowd_flag_cmd_map[i][k] == pkg.Head.Cmd {
+		for ; k < len(allowdFlagCmdMap[i]); k++ {
+			if allowdFlagCmdMap[i][k] == pkg.Head.Cmd {
 				break
 			}
 		}
 
-		if k >= len(allowd_flag_cmd_map[i]) {
-			return -1
+		if k >= len(allowdFlagCmdMap[i]) {
+			return int(terror.OperationNotSupport)
 		}
 	}
 
@@ -602,6 +623,8 @@ func (req *tcapRequest) SetListShiftFlag(shiftFlag byte) int32 {
 	switch req.commonInterface.(type) {
 	case *listAddAfterRequest:
 		return req.commonInterface.(*listAddAfterRequest).SetListShiftFlag(shiftFlag)
+	case *listAddAfterBatchRequest:
+		return req.commonInterface.(*listAddAfterBatchRequest).SetListShiftFlag(shiftFlag)
 	default:
 		return int32(terror.API_ERR_OPERATION_TYPE_NOT_MATCH)
 	}
@@ -611,6 +634,8 @@ func (req *tcapRequest) SetAddableIncreaseFlag(increase_flag byte) int32 {
 	switch req.commonInterface.(type) {
 	case *increaseRequest:
 		return req.commonInterface.(*increaseRequest).SetAddableIncreaseFlag(increase_flag)
+	case *pbFieldIncreaseRequest:
+		return req.commonInterface.(*pbFieldIncreaseRequest).SetEnableIncreaseNotExist(increase_flag)
 	default:
 		return int32(terror.GEN_ERR_SUC)
 	}
@@ -620,6 +645,8 @@ func (req *tcapRequest) AddElementIndex(idx int32) int32 {
 	switch req.commonInterface.(type) {
 	case *listDeleteBatchRequest:
 		return req.commonInterface.(*listDeleteBatchRequest).AddElementIndex(idx)
+	case *listGetBatchRequest:
+		return req.commonInterface.(*listGetBatchRequest).AddElementIndex(idx)
 	default:
 		return int32(terror.API_ERR_OPERATION_TYPE_NOT_MATCH)
 	}

@@ -40,6 +40,7 @@ var (
 	SendRequestFail        = -0x0000211e /*-8478*/
 	TimeOut                = -0x0000221e /*-8734*/
 	RequestHasHasNoPkg     = -0x0000231e /*-8990*/
+	NoRspWithTheKeyReq     = -0x0000241e /*-8990*/
 
 	/*****************************************************************************************
 	 **********************************C版本错误码*********************************************
@@ -595,6 +596,7 @@ var (
 	BSON_ERR_TDR_META_LIB_IS_INVALID                    = -0x00001318 /*-4888*/
 
 	//TCAPTCAPCOMMON SYSTEM (module id 0x19) Error Code defined below
+	COMMON_ERR_CONDITION_NOT_MATCHED            = 0x00000119  /*281*/
 	COMMON_ERR_INVALID_ARGUMENTS                = -0x00000119 /*-281*/
 	COMMON_ERR_INVALID_MEMBER_VARIABLE_VALUE    = -0x00000219 /*-537*/
 	COMMON_ERR_SPINLOCK_INIT_FAIL               = -0x00000319 /*-793*/
@@ -610,6 +612,11 @@ var (
 	COMMON_ERR_LINUX_SYSTEM_CALL_FAIL           = -0x00000d19 /*-3353*/
 	COMMON_ERR_NOT_FIND_STAT_CACHE_VALUE        = -0x00000e19 /*-3609*/
 	COMMON_ERR_LZO_CHECK_FAIL                   = -0x00000f19 /*-3865*/
+	COMMON_ERR_EXPR_CONDITION_NOT_MATCHED       = -0x00001019 /*-4121*/
+	COMMON_ERR_INVALID_EXPR_SYNTAX              = -0x00001119 /*-4377*/
+	COMMON_ERR_INVALID_ARRAY_INDEX              = -0x00001219 /*-4633*/
+	COMMON_ERR_INVALID_FIELD_NAME               = -0x00001319 /*-4889*/
+	COMMON_ERR_INVALID_EXPR_TYPE                = -0x00001419 /*-5145*/
 
 	//tcaplus_index SYSTEM (module id 0x1a) Error Code defined below
 	TCAPLUS_INDEX_ERR_INVALID_PARAMS                                         = -0x0000011a /*-282*/
@@ -662,6 +669,7 @@ var ErrorCodes = map[int]string{
 	RouterIsClosed:         "路由已关闭",
 	SendRequestFail:        "请求发送失败",
 	TimeOut:                "请求超时",
+	NoRspWithTheKeyReq:     "batch请求对应的key没有响应",
 
 	/*****************************************************************************************
 	*****************************************C版本错误码*********************************************
@@ -1217,6 +1225,7 @@ var ErrorCodes = map[int]string{
 	BSON_ERR_TDR_META_LIB_IS_INVALID:                    "bson_err_tdr_meta_lib_is_invalid",
 
 	//TCAPTCAPCOMMON SYSTEM (module id 0x19) Error Code defined below
+	COMMON_ERR_CONDITION_NOT_MATCHED:            "common err condition not matched",
 	COMMON_ERR_INVALID_ARGUMENTS:                "common_invalid_arguments",
 	COMMON_ERR_INVALID_MEMBER_VARIABLE_VALUE:    "common_invalid_member_variable_value",
 	COMMON_ERR_SPINLOCK_INIT_FAIL:               "common_spinlock_init_fail",
@@ -1232,6 +1241,11 @@ var ErrorCodes = map[int]string{
 	COMMON_ERR_LINUX_SYSTEM_CALL_FAIL:           "linux system call failed: such as fopen: fget: sscanf and so on.",
 	COMMON_ERR_NOT_FIND_STAT_CACHE_VALUE:        "can not find old stat cache value: such as cpu:network old stat cache info.",
 	COMMON_ERR_LZO_CHECK_FAIL:                   "when use lzo to compress file: it's header contains magic",
+	COMMON_ERR_EXPR_CONDITION_NOT_MATCHED:       "common err expr condition not matched",
+	COMMON_ERR_INVALID_EXPR_SYNTAX:              "common err invalid expr syntax",
+	COMMON_ERR_INVALID_ARRAY_INDEX:              "common err invalid array index",
+	COMMON_ERR_INVALID_FIELD_NAME:               "common err invalid field name",
+	COMMON_ERR_INVALID_EXPR_TYPE:                "common err invalid expr type",
 
 	//tcaplus_index SYSTEM (module id 0x1a) Error Code defined below
 	TCAPLUS_INDEX_ERR_INVALID_PARAMS:                                         "tcaplus_index_invalid_parameters",
