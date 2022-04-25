@@ -132,17 +132,20 @@ func (c *client) Dial(appId uint64, zoneList []uint32, dirUrl string, signature 
 			logger.ERR("init failed %v", err.Error())
 			c.initFlag = InitFail
 			c.netServer.stopNetWork <- true
+			c.ctrl.Wait()
 			return err
 		}
 		logger.ERR("init timeout %v", timeout)
 		c.initFlag = InitFail
 		c.netServer.stopNetWork <- true
+		c.ctrl.Wait()
 		return &terror.ErrorCode{Code: terror.ClientInitTimeOut, Message: "init timeout"}
 	case ret := <-c.netServer.initResult:
 		if ret != nil {
 			logger.ERR("init failed. %s", ret.Error())
 			c.initFlag = InitFail
 			c.netServer.stopNetWork <- true
+			c.ctrl.Wait()
 			return ret
 		} else {
 			c.initFlag = InitSuccess
