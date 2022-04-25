@@ -436,6 +436,9 @@ func (c *client) GetProxyUrl(keySet *tcaplus_protocol_cs.TCaplusKeySet, zoneId u
 		不要复用同一个Client以免触发未知bug
 */
 func (c *client) Close() {
+	if c.initFlag != InitSuccess {
+		return
+	}
 	c.netServer.stopNetWork <- true
 	c.initFlag = NotInit
 	c.ctrl.Wait()
