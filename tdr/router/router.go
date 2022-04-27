@@ -92,9 +92,6 @@ type Router struct {
 }
 
 func (r *Router) createRequestRoutine() {
-	if len(r.requestChanList) > 0 {
-		return
-	}
 	if r.ctrl.Option.PackRoutineCount > 0 {
 		r.requestRoutineNum = r.ctrl.Option.PackRoutineCount
 	} else {
@@ -158,10 +155,6 @@ func (r *Router) createRequestRoutine() {
 }
 
 func (r *Router) createResponseRoutine() {
-	if len(r.responseChanList) > 0 {
-		return
-	}
-
 	if r.ctrl.Option.UnPackRoutineCount > 0 {
 		r.responseRoutineNum = r.ctrl.Option.UnPackRoutineCount
 	} else {
