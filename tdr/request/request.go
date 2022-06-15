@@ -471,6 +471,8 @@ func NewRequest(appId uint64, zoneId uint32, tableName string, cmd int, isPB boo
 		req.commonInterface, err = newGetShardListRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
 	case tcaplusCmd.TcaplusApiTableTraverseReq:
 		req.commonInterface, err = newTraverseRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
+	case tcaplusCmd.TcaplusApiListTableTraverseReq:
+		req.commonInterface, err = newListTraverseRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
 	case tcaplusCmd.TcaplusApiGetTableRecordCountReq:
 		req.commonInterface, err = newCountRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
 	case tcaplusCmd.TcaplusApiBatchInsertReq:
@@ -574,7 +576,7 @@ func manipulateFlags(pkg *tcaplus_protocol_cs.TCaplusPkg, flags int32, clear boo
 
 	// 针对每个flag检查合法
 	for i := 0; i < len(allowdFlagCmdMap); i++ {
-		if ((1 << uint32(i)) & flags) != 0 {
+		if ((1 << uint32(i)) & flags) == 0 {
 			continue
 		}
 
@@ -667,6 +669,8 @@ func (req *tcapRequest) GetTcaplusPackagePtr() *tcaplus_protocol_cs.TCaplusPkg {
 		return req.commonInterface.(*getShardListRequest).GetTcaplusPackagePtr()
 	case *traverseRequest:
 		return req.commonInterface.(*traverseRequest).GetTcaplusPackagePtr()
+	case *listTraverseRequest:
+		return req.commonInterface.(*listTraverseRequest).GetTcaplusPackagePtr()
 	default:
 		return nil
 	}

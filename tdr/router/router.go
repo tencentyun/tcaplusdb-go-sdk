@@ -3,6 +3,7 @@ package router
 import (
 	"container/list"
 	"encoding/binary"
+	"errors"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/common"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/config"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/tnet"
@@ -92,9 +93,6 @@ type Router struct {
 }
 
 func (r *Router) createRequestRoutine() {
-	if len(r.requestChanList) > 0 {
-		return
-	}
 	if r.ctrl.Option.PackRoutineCount > 0 {
 		r.requestRoutineNum = r.ctrl.Option.PackRoutineCount
 	} else {
@@ -158,10 +156,6 @@ func (r *Router) createRequestRoutine() {
 }
 
 func (r *Router) createResponseRoutine() {
-	if len(r.responseChanList) > 0 {
-		return
-	}
-
 	if r.ctrl.Option.UnPackRoutineCount > 0 {
 		r.responseRoutineNum = r.ctrl.Option.UnPackRoutineCount
 	} else {
@@ -345,6 +339,26 @@ func (r *Router) GetZoneTables(zoneId uint32) []string {
 		proxy.tbMutex.RUnlock()
 	}
 	return tables
+}
+
+//初始化超时，获取dir的error信息
+func (r *Router) GetError() error {
+	var errStr string
+	for _, proxy := range r.proxyMap {
+		proxyErr := proxy.GetErrorStr()
+		if len(proxyErr) > 0 {
+			errStr = errStr + proxyErr + ","
+		}
+	}
+
+	if len(errStr) > 0 {
+		return  errors.New(errStr)
+	}
+
+	if len(r.proxyMap) == 0 {
+		return &terror.ErrorCode{Code: terror.API_ERR_DIR_GET_PROXYLIST_TIMEOUT}
+	}
+	return nil
 }
 
 //0 所有认证成功， 1 有proxy全部认证中， 2 所有proxy部分认证成功，可以启动， -1 有认证失败,启动失败

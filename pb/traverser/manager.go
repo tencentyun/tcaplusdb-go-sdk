@@ -44,6 +44,7 @@ func (m *TraverserManager) GetTraverser(zoneId uint32, table string) *Traverser 
 	zoneTable := fmt.Sprintf("%d|%s", zoneId, table)
 	t, exist := m.traverseMap[zoneTable]
 	if exist {
+		t.tableType = 0
 		return t
 	}
 	if len(m.traverseMap) >= 8 {
@@ -51,9 +52,18 @@ func (m *TraverserManager) GetTraverser(zoneId uint32, table string) *Traverser 
 		return nil
 	}
 	t = newTraverser(zoneId, table)
+	t.tableType = 0
 	t.client = m.client
 	t.tm = m
 	m.traverseMap[zoneTable] = t
+	return t
+}
+
+func (m *TraverserManager) GetListTraverser(zoneId uint32, table string) *Traverser {
+	t := m.GetTraverser(zoneId, table)
+	if t != nil {
+		t.tableType = 1
+	}
 	return t
 }
 
@@ -77,7 +87,7 @@ func (m *TraverserManager) OnRecvResponse(zoneId uint32, msg *tcaplus_protocol_c
 		return &terror.ErrorCode{Code: terror.API_ERR_INVALID_OBJ_STATUE}
 	}
 
-	if cmd.TcaplusApiTableTraverseRes == msg.Head.Cmd {
+	if cmd.TcaplusApiTableTraverseRes == msg.Head.Cmd || cmd.TcaplusApiListTableTraverseRes == msg.Head.Cmd{
 		asyncId := t.asyncId
 		if 0 == t.asyncId {
 			asyncId = uint64(t.traverseId)<<32 | uint64(t.requestId)

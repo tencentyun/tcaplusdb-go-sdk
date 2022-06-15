@@ -178,7 +178,7 @@ func (c *Conn) SendRoutine() {
 
 	proc := func(buf *Buf) {
 		// 设置30秒的发送超时，防止一直卡住
-		c.netConn.SetWriteDeadline(common.TimeNow.Add(c.timeout))
+		c.netConn.SetWriteDeadline(time.Now().Add(c.timeout))
 		var length = len(c.sendChan)
 		c.sendPkg(buf)
 		for index := 0; index < length; index++ {
@@ -249,7 +249,7 @@ func (c *Conn) recvRoutine() {
 				if err == io.EOF {
 					log.INFO("read close:%s, %s", err.Error(), c.url)
 				} else {
-					log.ERR("read err:%s, %s", err.Error(), c.url)
+					log.WARN("read err:%s, %s", err.Error(), c.url)
 				}
 				return
 			}

@@ -61,7 +61,7 @@ func (r *Record) unPackCompactValueSet(compactValueSet *tcaplus_protocol_cs.Comp
 	//get version(4B)
 	version := *(*int32)(unsafe.Pointer(&compactValueSet.ValueBuf[4]))
 	if r.Version != version {
-		logger.WARN("value version %d not equal key version %d", version, r.Version)
+		logger.DEBUG("value version %d not equal key version %d", version, r.Version)
 	}
 
 	for i := 0; i < int(fieldNum); i++ {

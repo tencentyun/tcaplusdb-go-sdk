@@ -27,8 +27,10 @@ type server struct {
 	conn        *tnet.Conn
 	connectTime time.Time
 	signUpTime  time.Time
+	lastRspTime time.Time
 	router      *Router
 	prepareStop bool //proxy准备stop
+	error error
 }
 
 func (s *server) getSignUpStat() uint32 {
@@ -86,6 +88,7 @@ func (s *server) connect() {
 			ProxyCallBackFunc, s,
 			s.router.ctrl.Option.ProxyConnOption.BufSizePerCon)
 		if err != nil {
+			s.error = &terror.ErrorCode{Code: terror.API_ERR_PROXY_CONNECT_FAILED, Message: "connect proxy failed:" + s.proxyUrl}
 			logger.ERR("new conn failed %v", err)
 			return
 		}
@@ -100,7 +103,8 @@ func (s *server) connect() {
 				s.signUpFlag = SignUpIng
 				logger.INFO("start sign up proxy %v", s.proxyUrl)
 				s.signUp()
-			} else if s.signUpFlag == SignUpIng && time.Now().Sub(s.signUpTime).Seconds() > 3 {
+			} else if s.signUpFlag != SignUpSuccess && time.Now().Sub(s.signUpTime).Seconds() > 3 {
+				s.error = &terror.ErrorCode{Code: terror.API_ERR_DIR_SIGNUP_FAILED, Message: "sign up proxy timeout(3s):" + s.proxyUrl}
 				//认证超时，重新认证
 				logger.ERR("sign up proxy %v timeout(3s), conn stat %v", s.proxyUrl, s.conn.GetStat())
 				s.signUp()
@@ -114,11 +118,13 @@ func (s *server) connect() {
 			if time.Now().Sub(s.connectTime).Seconds() < 3 {
 				return
 			}
+			s.error = &terror.ErrorCode{Code: terror.API_ERR_PROXY_CONNECT_FAILED, Message: "connect proxy timeout(3s):" + s.proxyUrl}
 			logger.ERR("connect proxy %v failed, conn stat %v, retry connect", s.proxyUrl, s.conn.GetStat())
 			s.disConnect()
 			conn, err := tnet.NewConn(s.proxyUrl, s.router.ctrl.Option.ProxyConnOption.ConTimeout, ParseProxyPkgLen, ProxyCallBackFunc, s,
 				s.router.ctrl.Option.ProxyConnOption.BufSizePerCon)
 			if err != nil {
+				s.error = &terror.ErrorCode{Code: terror.API_ERR_PROXY_CONNECT_FAILED, Message: "connect proxy failed:" + s.proxyUrl}
 				logger.ERR("new conn failed %v", err)
 				return
 			}
@@ -236,6 +242,7 @@ func ProxyCallBackFunc(url *string, pkg *tnet.PKG) error {
 }
 
 func (s *server) processRsp(msg *tcaplus_protocol_cs.TCaplusPkg) {
+	s.lastRspTime = time.Now()
 	switch int(msg.Head.Cmd) {
 	case cmd.TcaplusApiAppSignUpRes:
 		logger.INFO("recv proxy %s response %s", s.proxyUrl, common.CsHeadVisualize(msg.Head))
@@ -244,6 +251,7 @@ func (s *server) processRsp(msg *tcaplus_protocol_cs.TCaplusPkg) {
 			logger.INFO("zone %d proxy %s signUp success", s.zoneId, s.proxyUrl)
 		} else {
 			s.signUpFlag = SignUpFail
+			s.error = &terror.ErrorCode{Code: int(msg.Head.Result)}
 			logger.ERR("zone %d proxy %s signUp failed, ret %d", s.zoneId, s.proxyUrl, msg.Head.Result)
 		}
 
@@ -253,7 +261,7 @@ func (s *server) processRsp(msg *tcaplus_protocol_cs.TCaplusPkg) {
 		s.sendStopNotifyRes(msg.Head.AsynID)
 
 	case cmd.TcaplusApiHeartBeatRes:
-		curTime := time.Now().UnixNano() / 1000
+		curTime := s.lastRspTime.UnixNano() / 1000
 		cost := curTime - msg.Body.HeartBeatRes.ApiTimeUs
 		if cost > 1000*10 {
 			sendTm := time.Unix(msg.Body.HeartBeatRes.ApiTimeUs/1000000, 0)
@@ -289,6 +297,7 @@ func (s *server) processRsp(msg *tcaplus_protocol_cs.TCaplusPkg) {
 		cmd.TcaplusApiPBFieldIncreaseRes,
 		cmd.TcaplusApiGetShardListRes,
 		cmd.TcaplusApiTableTraverseRes,
+		cmd.TcaplusApiListTableTraverseRes,
 		cmd.TcaplusApiGetTableRecordCountRes,
 		cmd.TcaplusApiSetTtlRes,
 		cmd.TcaplusApiGetTtlRes,
@@ -303,7 +312,8 @@ func (s *server) processRsp(msg *tcaplus_protocol_cs.TCaplusPkg) {
 			logger.DEBUG("recv proxy %s response %s", s.proxyUrl, common.CsHeadVisualize(msg.Head))
 		}
 		router := s.router
-		if msg.Head.Cmd == cmd.TcaplusApiTableTraverseRes || msg.Head.Cmd == cmd.TcaplusApiGetShardListRes {
+		if msg.Head.Cmd == cmd.TcaplusApiTableTraverseRes || msg.Head.Cmd == cmd.TcaplusApiListTableTraverseRes ||
+			msg.Head.Cmd == cmd.TcaplusApiGetShardListRes {
 			drop := false
 			router.TM.OnRecvResponse(s.zoneId, msg, &drop)
 			if drop {

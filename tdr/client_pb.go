@@ -10,6 +10,8 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/dynamicpb"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -42,49 +44,66 @@ func (c *PBClient) initTableMeta(zoneTables map[uint32][]string) error {
 		}
 	}
 
+	initResult := int32(0)
+	wg := sync.WaitGroup{}
 	for zone, tables := range zoneTables {
 		if c.defZone == -1 {
 			c.defZone = int32(zone)
 			logger.DEBUG("init default zone %d", c.defZone)
 		}
 		for _, table := range tables {
-			req, err := c.NewRequest(zone, table, cmd.TcaplusApiMetadataGetReq)
-			if err != nil {
-				logger.ERR("NewRequest error:%s", err.Error())
-				return err
-			}
-			resp, err := c.Do(req, c.defTimeout*time.Second)
-			if err != nil {
-				logger.ERR("Do request error:%s", err)
-				return err
-			}
-			if r := resp.GetResult(); r != 0 {
-				errMsg := fmt.Sprintf("get zone %d table %s metadata error:%s", zone, table,
-					terror.GetErrMsg(r))
-				logger.ERR(errMsg)
-				return &terror.ErrorCode{Code: r, Message: errMsg}
-			}
-			if resp.GetTcaplusPackagePtr() == nil {
-				errMsg := fmt.Sprintf("get zone %d table %s metadata error:response pkg is nil", zone, table)
-				logger.ERR(errMsg)
-				return &terror.ErrorCode{Code: terror.API_ERR_OPERATION_TYPE_NOT_MATCH, Message: errMsg}
-			}
-			metares := resp.GetTcaplusPackagePtr().Body.MetadataGetRes
-			if metares.IdlType != 2 {
-				errMsg := fmt.Sprintf("get zone %d table %s metadata error:table type %d not proto",
-					zone, table, metares.IdlType)
-				logger.ERR(errMsg)
-				return &terror.ErrorCode{Code: terror.MetadataNotProtobuf, Message: errMsg}
-			}
-			err = metadata.GetMetaManager().AddTableDesGrp(c.appId, zone, table,
-				metares.IdlContent[:metares.IdlConLen])
-			if err != nil {
-				errMsg := fmt.Sprintf("add app %d zone %d table %s metadata error:%s",
-					c.appId, zone, table, err)
-				logger.ERR(errMsg)
-				return err
-			}
+			wg.Add(1)
+			go func(zone uint32, table string) {
+				defer wg.Done()
+				req, err := c.NewRequest(zone, table, cmd.TcaplusApiMetadataGetReq)
+				if err != nil {
+					logger.ERR("NewRequest error:%s", err.Error())
+					atomic.StoreInt32(&initResult, 1)
+					return
+				}
+				resp, err := c.Do(req, c.defTimeout*time.Second)
+				if err != nil {
+					logger.ERR("Do request error:%s", err)
+					atomic.StoreInt32(&initResult, 1)
+					return
+				}
+				if r := resp.GetResult(); r != 0 {
+					errMsg := fmt.Sprintf("get zone %d table %s metadata error:%s", zone, table,
+						terror.GetErrMsg(r))
+					logger.ERR(errMsg)
+					atomic.StoreInt32(&initResult, 1)
+					return
+				}
+				if resp.GetTcaplusPackagePtr() == nil {
+					errMsg := fmt.Sprintf("get zone %d table %s metadata error:response pkg is nil", zone, table)
+					logger.ERR(errMsg)
+					atomic.StoreInt32(&initResult, 1)
+					return
+				}
+				metares := resp.GetTcaplusPackagePtr().Body.MetadataGetRes
+				if metares.IdlType != 2 {
+					errMsg := fmt.Sprintf("get zone %d table %s metadata error:table type %d not proto",
+						zone, table, metares.IdlType)
+					logger.ERR(errMsg)
+					atomic.StoreInt32(&initResult, 1)
+					return
+				}
+				err = metadata.GetMetaManager().AddTableDesGrp(c.appId, zone, table,
+					metares.IdlContent[:metares.IdlConLen])
+				if err != nil {
+					errMsg := fmt.Sprintf("add app %d zone %d table %s metadata error:%s",
+						c.appId, zone, table, err)
+					logger.ERR(errMsg)
+					atomic.StoreInt32(&initResult, 1)
+					return
+				}
+			}(zone, table)
 		}
+	}
+
+	wg.Wait()
+	if atomic.LoadInt32(&initResult) != 0 {
+		return &terror.ErrorCode{Code: terror.ParameterInvalid, Message: "PB meta Init Failed, please check table exist"}
 	}
 	return nil
 }

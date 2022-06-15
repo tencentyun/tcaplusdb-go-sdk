@@ -216,6 +216,8 @@ func NewResponse(pkg *tcaplus_protocol_cs.TCaplusPkg) (TcaplusResponse, error) {
 		resp.commonInterface, err = newGetShardListResponse(pkg)
 	case cmd.TcaplusApiTableTraverseRes:
 		resp.commonInterface, err = newTraverseResponse(pkg)
+	case cmd.TcaplusApiListTableTraverseRes:
+		resp.commonInterface, err = newListTraverseResponse(pkg)
 	case cmd.TcaplusApiGetTableRecordCountRes:
 		resp.commonInterface, err = newCountResponse(pkg)
 	case cmd.TcaplusApiBatchInsertRes:

@@ -15,7 +15,7 @@ type Traverser struct {
 	state     int
 	zoneId    uint32
 	tableName string
-	tableType int
+	tableType int //0 generic 1 list
 
 	busy bool
 	next bool
@@ -48,6 +48,10 @@ type Traverser struct {
 	traversedCnt int64
 	limit        int64
 
+	//for list
+	keyTraversedCnt int64 //已遍历的key数量
+	totalKeyLimit int64 //遍历的key上限
+
 	seqForSync int32
 
 	client    ClientInf
@@ -64,6 +68,7 @@ func newTraverser(zoneId uint32, table string) *Traverser {
 		endIndex:     -1,
 		resNumPerReq: 1,
 		limit:        -1,
+		totalKeyLimit: -1,
 		traverseId:   atomic.AddUint32(&id, 1),
 	}
 	return t
@@ -142,8 +147,10 @@ func (t *Traverser) SetLimit(limit int64) error {
 		return &terror.ErrorCode{Code: terror.API_ERR_INVALID_OBJ_STATUE}
 	}
 	t.limit = limit
+	t.totalKeyLimit = limit
 	if limit < 0 {
 		t.limit = -1
+		t.totalKeyLimit = -1
 	}
 
 	return nil
@@ -220,6 +227,7 @@ func (t *Traverser) sendTraverseRequest() error {
 	req.GetTcaplusPackagePtr().Head.RouterInfo.ShardID = t.shardList[t.shardCurId]
 
 	if 0 == t.asyncId {
+		t.requestId++
 		req.GetTcaplusPackagePtr().Head.AsynID = uint64(t.traverseId)<<32 | uint64(t.requestId)
 	} else {
 		req.GetTcaplusPackagePtr().Head.AsynID = t.asyncId
@@ -254,6 +262,78 @@ func (t *Traverser) sendTraverseRequest() error {
 	}
 
 	t.seq = p.Sequence
+	t.expectReceiveSeq = t.seq + 1
+
+	log.DEBUG("send a traverse request successfully, seq=%d, expectReceiveSeq=%d, resNumPerReq=%d",
+		t.seq, t.expectReceiveSeq, t.resNumPerReq)
+
+	return nil
+}
+
+func (t *Traverser) sendListTraverseRequest() error {
+	if TraverseStateNormal != t.state {
+		log.ERR("Traverser state %d not normal", t.state)
+		return &terror.ErrorCode{Code: terror.API_ERR_INVALID_OBJ_STATUE}
+	}
+
+	req, err := t.client.NewRequest(t.zoneId, t.tableName, cmd.TcaplusApiListTableTraverseReq)
+	if err != nil {
+		log.ERR("zone %d table %s cmd %d NewRequest error:%s",
+			t.zoneId, t.tableName, cmd.TcaplusApiListTableTraverseReq, err)
+		return err
+	}
+
+	if t.readFromSlave {
+		req.GetTcaplusPackagePtr().Head.Flags |= int32(tcaplus_protocol_cs.TCAPLUS_FLAG_ONLY_READ_FROM_SLAVE)
+	}
+
+	if t.shardCompleted > 0 {
+		t.shardCompleted = 0
+		t.offset = 0
+		t.shardCurId++
+	}
+	req.GetTcaplusPackagePtr().Head.RouterInfo.ShardID = t.shardList[t.shardCurId]
+
+	if 0 == t.asyncId {
+		t.requestId++
+		req.GetTcaplusPackagePtr().Head.AsynID = uint64(t.traverseId)<<32 | uint64(t.requestId)
+	} else {
+		req.GetTcaplusPackagePtr().Head.AsynID = t.asyncId
+	}
+
+	req.GetTcaplusPackagePtr().Head.Seq = t.seqForSync
+
+	if len(t.userBuff) != 0 {
+		req.GetTcaplusPackagePtr().Head.UserBuff = t.userBuff
+		req.GetTcaplusPackagePtr().Head.UserBuffLen = uint32(len(t.userBuff))
+	}
+
+	p := req.GetTcaplusPackagePtr().Body.ListTableTraverseReq
+	keyLimit := int64(1)
+	if t.totalKeyLimit > 0 && t.totalKeyLimit - t.keyTraversedCnt > 1 {
+		keyLimit = t.totalKeyLimit - t.keyTraversedCnt
+	}
+	t.seq = t.seq + uint64(tcaplus_protocol_cs.TCAPLUS_MAX_LIST_ELEMENTS_NUM)
+
+	p.Offset = t.offset
+	p.KeyLimit = int32(keyLimit)
+	p.RouteKeySet = t.routeKeySet
+	p.BeginIndex = t.beginIndex
+	p.EndIndex = t.endIndex
+	p.Sequence = t.seq
+	p.ToTalLimit = t.limit
+	p.TraversedCnt = t.traversedCnt
+	if t.nameSet != nil {
+		p.ValueInfo = t.nameSet
+	}
+	p.Condition = t.condition
+
+	err = t.client.SendRequest(req)
+	if err != nil {
+		log.ERR("%s", err)
+		return err
+	}
+
 	t.expectReceiveSeq = t.seq + 1
 
 	log.DEBUG("send a traverse request successfully, seq=%d, expectReceiveSeq=%d, resNumPerReq=%d",
@@ -336,7 +416,7 @@ func (t *Traverser) onRecvResponse(msg *tcaplus_protocol_cs.TCaplusPkg, drop *bo
 			t.traversedCnt = msg.Body.TableTraverseRes.TraversedCnt
 
 			if t.shardCompleted > 0 {
-				if t.shardCurId < t.shardCnt {
+				if t.shardCurId < t.shardCnt - 1{
 					next = true
 				}
 			} else {
@@ -357,6 +437,59 @@ func (t *Traverser) onRecvResponse(msg *tcaplus_protocol_cs.TCaplusPkg, drop *bo
 					msg.Body.TableTraverseRes.RecordNum, t.traversedCnt, t.zoneId, t.tableName)
 			}
 		}
+	} else if cmd.TcaplusApiListTableTraverseRes == msg.Head.Cmd {
+		result := int(msg.Body.ListTableTraverseRes.Result)
+		if 0 != result {
+			log.ERR("TcaplusApiTableTraverse error %d, %s", result, terror.GetErrMsg(result))
+			t.state = TraverseStateRecoverable
+			return &terror.ErrorCode{Code: result}
+		}
+
+		if 0 != t.checkIfSwitchMS(msg.Body.ListTableTraverseRes.CurSrvID) {
+			log.ERR("M and S has switch, set state ST_UNRECOVERABLE")
+			t.state = TraverseStateUnRecoverable
+			return &terror.ErrorCode{Code: terror.GEN_ERR_ERR}
+		}
+
+		receivedSeq := msg.Body.ListTableTraverseRes.Sequence
+		if t.expectReceiveSeq < receivedSeq {
+			*drop = true
+			log.ERR("zone:%d table:%s receive unexpected pkg, received_seq:%d, m_expect_receive_seq:%d",
+				t.zoneId, t.tableName, receivedSeq, t.expectReceiveSeq)
+		} else if t.expectReceiveSeq > receivedSeq {
+			*drop = true
+			log.ERR("zone:%d table:%s receive timeout pkg, received_seq:%d, m_expect_receive_seq:%d",
+				t.zoneId, t.tableName, receivedSeq, t.expectReceiveSeq)
+		} else {
+			t.expectReceiveSeq++
+			t.offset = msg.Body.ListTableTraverseRes.Offset
+			t.shardCompleted = msg.Body.ListTableTraverseRes.Completed
+			if msg.Body.ListTableTraverseRes.KeyCompleted > 0 && msg.Body.ListTableTraverseRes.RecordNum > 0 {
+				t.keyTraversedCnt++
+				next = true
+			}
+
+			if t.shardCompleted > 0 {
+				if t.shardCurId < t.shardCnt - 1 {
+					next = true
+				}
+			}
+
+			if 0 == msg.Body.ListTableTraverseRes.RecordNum {
+				*drop = true
+				log.DEBUG("zone %d, table %s traverse finished with dwRecordNum = 0 "+
+					"on shard(%d/%d) m_shard_completed %d, so this response will be dropped",
+					t.zoneId, t.tableName, t.shardCurId+1, t.shardCnt, t.shardCompleted)
+				if t.shardCompleted <= 0 {
+					next = true
+				}
+			} else {
+				log.DEBUG("saved traverse response state: offset %d, "+
+					"shard %d, completed %d, recnum %d, total %d, zone %d, table_name %s",
+					t.offset, t.shardList[t.shardCurId], t.shardCompleted,
+					msg.Body.ListTableTraverseRes.RecordNum, t.traversedCnt, t.zoneId, t.tableName)
+			}
+		}
 	} else {
 		*drop = true
 		log.ERR("unexpected command %d", msg.Head.Cmd)
@@ -367,9 +500,12 @@ func (t *Traverser) onRecvResponse(msg *tcaplus_protocol_cs.TCaplusPkg, drop *bo
 	if t.shardCompleted > 0 && t.shardCurId >= t.shardCnt-1 {
 		finish = true
 	} else {
-		// generic 表
-		if 0 == t.tableType {
+		if 0 == t.tableType {// generic 表
 			if t.limit > 0 && t.traversedCnt >= t.limit {
+				finish = true
+			}
+		} else { //list
+			if t.keyTraversedCnt >= t.totalKeyLimit && t.totalKeyLimit > 0 {
 				finish = true
 			}
 		}
@@ -404,6 +540,8 @@ func (t *Traverser) continueTraverse() error {
 	var err error
 	if 0 == t.tableType {
 		err = t.sendTraverseRequest()
+	} else {
+		err = t.sendListTraverseRequest()
 	}
 
 	if err != nil {

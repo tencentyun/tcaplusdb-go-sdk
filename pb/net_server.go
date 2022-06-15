@@ -2,7 +2,6 @@ package tcaplus
 
 import (
 	"container/list"
-	"github.com/tencentyun/tcaplusdb-go-sdk/pb/common"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/config"
 	"sync"
 	"sync/atomic"
@@ -81,9 +80,6 @@ func (n *netServer) netPkgProcess() {
 	updateTraverse := time.NewTimer(time.Millisecond)
 	updateHashListTimer := time.NewTimer(10 * time.Second)
 
-	// 更新下当前时间，用于不需要精确时间的接口，防止一直去获取时间
-	updateTimeNow := time.NewTimer(time.Second)
-
 	for {
 		select {
 		case <-n.stopNetWork:
@@ -136,9 +132,6 @@ func (n *netServer) netPkgProcess() {
 		case <-updateTraverse.C:
 			n.router.TM.ContinueTraverse()
 			updateTraverse.Reset(time.Millisecond)
-		case <-updateTimeNow.C:
-			common.TimeNow = time.Now()
-			updateTimeNow.Reset(time.Second)
 		case <-updateHashListTimer.C:
 			n.router.UpdateHashList()
 			updateHashListTimer.Reset(10 * time.Second)
@@ -174,6 +167,10 @@ func (n *netServer) processDirMsg(msg *tcapdir_protocol_cs.TCapdirCSPkg) {
 
 	case tcapdir_protocol_cs.TCAPDIR_CS_CMD_GET_TABLES_AND_ACCESS_RES:
 		res := msg.Body.ResGetTablesAndAccess
+		if res.Result != 0 {
+			logger.ERR("GET_TABLES_AND_ACCESS_RES AppID:%d ZoneID:%d err %d", res.AppID, res.ZoneID, res.Result)
+			return
+		}
 		logger.INFO("GET_TABLES_AND_ACCESS_RES SetID:%d AppID:%d ZoneID:%d "+
 			"TableCount:%d TableNameList:%v AccessCount:%d AccessUrlList:%v AccessIdList:%v"+
 			"DirAvailableCheckPeriod:%d DirUpdateListInterval:%d DirUpdateTablesAndAcessInterval:%d"+

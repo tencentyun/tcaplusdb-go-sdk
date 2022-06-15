@@ -556,6 +556,10 @@ var (
 	API_ERR_INSTANCE_INIT_LOG_FAILURE                        = -0x00003f13 /*-16147*/
 	API_ERR_CONNECTOR_IS_ABNORMAL                            = -0x00004013 /*-16403*/
 	API_ERR_WAIT_RSP_TIMEOUT                                 = -0x00004113 /*-16659*/
+	API_ERR_DIR_CONNECT_FAILED                               = -0x00004413;/*-17427*/
+	API_ERR_DIR_SIGNUP_FAILED                                = -0x00004513;/*-17683*/
+	API_ERR_DIR_GET_PROXYLIST_TIMEOUT                        = -0x00004613;/*-17938*/
+	API_ERR_PROXY_CONNECT_FAILED                             = -0x00004713;/*-18195*/
 
 	//TCAPCENTER SYSTEM (module id 0x15) Error String defined below
 	CENTER_ERR_INVALID_PARAMS      = -0x00000115 /*-277*/
@@ -630,7 +634,7 @@ var (
 
 	// Non-error (for information purpose)
 	COMMON_INFO_DATA_NOT_MODIFIED = 0x00000120 /*288*/
-
+	COMMON_ERR_ELEMENT_NOT_EXIST =  0x00000219;/* 537*/
 )
 
 var ErrorCodes = map[int]string{
@@ -1185,6 +1189,10 @@ var ErrorCodes = map[int]string{
 	API_ERR_INSTANCE_INIT_LOG_FAILURE:                        "instance_fail_to_init_log",
 	API_ERR_CONNECTOR_IS_ABNORMAL:                            "connector_is_abnoraml",
 	API_ERR_WAIT_RSP_TIMEOUT:                                 "wait_rsp_timeout",
+	API_ERR_DIR_CONNECT_FAILED:                               "connect dir failed",
+	API_ERR_DIR_SIGNUP_FAILED:                                "dir signup failed",
+	API_ERR_DIR_GET_PROXYLIST_TIMEOUT:                        "dir get proxy list timeout",
+	API_ERR_PROXY_CONNECT_FAILED:                             "proxy connect failed",
 
 	//TCAPCENTER SYSTEM (module id 0x15) Error String defined below
 	CENTER_ERR_INVALID_PARAMS:      "Tcapcenter_invalid parameters",
@@ -1258,6 +1266,7 @@ var ErrorCodes = map[int]string{
 	TCAPLUS_INDEX_ERR_QUERY_INDEX_SERVER_OVERLOAD:                            "tcaplus_index_err_query_index_server_overload",
 
 	// Non-error (for information purpose)
+	COMMON_ERR_ELEMENT_NOT_EXIST: "COMMON_ERR_ELEMENT_NOT_EXIST",
 	COMMON_INFO_DATA_NOT_MODIFIED: "TCAPLUS_FLAG_FETCH_ONLY_IF_MODIFIED flag set and version equals: return early without real data",
 }
 

@@ -43,11 +43,12 @@ type DirServer struct {
 	//心跳时间间隔s, 10s
 	heartbeatInterval time.Duration
 	lastHeartbeatTime time.Time
+	error error
 }
 
 func (dir *DirServer) Init(appId uint64, zoneList []uint32, dirUrl string, signature string) error {
 	if len(zoneList) > int(tcapdir_protocol_cs.TCAPDIR_MAX_TABLE) {
-		return &terror.ErrorCode{Code: -2, Message: "zoneList large 256"}
+		return &terror.ErrorCode{Code: terror.ParameterInvalid, Message: "zoneList large 256"}
 	}
 	dir.heartbeatInterval = 10
 	dir.lastHeartbeatTime = time.Now()
@@ -103,6 +104,11 @@ func (dir *DirServer) DisConnect() {
 	}
 }
 
+//初始化超时，获取dir的error信息
+func (dir *DirServer) GetError() error {
+	return  dir.error
+}
+
 //从列表中选择一个连接dir
 func (dir *DirServer) connect() error {
 	if dir.conn == nil {
@@ -114,7 +120,7 @@ func (dir *DirServer) connect() error {
 			if err == nil {
 				break
 			}
-
+			dir.error = &terror.ErrorCode{Code: terror.API_ERR_DIR_CONNECT_FAILED, Message: "connect dir failed:" + dir.urlList[dir.curDirIndex]}
 			dir.curDirIndex++
 			dir.curDirIndex = dir.curDirIndex % uint32(len(dir.urlList))
 			if dir.curDirIndex == dir.oldDirIndex {
@@ -130,9 +136,10 @@ func (dir *DirServer) connect() error {
 				dir.signUpFlag = SignUpIng
 				log.INFO("start sign up dir %v", dir.urlList[dir.curDirIndex])
 				dir.signUp()
-			} else if dir.signUpFlag == SignUpIng && time.Now().Sub(dir.signUpTime).Seconds() > 3 {
+			} else if dir.signUpFlag != SignUpSuccess && time.Now().Sub(dir.signUpTime).Seconds() > 3 {
 				//认证超时
 				log.ERR("sign up dir %v timeout(3s), conn stat %v", dir.urlList[dir.curDirIndex], dir.conn.GetStat())
+				dir.error = &terror.ErrorCode{Code: terror.API_ERR_DIR_SIGNUP_FAILED, Message: "sign up dir timeout(3s):" + dir.urlList[dir.curDirIndex]}
 				dir.DisConnect()
 				dir.curDirIndex++
 				dir.curDirIndex = dir.curDirIndex % uint32(len(dir.urlList))
@@ -146,6 +153,7 @@ func (dir *DirServer) connect() error {
 			//连接中
 			return nil
 		} else {
+			dir.error = &terror.ErrorCode{Code: terror.API_ERR_DIR_CONNECT_FAILED, Message: "connect dir failed:" + dir.urlList[dir.curDirIndex]}
 			//连接失败，重连下个连接
 			log.ERR("connect dir %v failed, conn stat %v",
 				dir.urlList[dir.curDirIndex%uint32(len(dir.urlList))], dir.conn.GetStat())

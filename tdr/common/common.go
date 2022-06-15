@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/tcaplus_protocol_cs"
-	"time"
 	"unsafe"
 )
 
@@ -24,7 +23,6 @@ const (
 
 var PublicIP string
 
-var TimeNow time.Time = time.Now()
 
 func StringToCByte(str string) []byte {
 	b := Str2bytes(str)

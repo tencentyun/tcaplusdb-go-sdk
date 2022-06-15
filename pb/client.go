@@ -132,17 +132,32 @@ func (c *client) Dial(appId uint64, zoneList []uint32, dirUrl string, signature 
 			logger.ERR("init failed %v", err.Error())
 			c.initFlag = InitFail
 			c.netServer.stopNetWork <- true
+			c.ctrl.Wait()
 			return err
 		}
 		logger.ERR("init timeout %v", timeout)
 		c.initFlag = InitFail
 		c.netServer.stopNetWork <- true
-		return &terror.ErrorCode{Code: terror.ClientInitTimeOut, Message: "init timeout"}
+		c.ctrl.Wait()
+		//dir err
+		if err := c.netServer.dirServer.GetError(); err != nil{
+			logger.ERR("dir err %s", err.Error())
+			return err
+		}
+
+		//proxy err
+		if err := c.netServer.router.GetError(); err != nil{
+			logger.ERR("router err %s", err.Error())
+			return err
+		}
+
+		return &terror.ErrorCode{Code: terror.ClientInitTimeOut, Message: "init timeout, check api log"}
 	case ret := <-c.netServer.initResult:
 		if ret != nil {
 			logger.ERR("init failed. %s", ret.Error())
 			c.initFlag = InitFail
 			c.netServer.stopNetWork <- true
+			c.ctrl.Wait()
 			return ret
 		} else {
 			c.initFlag = InitSuccess
@@ -399,6 +414,16 @@ func (c *client) GetTraverser(zoneId uint32, table string) *traverser.Traverser 
 	return c.tm.GetTraverser(zoneId, table)
 }
 
+/**
+    @brief 获取list表遍历器（存在则直接获取，不存在则新建一个）
+	@param [IN] zoneId tcaplus请求
+	@param [IN] table 超时时间
+    @retval *traverser.Traverser 遍历器，一个client最多分配8个遍历器，超过将会返回 nil
+**/
+func (c *client) GetListTraverser(zoneId uint32, table string) *traverser.Traverser {
+	return c.tm.GetListTraverser(zoneId, table)
+}
+
 /*
 	@brief 获取本次连接的appId
 	@retval int appId
@@ -436,6 +461,9 @@ func (c *client) GetProxyUrl(keySet *tcaplus_protocol_cs.TCaplusKeySet, zoneId u
 		不要复用同一个Client以免触发未知bug
 */
 func (c *client) Close() {
+	if c.initFlag != InitSuccess {
+		return
+	}
 	c.netServer.stopNetWork <- true
 	c.initFlag = NotInit
 	c.ctrl.Wait()

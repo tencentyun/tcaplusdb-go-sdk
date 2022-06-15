@@ -73,7 +73,7 @@ func (res *insertResponse) GetRecordCount() int {
 		} else {
 			ret := GetResultFlagByBit(res.pkg.Body.InsertRes.Flag, false)
 			if (tcaplus_protocol_cs.TCaplusValueFlag_SAMEWITHREQUEST == ret ||
-				tcaplus_protocol_cs.TCaplusValueFlag_ALLVALUE == ret) &&
+				tcaplus_protocol_cs.TCaplusValueFlag_ALLOLDVALUE == ret) &&
 				res.pkg.Body.InsertRes.ResultInfo.CompactValueSet.FieldIndexNum > 0 {
 				return 1
 			}

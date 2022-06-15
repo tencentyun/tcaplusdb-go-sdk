@@ -8,6 +8,7 @@ import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/terror"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/tnet"
 	"sync"
+	"time"
 )
 
 type proxy struct {
@@ -30,7 +31,22 @@ type proxy struct {
 	removeServerList  map[string]*server
 }
 
-//0 所有认证成功， 1 认证中， 2 部分认证成功， -1 有认证失败的
+func (p *proxy) GetErrorStr() string{
+	var errStr string
+	for _, v := range p.usingServerList {
+		if v.error != nil {
+			errStr = errStr + v.error.Error() + ","
+		}
+	}
+	for _, v := range p.prepareServerList {
+		if v.error != nil {
+			errStr = errStr + v.error.Error() + ","
+		}
+	}
+	return errStr
+}
+
+//0 所有认证成功， 1 认证中， 2 部分认证成功， -1 全部认证失败
 func (p *proxy) CheckAvailable() (int, error) {
 	p.hashMutex.RLock()
 	defer p.hashMutex.RUnlock()
@@ -40,21 +56,35 @@ func (p *proxy) CheckAvailable() (int, error) {
 	}
 
 	signSucCount := 0
+	signFailCount :=0
+	var err error
 	for _, v := range p.hashList {
 		if v.isAvailable() {
 			signSucCount++
 		} else if v.getSignUpStat() == SignUpFail {
-			return -1, &terror.ErrorCode{Code: terror.ProxySignUpFailed}
+			signFailCount++
+			err = v.error
 		}
 	}
 
+	//全部认证失败
+	if signFailCount == len(p.hashList) {
+		if err != nil {
+			return -1, err
+		}
+		return -1, &terror.ErrorCode{Code: terror.ProxySignUpFailed}
+	}
+
+	//全部认证中
 	if signSucCount == 0 {
 		return 1, nil
 	}
 
-	if signSucCount == len(p.usingServerList) {
+	//全部认证成功
+	if signSucCount == len(p.hashList) {
 		return 0, nil
 	}
+	//部分认证成功
 	return 2, nil
 }
 
@@ -152,8 +182,19 @@ func (p *proxy) updateHashList() {
 func (p *proxy) update() {
 	p.updateServerList()
 	p.switchServerList()
+	//remove 队列中1min没有回包的server进行删除操作
+	p.clearRemoveServerList()
+}
 
-	//TODO remove 队列中1min没有回包的server进行删除操作
+func (p *proxy) clearRemoveServerList() {
+	curTime := time.Now()
+	for k, v := range p.removeServerList {
+		if curTime.Sub(v.lastRspTime) > time.Minute {
+			logger.INFO("remove list remove svr %s lastRspTime %v", v.proxyUrl, v.lastRspTime)
+			v.disConnect()
+			delete(p.removeServerList, k)
+		}
+	}
 }
 
 func (p *proxy) sendHeartbeat() {

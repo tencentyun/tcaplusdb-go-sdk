@@ -204,10 +204,10 @@ const (
 	TcaplusApiGetTableRecordCountRes = 0x0054
 	//
 	///**\brief List table的遍历请求*/
-	//TCAPLUS_API_LIST_TABLE_TRAVERSE_REQ = 0x0057
+	TcaplusApiListTableTraverseReq = 0x0057
 	//
 	///**\brief List table的遍历响应*/
-	//TCAPLUS_API_LIST_TABLE_TRAVERSE_RES = 0x0058
+	TcaplusApiListTableTraverseRes = 0x0058
 
 	/** \brief 设置记录的ttl请求 */
 	TcaplusApiSetTtlReq = 0x0059
