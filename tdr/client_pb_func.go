@@ -687,7 +687,6 @@ func (c *PBClient) doBatch(msgs []proto.Message, apiCmd int, opt *option.PBOpt, 
 			if recErr != nil {
 				globalErr = recErr
 				logger.DEBUG("FetchRecord error:%s", recErr)
-				continue
 			}
 
 			if record == nil {

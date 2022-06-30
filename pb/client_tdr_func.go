@@ -641,7 +641,6 @@ func (c *Client) doBatch(table string, dataSlice []record.TdrTableSt, apiCmd int
 			if recErr != nil {
 				globalErr = recErr
 				logger.DEBUG("FetchRecord error:%s", recErr)
-				continue
 			}
 
 			if resRec == nil {
