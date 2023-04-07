@@ -35,6 +35,7 @@ func newBatchGetRequest(appId uint64, zoneId uint32, tableName string, cmd int,
 	pkg.Body.BatchGetReq.ExpireTime = 0
 	pkg.Body.BatchGetReq.RecordNum = 0
 	pkg.Body.BatchGetReq.SplitTableKeyBuffs = nil
+	pkg.Body.BatchGetReq.Condition = ""
 	req := &batchGetRequest{
 		appId:        appId,
 		zoneId:       zoneId,
@@ -88,6 +89,7 @@ func (req *batchGetRequest) AddRecord(index int32) (*record.Record, error) {
 func (req *batchGetRequest) SetAsyncId(id uint64) {
 	if req.pkg == nil {
 		logger.ERR("Request can not second use")
+		return
 	}
 	req.pkg.Head.AsynID = id
 }
@@ -141,6 +143,7 @@ func (req *batchGetRequest) Pack() ([]byte, error) {
 
 	if logger.GetLogLevel() == "DEBUG" {
 		logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+		logger.DEBUG("%s", common.CovertToJson(req.pkg.Body.BatchGetReq))
 	}
 	data, err := req.pkg.Pack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion)
 	if err != nil {
@@ -262,4 +265,13 @@ func (req *batchGetRequest) GetFlags() int32 {
 		return int32(terror.RequestHasHasNoPkg)
 	}
 	return req.pkg.Head.Flags
+}
+
+func (req *batchGetRequest) SetExpireTime(expireTime uint32) int32 {
+	if req.pkg == nil {
+		logger.ERR("Request can not second use")
+		return int32(terror.RequestHasHasNoPkg)
+	}
+	req.pkg.Body.BatchGetReq.ExpireTime = expireTime
+	return 0
 }

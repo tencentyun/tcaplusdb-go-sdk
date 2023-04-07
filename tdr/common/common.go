@@ -23,7 +23,6 @@ const (
 
 var PublicIP string
 
-
 func StringToCByte(str string) []byte {
 	b := Str2bytes(str)
 	b = append(b, 0)

@@ -1,103 +1,28 @@
-# Tcaplus Go PB SDK 3.46.0
-Table of Contents
-=================
-
-   * [Tcaplus Go PB SDK 3.46.0](#tcaplus-go-pb-sdk-3460)
-      * [1 SDK 说明](#1-sdk-\xE8\xAF\xB4\xE6\x98\x8E)
-      * [2 SDK 使用方式](#2-sdk-\xE4\xBD\xBF\xE7\x94\xA8\xE6\x96\xB9\xE5\xBC\x8F)
-         * [2.1mod 方式使用](#21mod-\xE6\x96\xB9\xE5\xBC\x8F\xE4\xBD\xBF\xE7\x94\xA8)
-      * [3 接口列表](#3-\xE6\x8E\xA5\xE5\x8F\xA3\xE5\x88\x97\xE8\xA1\xA8)
-         * [3.1 Client 接口](#31-client-\xE6\x8E\xA5\xE5\x8F\xA3)
-            * [3.1.1 创建 tcaplus pbclient](#311-\xE5\x88\x9B\xE5\xBB\xBA-tcaplus-pbclient)
-            * [3.1.2 日志配置接口](#312-\xE6\x97\xA5\xE5\xBF\x97\xE9\x85\x8D\xE7\xBD\xAE\xE6\x8E\xA5\xE5\x8F\xA3)
-            * [3.1.3 连接 tcaplus 接口](#313-\xE8\xBF\x9E\xE6\x8E\xA5-tcaplus-\xE6\x8E\xA5\xE5\x8F\xA3)
-            * [3.1.4 创建 tcaplus 请求](#314-\xE5\x88\x9B\xE5\xBB\xBA-tcaplus-\xE8\xAF\xB7\xE6\xB1\x82)
-            * [3.1.5 发送 tcaplus 请求](#315-\xE5\x8F\x91\xE9\x80\x81-tcaplus-\xE8\xAF\xB7\xE6\xB1\x82)
-            * [3.1.6 异步接收 tcaplus 响应](#316-\xE5\xBC\x82\xE6\xAD\xA5\xE6\x8E\xA5\xE6\x94\xB6-tcaplus-\xE5\x93\x8D\xE5\xBA\x94)
-            * [3.1.7 发送 tcaplus 同步请求并接受响应](#317-\xE5\x8F\x91\xE9\x80\x81-tcaplus-\xE5\x90\x8C\xE6\xAD\xA5\xE8\xAF\xB7\xE6\xB1\x82\xE5\xB9\xB6\xE6\x8E\xA5\xE5\x8F\x97\xE5\x93\x8D\xE5\xBA\x94)
-            * [3.1.8 发送 tcaplus 同步请求并接受多个响应](#318-\xE5\x8F\x91\xE9\x80\x81-tcaplus-\xE5\x90\x8C\xE6\xAD\xA5\xE8\xAF\xB7\xE6\xB1\x82\xE5\xB9\xB6\xE6\x8E\xA5\xE5\x8F\x97\xE5\xA4\x9A\xE4\xB8\xAA\xE5\x93\x8D\xE5\xBA\x94)
-            * [3.1.9 设置默认 zoneId (非必须)](#319-\xE8\xAE\xBE\xE7\xBD\xAE\xE9\xBB\x98\xE8\xAE\xA4-zoneid-\xE9\x9D\x9E\xE5\xBF\x85\xE9\xA1\xBB)
-            * [3.1.10 设置默认超时时间](#3110-\xE8\xAE\xBE\xE7\xBD\xAE\xE9\xBB\x98\xE8\xAE\xA4\xE8\xB6\x85\xE6\x97\xB6\xE6\x97\xB6\xE9\x97\xB4)
-            * [3.1.11 插入记录](#3111-\xE6\x8F\x92\xE5\x85\xA5\xE8\xAE\xB0\xE5\xBD\x95)
-            * [3.1.12 替换记录](#3112-\xE6\x9B\xBF\xE6\x8D\xA2\xE8\xAE\xB0\xE5\xBD\x95)
-            * [3.1.13 修改记录](#3113-\xE4\xBF\xAE\xE6\x94\xB9\xE8\xAE\xB0\xE5\xBD\x95)
-            * [3.1.11 删除记录](#3111-\xE5\x88\xA0\xE9\x99\xA4\xE8\xAE\xB0\xE5\xBD\x95)
-            * [3.1.12 获取记录](#3112-\xE8\x8E\xB7\xE5\x8F\x96\xE8\xAE\xB0\xE5\xBD\x95)
-            * [3.1.13 批量获取记录](#3113-\xE6\x89\xB9\xE9\x87\x8F\xE8\x8E\xB7\xE5\x8F\x96\xE8\xAE\xB0\xE5\xBD\x95)
-            * [3.1.14 部分 key 获取记录](#3114-\xE9\x83\xA8\xE5\x88\x86-key-\xE8\x8E\xB7\xE5\x8F\x96\xE8\xAE\xB0\xE5\xBD\x95)
-            * [3.1.15 获取部分 value](#3115-\xE8\x8E\xB7\xE5\x8F\x96\xE9\x83\xA8\xE5\x88\x86-value)
-            * [3.1.16 更新部分 value](#3116-\xE6\x9B\xB4\xE6\x96\xB0\xE9\x83\xA8\xE5\x88\x86-value)
-            * [3.1.17 自增部分 value（仅支持整型）](#3117-\xE8\x87\xAA\xE5\xA2\x9E\xE9\x83\xA8\xE5\x88\x86-value\xE4\xBB\x85\xE6\x94\xAF\xE6\x8C\x81\xE6\x95\xB4\xE5\x9E\x8B)
-            * [3.1.18 二级索引查询](#3118-\xE4\xBA\x8C\xE7\xBA\xA7\xE7\xB4\xA2\xE5\xBC\x95\xE6\x9F\xA5\xE8\xAF\xA2)
-            * [3.1.19 获取表记录数](#3119-\xE8\x8E\xB7\xE5\x8F\x96\xE8\xA1\xA8\xE8\xAE\xB0\xE5\xBD\x95\xE6\x95\xB0)
-            * [3.1.20 获取遍历器](#3120-\xE8\x8E\xB7\xE5\x8F\x96\xE9\x81\x8D\xE5\x8E\x86\xE5\x99\xA8)
-            * [3.1.21 获取appid](#3121)
-            * [3.1.22 关闭lient](#3122)
-            * [3.1.23 遍历表记录](#3123)
-            * [3.1.24 指定访问ip](#3124)
-            * [3.1.25 list表插入记录](#3125)
-            * [3.1.26 list表删除记录](#3126)
-            * [3.1.27 list表修改记录](#3127)
-            * [3.1.28 list表查询记录](#3128)
-            * [3.1.29 list表获取key下所有记录](#3129)
-            * [3.1.30 list表删除key下所有记录](#3130)
-            * [3.1.31 list表删除key下多条记录](#3131)
-         * [3.2 TcaplusRequest 接口](#32-tcaplusrequest-\xE6\x8E\xA5\xE5\x8F\xA3)
-            * [3.2.1 添加记录](#321-\xE6\xB7\xBB\xE5\x8A\xA0\xE8\xAE\xB0\xE5\xBD\x95)
-            * [3.2.2 设置请求异步 ID](#322-\xE8\xAE\xBE\xE7\xBD\xAE\xE8\xAF\xB7\xE6\xB1\x82\xE5\xBC\x82\xE6\xAD\xA5-id)
-            * [3.2.3 设置版本校验规则](#323-\xE8\xAE\xBE\xE7\xBD\xAE\xE7\x89\x88\xE6\x9C\xAC\xE6\xA0\xA1\xE9\xAA\x8C\xE8\xA7\x84\xE5\x88\x99)
-            * [3.2.4 设置响应标志](#324-\xE8\xAE\xBE\xE7\xBD\xAE\xE5\x93\x8D\xE5\xBA\x94\xE6\xA0\x87\xE5\xBF\x97)
-            * [3.2.5 设置用户缓存](#325-\xE8\xAE\xBE\xE7\xBD\xAE\xE7\x94\xA8\xE6\x88\xB7\xE7\xBC\x93\xE5\xAD\x98)
-            * [3.2.6 返回记录条数限制](#326-\xE8\xBF\x94\xE5\x9B\x9E\xE8\xAE\xB0\xE5\xBD\x95\xE6\x9D\xA1\xE6\x95\xB0\xE9\x99\x90\xE5\x88\xB6)
-            * [3.2.7 设置分包](#327-\xE8\xAE\xBE\xE7\xBD\xAE\xE5\x88\x86\xE5\x8C\x85)
-            * [3.2.8 设置 sql 语句](#328-\xE8\xAE\xBE\xE7\xBD\xAE-sql-\xE8\xAF\xAD\xE5\x8F\xA5)
-         * [3.3 Record 接口](#33-record-\xE6\x8E\xA5\xE5\x8F\xA3)
-            * [3.3.1 SetPBData 和 GetPBData 接口](#331-setpbdata-\xE5\x92\x8C-getpbdata-\xE6\x8E\xA5\xE5\x8F\xA3)
-            * [3.3.2 设置记录版本号](#332-\xE8\xAE\xBE\xE7\xBD\xAE\xE8\xAE\xB0\xE5\xBD\x95\xE7\x89\x88\xE6\x9C\xAC\xE5\x8F\xB7)
-            * [3.3.3 获取记录版本号](#333-\xE8\x8E\xB7\xE5\x8F\x96\xE8\xAE\xB0\xE5\xBD\x95\xE7\x89\x88\xE6\x9C\xAC\xE5\x8F\xB7)
-            * [3.3.4 SetPBFieldValues 和 GetPBFieldValues 获取部分记录值](#334-setpbfieldvalues-\xE5\x92\x8C-getpbfieldvalues-\xE8\x8E\xB7\xE5\x8F\x96\xE9\x83\xA8\xE5\x88\x86\xE8\xAE\xB0\xE5\xBD\x95\xE5\x80\xBC)
-            * [3.3.5 设置部分 key 字段](#335-\xE8\xAE\xBE\xE7\xBD\xAE\xE9\x83\xA8\xE5\x88\x86-key-\xE5\xAD\x97\xE6\xAE\xB5)
-            * [3.3.6 获取记录 key 编码值](#336-\xE8\x8E\xB7\xE5\x8F\x96\xE8\xAE\xB0\xE5\xBD\x95-key-\xE7\xBC\x96\xE7\xA0\x81\xE5\x80\xBC)
-         * [3.4 TcaplusResponse 接口](#34-tcaplusresponse-\xE6\x8E\xA5\xE5\x8F\xA3)
-            * [3.4.1 获取响应结果](#341-\xE8\x8E\xB7\xE5\x8F\x96\xE5\x93\x8D\xE5\xBA\x94\xE7\xBB\x93\xE6\x9E\x9C)
-            * [3.4.2 获取表名](#342-\xE8\x8E\xB7\xE5\x8F\x96\xE8\xA1\xA8\xE5\x90\x8D)
-            * [3.4.3 获取 appId](#343-\xE8\x8E\xB7\xE5\x8F\x96-appid)
-            * [3.4.4 获取 zoneId](#344-\xE8\x8E\xB7\xE5\x8F\x96-zoneid)
-            * [3.4.5 获取响应命令字](#345-\xE8\x8E\xB7\xE5\x8F\x96\xE5\x93\x8D\xE5\xBA\x94\xE5\x91\xBD\xE4\xBB\xA4\xE5\xAD\x97)
-            * [3.4.6 获取响应异步 ID](#346-\xE8\x8E\xB7\xE5\x8F\x96\xE5\x93\x8D\xE5\xBA\x94\xE5\xBC\x82\xE6\xAD\xA5-id)
-            * [3.4.7 获取响应中记录数](#347-\xE8\x8E\xB7\xE5\x8F\x96\xE5\x93\x8D\xE5\xBA\x94\xE4\xB8\xAD\xE8\xAE\xB0\xE5\xBD\x95\xE6\x95\xB0)
-            * [3.4.8 获取响应中一条记录](#348-\xE8\x8E\xB7\xE5\x8F\x96\xE5\x93\x8D\xE5\xBA\x94\xE4\xB8\xAD\xE4\xB8\x80\xE6\x9D\xA1\xE8\xAE\xB0\xE5\xBD\x95)
-            * [3.4.9 获取响应中用户缓存信息](#349-\xE8\x8E\xB7\xE5\x8F\x96\xE5\x93\x8D\xE5\xBA\x94\xE4\xB8\xAD\xE7\x94\xA8\xE6\x88\xB7\xE7\xBC\x93\xE5\xAD\x98\xE4\xBF\xA1\xE6\x81\xAF)
-            * [3.4.10 获取响应中的序列号](#3410-\xE8\x8E\xB7\xE5\x8F\x96\xE5\x93\x8D\xE5\xBA\x94\xE4\xB8\xAD\xE7\x9A\x84\xE5\xBA\x8F\xE5\x88\x97\xE5\x8F\xB7)
-            * [3.4.11 获取分布式索引结果](#3411-\xE8\x8E\xB7\xE5\x8F\x96\xE5\x88\x86\xE5\xB8\x83\xE5\xBC\x8F\xE7\xB4\xA2\xE5\xBC\x95\xE7\xBB\x93\xE6\x9E\x9C)
-            * [3.4.12 判断是否有更多的回包](#3412-\xE5\x88\xA4\xE6\x96\xAD\xE6\x98\xAF\xE5\x90\xA6\xE6\x9C\x89\xE6\x9B\xB4\xE5\xA4\x9A\xE7\x9A\x84\xE5\x9B\x9E\xE5\x8C\x85)
-            * [3.4.13 获取整个结果中的记录条数](#3413-\xE8\x8E\xB7\xE5\x8F\x96\xE6\x95\xB4\xE4\xB8\xAA\xE7\xBB\x93\xE6\x9E\x9C\xE4\xB8\xAD\xE7\x9A\x84\xE8\xAE\xB0\xE5\xBD\x95\xE6\x9D\xA1\xE6\x95\xB0)
-         * [3.5 遍历](#35-\xE9\x81\x8D\xE5\x8E\x86)
-            * [3.5.1 限制条件（非必须）](#351-\xE9\x99\x90\xE5\x88\xB6\xE6\x9D\xA1\xE4\xBB\xB6\xE9\x9D\x9E\xE5\xBF\x85\xE9\xA1\xBB)
-            * [3.5.2 开始遍历](#352-\xE5\xBC\x80\xE5\xA7\x8B\xE9\x81\x8D\xE5\x8E\x86)
-      * [4. 错误码](#4-\xE9\x94\x99\xE8\xAF\xAF\xE7\xA0\x81)
-      * [5.附录](#5\xE9\x99\x84\xE5\xBD\x95)
-         * [5.1 条件查询](#51-\xE6\x9D\xA1\xE4\xBB\xB6\xE6\x9F\xA5\xE8\xAF\xA2)
-         * [5.2 分页查询](#52-\xE5\x88\x86\xE9\xA1\xB5\xE6\x9F\xA5\xE8\xAF\xA2)
-         * [5.3 聚合查询](#53-\xE8\x81\x9A\xE5\x90\x88\xE6\x9F\xA5\xE8\xAF\xA2)
-         * [5.4 支持查询部分字段的值](#54-\xE6\x94\xAF\xE6\x8C\x81\xE6\x9F\xA5\xE8\xAF\xA2\xE9\x83\xA8\xE5\x88\x86\xE5\xAD\x97\xE6\xAE\xB5\xE7\x9A\x84\xE5\x80\xBC)
-         * [5.5 不支持的 sql 查询语句](#55-\xE4\xB8\x8D\xE6\x94\xAF\xE6\x8C\x81\xE7\x9A\x84-sql-\xE6\x9F\xA5\xE8\xAF\xA2\xE8\xAF\xAD\xE5\x8F\xA5)
-            * [5.5.1 不支持聚合查询与非聚合查询混用](#551-\xE4\xB8\x8D\xE6\x94\xAF\xE6\x8C\x81\xE8\x81\x9A\xE5\x90\x88\xE6\x9F\xA5\xE8\xAF\xA2\xE4\xB8\x8E\xE9\x9D\x9E\xE8\x81\x9A\xE5\x90\x88\xE6\x9F\xA5\xE8\xAF\xA2\xE6\xB7\xB7\xE7\x94\xA8)
-            * [5.5.2 不支持 order by 查询](#552-\xE4\xB8\x8D\xE6\x94\xAF\xE6\x8C\x81-order-by-\xE6\x9F\xA5\xE8\xAF\xA2)
-            * [5.5.3 不支持 group by 查询](#553-\xE4\xB8\x8D\xE6\x94\xAF\xE6\x8C\x81-group-by-\xE6\x9F\xA5\xE8\xAF\xA2)
-            * [5.5.4 不支持 having 查询](#554-\xE4\xB8\x8D\xE6\x94\xAF\xE6\x8C\x81-having-\xE6\x9F\xA5\xE8\xAF\xA2)
-            * [5.5.5 不支持多表联合查询](#555-\xE4\xB8\x8D\xE6\x94\xAF\xE6\x8C\x81\xE5\xA4\x9A\xE8\xA1\xA8\xE8\x81\x94\xE5\x90\x88\xE6\x9F\xA5\xE8\xAF\xA2)
-            * [5.5.6 不支持嵌套 select 查询](#556-\xE4\xB8\x8D\xE6\x94\xAF\xE6\x8C\x81\xE5\xB5\x8C\xE5\xA5\x97-select-\xE6\x9F\xA5\xE8\xAF\xA2)
-            * [5.5.7 不支持别名](#557-\xE4\xB8\x8D\xE6\x94\xAF\xE6\x8C\x81\xE5\x88\xAB\xE5\x90\x8D)
-            * [5.5.8 不支持的其他查询](#558-\xE4\xB8\x8D\xE6\x94\xAF\xE6\x8C\x81\xE7\x9A\x84\xE5\x85\xB6\xE4\xBB\x96\xE6\x9F\xA5\xE8\xAF\xA2)
-      * [6. 其它](#6-\xE5\x85\xB6\xE5\xAE\x83)
-
+# Tcaplus Go SDK 3.55.0
 ## 1 SDK 说明
 
-本 SDK 支持通过 GO 来操作 TcaplusDB Protobuf 表的数据，共支持 12 个接口。包括：插入、替换、查询、删除、更新、批量查询、主键索引查询、遍历表、部分字段获取、部分字段更新、部分字段自增和二级索引查询。接口支持同步调用模式和异步调用模式。
+本 SDK 支持通过 GO 来操作 TcaplusDB Protobuf|TDR 表的数据。接口支持同步调用模式和异步调用模式。
 
 - **同步模式**: 接口调用逻辑较简单，适合对性能要求不高场景
 - **异步模式**: 接口调用逻辑稍微复杂，适合高吞吐、高并发业务场景
+
+### 1.1 各代码目录
+* pack为打包脚本
+* example为示例
+* aurotest为测试工具
+* 其他目录为Tcaplus Go API的源码
+* vendor 中为依赖库的代码，需要使用git submodule init和git submodule update拉取
+
+### 1.2 编译example
+example/generic_table展示了对service_info表的insert get replace update delete操作
+1. Go环境安装https://golang.org/
+2. 将service_info.xml加入Tcaplus
+3. 修改main.go的开头的AppId ZoneId DirUrl Signature为相应的Tcaplus配置信息
+4. make之后执行
+
+### 1.3 打包脚本
+pack/pack.sh展示了对源码及依赖库的打包，方便用户移植到无法使用go mod的场景
+1. cd pack && sh pack.sh
 
 ## 2 SDK 使用方式
 
@@ -110,8 +35,8 @@ mod 模式需要在能连公网环境下使用。对于用户新建项目，可�
 - 1.在工程中建立 go.mod
 - 2.开启 module 模式
 - 3.执行命令 go clean --modcache
-- 4.执行命令 go mod edit -require="github.com/tencentyun/tcaplusdb-go-sdk@v0.0.7"
-- 5.在代码中引入 sdk: import "github.com/tencentyun/tcaplusdb-go-sdk/pb"
+- 4.执行命令 go mod edit -require="git.code.oa.com/gcloud_storage_group/tcaplus-go-api@v0.2.0"
+- 5.出现tlinux无法download的错误可以参考:[Golang git.code.oa.com 的 go get、go mod 踩坑之旅](http://km.oa.com/group/29073/articles/show/376902?kmref=search&from_page=1&no=1#-%20%E9%94%99%E8%AF%AF-x509-%20certificate%20signed%20by%20unknown%20authority)
 
 ## 3 接口列表
 
@@ -124,50 +49,20 @@ TcaplusApiInsertReq = 0x0001
 //Generic表替换/插入请求
 TcaplusApiReplaceReq = 0x0003
 
+//Generic表增量更新请求，仅用于tdr表
+TcaplusApiIncreaseReq = 0x0005
+
 //Generic表单条查询请求
 TcaplusApiGetReq = 0x0007
 
 //Generic表删除请求
 TcaplusApiDeleteReq = 0x0009
 
-//Generic表更新请求
-TcaplusApiUpdateReq = 0x001d
-
-//批量查询请求
-TcaplusApiBatchGetReq = 0x0017
-
-//部分Key查询请求
-TcaplusApiGetByPartkeyReq = 0x0019
-
-//表遍历请求
-TcaplusApiTableTraverseReq = 0x0045
-
-//protobuf部分字段获取请求
-TcaplusApiPBFieldGetReq = 0x0067
-
-//protobuf部分字段更新请求
-TcaplusApiPBFieldUpdateReq = 0x0069
-
-//protobuf部分字段自增请求
-TcaplusApiPBFieldIncreaseReq = 0x006b
-
-//索引查询请求
-TcaplusApiSqlReq = 0x0081
-
-//遍历全表请求
-TcaplusApiTableTraverseReq = 0x0045
-
-//table的记录总数请求
-TcaplusApiGetTableRecordCountReq = 0x0053
-
 //查询List所有元素请求
 TcaplusApiListGetAllReq = 0x000b
 
 //删除List所有元素请求
 TcaplusApiListDeleteAllReq = 0x000d
-
-//删除List多个元素请求
-TcaplusApiListDeleteBatchReq = 0x0041
 
 //查询List单个元素请求
 TcaplusApiListGetReq = 0x000f
@@ -181,13 +76,163 @@ TcaplusApiListDeleteReq = 0x0013
 //替换List单个元素请求
 TcaplusApiListReplaceReq = 0x0015
 
+//批量查询请求
+TcaplusApiBatchGetReq = 0x0017
+
+//部分Key查询请求
+TcaplusApiGetByPartkeyReq = 0x0019
+
+//Generic表更新请求
+TcaplusApiUpdateReq = 0x001d
+
+//删除List多个元素请求
+TcaplusApiListDeleteBatchReq = 0x0041
+
+//表遍历请求
+TcaplusApiTableTraverseReq = 0x0045
+
+//Partkey delete请求
+TcaplusApiDeleteByPartkeyReq = 0x004f
+
+//table的记录总数请求
+TcaplusApiGetTableRecordCountReq = 0x0053
+
+//protobuf部分字段获取请求
+TcaplusApiPBFieldGetReq = 0x0067
+
+//protobuf部分字段更新请求
+TcaplusApiPBFieldUpdateReq = 0x0069
+
+//protobuf部分字段自增请求
+TcaplusApiPBFieldIncreaseReq = 0x006b
+
+//索引查询请求
+TcaplusApiSqlReq = 0x0081
+
+```
+### 3.1 TDR Client
+#### 3.1.1 创建tcaplus client
+```
+/**
+   @brief 创建一个tcaplus api客户端
+   @retval 返回客户端指针
+**/
+func NewClient() *Client 
+```
+#### 3.1.2 日志配置接口
+创建client之后，立刻调用
+```
+/**
+   @brief                   设置API日志配置文件全路径log.conf(json格式，example下有示例)，请在client.Dial之前调用
+   @param [IN] cfgPath      日志配置文件全路径log.conf
+   @retval                  错误码
+   @note                    Api日志默认使用的zap，用户也可自行实现日志接口logger.LogInterface，调用SetLogger进行设置
+**/
+func (c *Client) SetLogCfg(cfgPath string) error 
+
+/**
+   @brief                   自定义API日志接口,用户实现logger.LogInterface日志接口，日志将打印到用户的日志接口中，请在client.Dial之前调用
+   @param [IN] handle       logger.LogInterface类型的日志接口
+   @retval                  错误码
+**/
+func (c *Client) SetLogger(handle logger.LogInterface) 
 ```
 
-### 3.1 Client 接口
+#### 3.1.3 连接tcaplus接口
+```
+/**
+   @brief 连接tcaplue函数
+   @param [IN] appId         appId，在网站注册相应服务以后，你可以得到该appId
+   @param [IN] zoneList      需要操作表的区服ID列表，操作的表在多个不同的zone，填zoneId列表；操作的表在一个zone，zone列表填一个zoneId
+   @param [IN] signature     签名/密码，在网站注册相应服务以后，你可以得到该字符串
+   @param [IN] dirUrl        目录服务器的url，形如"tcp://172.25.40.181:10600"
+   @param [IN] timeout       second, 连接所有表对应的tcaplus proxy服务器。若所有的proxy连通且鉴权通过，则立即返回成功；
+                                若到达超时时间，只要有一个proxy连通且鉴权通过，也会返回成功；否则返回超时错误。
+   @retval                   错误码
+**/
+func (c *Client) Dial(appId uint64, zoneList []uint32, dirUrl string, signature string, timeout uint32) error
+```
+
+#### 3.1.4 创建tcaplus请求
+```
+/**
+	@brief 创建指定分区指定表的tcaplus请求
+	@param [IN] zoneId              区服ID
+	@param [IN] tableName           表名
+	@param [IN] cmd                 命令字(cmd包中cmd.TcaplusApiGetReq等)
+	@retval request.TcaplusRequest  tcaplus请求
+	@retval error                   错误码
+*/
+func (c *Client) NewRequest(zoneId uint32, tableName string, cmd int) (request.TcaplusRequest, error) 
+```
+
+#### 3.1.5 发送tcaplus请求
+```
+/**
+	@brief 发送tcaplus请求
+	@param [IN] req       tcaplus请求
+	@retval error         错误码
+*/
+func (c *Client) SendRequest(req request.TcaplusRequest) error
+```
+
+#### 3.1.6 异步接收tcaplus响应
+```
+/**
+    @brief 异步接收tcaplus响应
+    @retval response.TcaplusResponse tcaplus响应
+    @retval error 错误码
+            error nil，response nil 成功但当前无响应消息
+            error nil, response 非nil，成功获取响应消息
+            error 非nil，接收响应出错
+*/
+func (c *Client) RecvResponse() (response.TcaplusResponse, error)
+```
+
+#### 3.1.7 发送tcaplus同步请求并接受响应
+```
+/**
+    @brief 发送tcaplus同步请求并接受响应
+    @param [IN] req tcaplus请求
+    @param [IN] timeout 超时时间
+    @retval response.TcaplusResponse tcaplus响应
+    @retval error 错误码
+            error nil，response nil 成功但当前无响应消息
+            error nil, response 非nil，成功获取响应消息
+            error 非nil，接收响应出错
+**/
+func (c *Client) Do(req request.TcaplusRequest, timeout time.Duration) (response.TcaplusResponse, error)
+
+/**
+    @brief 发送tcaplus同步请求并接受响应, 用于响应可能分包的请求，如getbypartkey，listgetall
+	@param [IN] req tcaplus请求
+	@param [IN] timeout 超时时间
+    @retval []response.TcaplusResponse tcaplus响应
+    @retval error 错误码
+            error nil，response nil 成功但当前无响应消息
+            error nil, response 非nil，成功获取响应消息
+            error 非nil，response 非nil 接收部分回包正确，但是收到了错误包或者超时退出
+**/
+func (c *client) DoMore(req request.TcaplusRequest, timeout time.Duration) ([]response.TcaplusResponse, error)
+
+/**
+    @brief 发送tcaplus同步请求并接受响应，专用于遍历
+	@param [IN] tra 遍历器
+	@param [IN] timeout 超时时间
+    @retval []response.TcaplusResponse tcaplus响应
+    @retval error 错误码
+            error nil，response nil 成功但当前无响应消息
+            error nil, response 非nil，成功获取响应消息
+            error 非nil，response 非nil 接收部分回包正确，但是收到了错误包或者超时退出
+**/
+func (c *client) DoTraverse(tra *traverser.Traverser, timeout time.Duration) ([]response.TcaplusResponse, error)
+```
+
+### 3.2 PB Client 接口
 
 业务在调用 SDK 接口时，需要先初始化连接客户端，步骤如下。
 
-#### 3.1.1 创建 tcaplus pbclient
+#### 3.2.1 创建 tcaplus pbclient
 
 ```
 /**
@@ -197,7 +242,7 @@ TcaplusApiListReplaceReq = 0x0015
 func NewPBClient() *PBClient
 ```
 
-#### 3.1.2 日志配置接口
+#### 3.2.2 日志配置接口
 
 创建 client 之后，需要配置日志（备注：**若不调用此接口日志将会直接输出控制台**）。
 
@@ -219,7 +264,7 @@ func (c *Client) SetLogCfg(cfgPath string) error
 func (c *Client) SetLogger(handle logger.LogInterface)
 ```
 
-#### 3.1.3 连接 tcaplus 接口
+#### 3.2.3 连接 tcaplus 接口
 
 在初始化客户端连接指针后，需要调用具体的连接接口建立与 TcalusDB 后端连接。
 
@@ -238,7 +283,7 @@ func (c *Client) SetLogger(handle logger.LogInterface)
 func (c *Client) Dial(appId uint64, zoneList []uint32, dirUrl string, signature string, timeout uint32, zoneTable map[uint32][]string{}) error
 ```
 
-#### 3.1.4 创建 tcaplus 请求
+#### 3.2.4 创建 tcaplus 请求
 
 ```
 /**
@@ -252,7 +297,7 @@ func (c *Client) Dial(appId uint64, zoneList []uint32, dirUrl string, signature 
 func (c *Client) NewRequest(zoneId uint32, tableName string, cmd int) (request.TcaplusRequest, error)
 ```
 
-#### 3.1.5 发送 tcaplus 请求
+#### 3.2.5 发送 tcaplus 请求
 
 ```
 /**
@@ -263,7 +308,7 @@ func (c *Client) NewRequest(zoneId uint32, tableName string, cmd int) (request.T
 func (c *Client) SendRequest(req request.TcaplusRequest) error
 ```
 
-#### 3.1.6 异步接收 tcaplus 响应
+#### 3.2.6 异步接收 tcaplus 响应
 
 ```
 /**
@@ -277,7 +322,7 @@ func (c *Client) SendRequest(req request.TcaplusRequest) error
 func (c *Client) RecvResponse() (response.TcaplusResponse, error)
 ```
 
-#### 3.1.7 发送 tcaplus 同步请求并接受响应
+#### 3.2.7 发送 tcaplus 同步请求并接受响应
 
 ```
 /**
@@ -293,9 +338,9 @@ func (c *Client) RecvResponse() (response.TcaplusResponse, error)
 func (c *Client) Do(req request.TcaplusRequest, timeout time.Duration) (response.TcaplusResponse, error)
 ```
 
-#### 3.1.8 发送 tcaplus 同步请求并接受多个响应
+#### 3.2.8 发送 tcaplus 同步请求并接受多个响应
 
-与 3.1.7 的区别为：3.1.7 请求只会有一个响应，3.1.8 请求会有多个响应，例如：
+与 3.2.7 的区别为：3.2.7 请求只会有一个响应，3.2.8 请求会有多个响应，例如：
 TcaplusApiBatchGetReq TcaplusApiGetByPartkeyReq TcaplusApiSqlReq
 
 ```
@@ -312,7 +357,7 @@ TcaplusApiBatchGetReq TcaplusApiGetByPartkeyReq TcaplusApiSqlReq
 func (c *client) DoMore(req request.TcaplusRequest, timeout time.Duration) ([]response.TcaplusResponse, error)
 ```
 
-#### 3.1.9 设置默认 zoneId (非必须)
+#### 3.2.9 设置默认 zoneId (非必须)
 
 连接数据库后会将传入的 zoneTables 的第一个 zone 作为默认 zoneId(根据需要调用，非必须)
 
@@ -325,7 +370,7 @@ func (c *client) DoMore(req request.TcaplusRequest, timeout time.Duration) ([]re
 func (c *PBClient) SetDefaultZoneId(zoneId uint32) error
 ```
 
-#### 3.1.10 设置默认超时时间
+#### 3.2.10 设置默认超时时间
 
 默认超时时间 5s(根据需要调用，非必须)
 
@@ -338,7 +383,7 @@ func (c *PBClient) SetDefaultZoneId(zoneId uint32) error
 func (c *PBClient) SetDefaultTimeOut(t time.Duration) error
 ```
 
-#### 3.1.11 插入记录
+#### 3.2.11 插入记录
 
 插入单条记录
 
@@ -359,7 +404,7 @@ func (c *PBClient) Insert(msg proto.Message) error
 func (c *PBClient) InsertWithZone(msg proto.Message, zoneId uint32) error
 ```
 
-#### 3.1.12 替换记录
+#### 3.2.12 替换记录
 
 调用成功 msg 将带回此次替换前的记录。
 如果记录不存在，将此条记录插入。替换的是整条记录，只需要替换部分字段不要使用此接口。
@@ -381,7 +426,7 @@ func (c *PBClient) Replace(msg proto.Message) error
 func (c *PBClient) ReplaceWithZone(msg proto.Message, zoneId uint32) error
 ```
 
-#### 3.1.13 修改记录
+#### 3.2.13 修改记录
 
 调用成功 msg 将带回此次修改前的记录。记录不存在会报错。
 如果记录不存在，将返回错误。修改的是整条记录，只需要修改部分字段不要使用此接口。
@@ -403,7 +448,7 @@ func (c *PBClient) Update(msg proto.Message) error
 func (c *PBClient) UpdateWithZone(msg proto.Message, zoneId uint32) error
 ```
 
-#### 3.1.11 删除记录
+#### 3.2.11 删除记录
 
 调用成功 msg 将带回此次删除的记录。根据主键删除单条记录。
 
@@ -424,7 +469,7 @@ func (c *PBClient) Delete(msg proto.Message) error
 func (c *PBClient) DeleteWithZone(msg proto.Message, zoneId uint32) error
 ```
 
-#### 3.1.12 获取记录
+#### 3.2.12 获取记录
 
 调用成功 msg 会带回此次获取到的记录。一次返回单条记录。
 
@@ -445,7 +490,7 @@ func (c *PBClient) Get(msg proto.Message) error
 func (c *PBClient) GetWithZone(msg proto.Message, zoneId uint32) error
 ```
 
-#### 3.1.13 批量获取记录
+#### 3.2.13 批量获取记录
 
 调用成功 msgs 会带回此次获取到的所有记录。批量获取数据接口方便用户一次返回多条记录，比如一次返回多个玩家的记录用于在业务层作聚合操作。
 
@@ -466,7 +511,7 @@ func (c *PBClient) BatchGet(msgs []proto.Message) error
 func (c *PBClient) BatchGetWithZone(msgs []proto.Message, zoneId uint32) error
 ```
 
-#### 3.1.14 部分 key 获取记录
+#### 3.2.14 部分 key 获取记录
 
 此接口主要作用于表定义的主键索引，TcaplusDB 支持最多`8`个联合主键字段，主键索引可支持建`4`个，每个主键索引可支持 1 个或多个主键字段构成，这样方便用户灵活根据业务场景进行组合，满足更多查询场景需要。
 注意：
@@ -486,16 +531,16 @@ func (c *PBClient) GetByPartKey(msg proto.Message, keys []string) ([]proto.Messa
 
 /**
     @brief 部分key获取记录。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
-    @param [IN] msg proto.Message 由proto文件生成的记录结构体
-    @param [IN] keys []string 部分key，根据 proto 文件中的 index 选择填写
-    @param [IN] zoneId 指定表所在zone
-    @retval []proto.Message 返回记录，可能匹配到多条记录
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] keys []string 部分key，根据 proto 文件中的 index 选择填写
+	@param [IN] zoneId 指定表所在zone
+	@retval []proto.Message 返回记录，可能匹配到多条记录
     @retval error 错误码
 **/
 func (c *PBClient) GetByPartKeyWithZone(msg proto.Message, keys []string, zoneId uint32) ([]proto.Message, error)
 ```
 
-#### 3.1.15 获取部分 value
+#### 3.2.15 获取部分 value
 
 调用成功 msg 会带回此次获取到的记录。通过此接口可实现只返回少数字段，避免返回整条记录，对于记录字段数的表效率尤其明显，可大大降低返回包的大小，及提高解析包的效率。
 
@@ -518,7 +563,7 @@ func (c *PBClient) FieldGet(msg proto.Message, values []string) error
 func (c *PBClient) FieldGetWithZone(msg proto.Message, values []string, zoneId uint32) error
 ```
 
-#### 3.1.16 更新部分 value
+#### 3.2.16 更新部分 value
 
 调用成功 msg 会带回此次更新后的记录。通过此接口研发同学可避免更新少数字段需要传整条记录的情况，大幅增加传输效率。
 
@@ -541,7 +586,7 @@ func (c *PBClient) FieldUpdate(msg proto.Message, values []string) error
 func (c *PBClient) FieldUpdateWithZone(msg proto.Message, values []string, zoneId uint32) error
 ```
 
-#### 3.1.17 自增部分 value（仅支持整型）
+#### 3.2.17 自增部分 value（仅支持整型）
 
 调用成功 msg 会带回此次自增后的记录。
 
@@ -564,7 +609,7 @@ func (c *PBClient) FieldIncrease(msg proto.Message, values []string) error
 func (c *PBClient) FieldIncreaseWithZone(msg proto.Message, values []string, zoneId uint32) error
 ```
 
-#### 3.1.18 二级索引查询
+#### 3.2.18 二级索引查询
 
 二级索引查询支持通过 SQL 语法进行数据查询，主要基于 TcaplusDB 的全局二级索引字段进行 Select 查询，在 where 条件中可用指定为索引的字段进行范围查询，模糊查询，等值查询和聚合查询。
 注意前提：**在云控制台已经针对表添加了全局二级索引**,　如若未添加是无法使用此接口的。
@@ -591,7 +636,7 @@ func (c *PBClient) IndexQueryWithZone(query string, zoneId uint32) ([]proto.Mess
 ```
 
 
-#### 3.1.19 获取表记录数
+#### 3.2.19 获取表记录数
 ```
 /**
     @brief 获取表记录总数
@@ -610,7 +655,7 @@ func (c *PBClient) GetTableCount(table string) (int, error)
 **/
 func (c *PBClient) GetTableCountWithZone(table string, zoneId uint32) (int, error)
 ```
-#### 3.1.20 获取遍历器
+#### 3.2.20 获取遍历器
 
 用于遍历全表接口使用。
 
@@ -623,7 +668,7 @@ func (c *PBClient) GetTableCountWithZone(table string, zoneId uint32) (int, erro
 **/
 func (c *client) GetTraverser(zoneId uint32, table string) *traverser.Traverser
 ```
-#### 3.1.21 获取appId
+#### 3.2.21 获取appId
 ```
 /**
     @brief 获取本次连接的appId
@@ -631,14 +676,14 @@ func (c *client) GetTraverser(zoneId uint32, table string) *traverser.Traverser
 **/
 func (c *client) GetAppId() uint64
 ```
-#### 3.1.22 关闭client
+#### 3.2.22 关闭client
 ```
 /**
     @brief 关闭client，释放资源
 **/
 func (c *client) Close()
 ```
-#### 3.1.23 遍历表记录
+#### 3.2.23 遍历表记录
 ```
 /**
     @brief 遍历表
@@ -657,109 +702,109 @@ func (c *PBClient) Traverse(msg proto.Message) ([]proto.Message, error)
 **/
 func (c *PBClient) TraverseWithZone(msg proto.Message, zoneId uint32) ([]proto.Message, error)
 ```
-#### 3.1.24 指定访问ip
+#### 3.2.24 指定访问ip
 ```
 /*
     @brief 指定访问IP，主要用于无法访问docker内部ip的情况
 */
 func (c *client) SetPublicIP(publicIP string) 
 ```
-#### 3.1.25 list表插入记录
+#### 3.2.25 list表插入记录
 ```
 /**
     @brief list表插入记录，可以使用 SetDefaultZoneId 来设置zoneid； SetDefaultTimeOut 设置超时时间
     @param [IN] msg proto.Message 由proto文件生成的记录结构体
-    @param [IN] index int32 插入到key中的第index条记录之后
+	@param [IN] index int32 插入到key中的第index条记录之后
     @retval error 错误码
 **/
 func (c *PBClient) ListAddAfter(msg proto.Message, index int32) error
 
 /**
-    @brief list表插入记录。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
-    @param [IN] msg proto.Message 由proto文件生成的记录结构体
-    @param [IN] zoneId 指定表所在zone
-    @param [IN] index int32 插入到key中的第index条记录之后
+	@brief list表插入记录。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] zoneId 指定表所在zone
+	@param [IN] index int32 插入到key中的第index条记录之后
     @retval error 错误码
 **/
 func (c *PBClient) ListAddAfterWithZone(msg proto.Message, index int32, zoneId uint32) error
 ```
-#### 3.1.26 list表删除记录
+#### 3.2.26 list表删除记录
 ```
 /**
     @brief list表删除记录，可以使用 SetDefaultZoneId 来设置zoneid； SetDefaultTimeOut 设置超时时间
     @param [IN] msg proto.Message 由proto文件生成的记录结构体
-    @param [IN] index int32 删除key中的第index条记录
+	@param [IN] index int32 删除key中的第index条记录
     @retval error 错误码
 **/
 func (c *PBClient) ListDelete(msg proto.Message, index int32) error
 
 /**
-    @brief list表删除记录。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
-    @param [IN] msg proto.Message 由proto文件生成的记录结构体
-    @param [IN] index int32 删除key中的第index条记录
-    @param [IN] zoneId 指定表所在zone
+	@brief list表删除记录。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] index int32 删除key中的第index条记录
+	@param [IN] zoneId 指定表所在zone
     @retval error 错误码
 **/
 func (c *PBClient) ListDeleteWithZone(msg proto.Message, index int32, zoneId uint32) error
 ```
-#### 3.1.27 list表修改记录
+#### 3.2.27 list表修改记录
 ```
 /**
     @brief list表更新记录，可以使用 SetDefaultZoneId 来设置zoneid； SetDefaultTimeOut 设置超时时间
     @param [IN] msg proto.Message 由proto文件生成的记录结构体
-    @param [IN] index int32 更新key中的第index条记录
+	@param [IN] index int32 更新key中的第index条记录
     @retval error 错误码
 **/
 func (c *PBClient) ListReplace(msg proto.Message, index int32) error
 
 /**
-    @brief list表更新记录。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
-    @param [IN] msg proto.Message 由proto文件生成的记录结构体
-    @param [IN] index int32 更新key中的第index条记录
-    @param [IN] zoneId 指定表所在zone
+	@brief list表更新记录。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] index int32 更新key中的第index条记录
+	@param [IN] zoneId 指定表所在zone
     @retval error 错误码
 **/
 func (c *PBClient) ListReplaceWithZone(msg proto.Message, index int32, zoneId uint32) error
 ```
-#### 3.1.28 list表查询记录
+#### 3.2.28 list表查询记录
 ```
 /**
     @brief list表获取记录，可以使用 SetDefaultZoneId 来设置zoneid； SetDefaultTimeOut 设置超时时间
     @param [IN] msg proto.Message 由proto文件生成的记录结构体
-    @param [IN] index int32 获取key中的第index条记录
+	@param [IN] index int32 获取key中的第index条记录
     @retval error 错误码
 **/
 func (c *PBClient) ListGet(msg proto.Message, index int32) error
 
 /**
-    @brief list表获取记录。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
-    @param [IN] msg proto.Message 由proto文件生成的记录结构体
-    @param [IN] index int32 获取key中的第index条记录
-    @param [IN] zoneId 指定表所在zone
+	@brief list表获取记录。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] index int32 获取key中的第index条记录
+	@param [IN] zoneId 指定表所在zone
     @retval error 错误码
 **/
 func (c *PBClient) ListGetWithZone(msg proto.Message, index int32, zoneId uint32) error
 ```
-#### 3.1.29 list表获取key下所有记录
+#### 3.2.29 list表获取key下所有记录
 ```
 /**
     @brief list表获取key下所有记录，可以使用 SetDefaultZoneId 来设置zoneid； SetDefaultTimeOut 设置超时时间
     @param [IN] msg proto.Message 由proto文件生成的记录结构体
-    @retval map[int32]proto.Message 查询结果, key为index 
+	@retval map[int32]proto.Message 查询结果, key为index 
     @retval error 错误码
 **/
 func (c *PBClient) ListGetAll(msg proto.Message) (map[int32]proto.Message, error)
 
 /**
-    @brief list表获取key下所有记录。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
-    @param [IN] msg proto.Message 由proto文件生成的记录结构体
-    @param [IN] zoneId 指定表所在zone
-    @retval map[int32]proto.Message 查询结果, key为index
+	@brief list表获取key下所有记录。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] zoneId 指定表所在zone
+	@retval map[int32]proto.Message 查询结果, key为index
     @retval error 错误码
 **/
 func (c *PBClient) ListGetAllWithZone(msg proto.Message, zoneId uint32) (map[int32]proto.Message, error)
 ```
-#### 3.1.30 list表删除key下所有记录
+#### 3.2.30 list表删除key下所有记录
 ```
 /**
     @brief list表删除key下所有记录，可以使用 SetDefaultZoneId 来设置zoneid； SetDefaultTimeOut 设置超时时间
@@ -769,38 +814,37 @@ func (c *PBClient) ListGetAllWithZone(msg proto.Message, zoneId uint32) (map[int
 func (c *PBClient) ListDeleteAll(msg proto.Message) error
 
 /**
-    @brief list表删除key下所有记录。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
-    @param [IN] msg proto.Message 由proto文件生成的记录结构体
-    @param [IN] zoneId 指定表所在zone
+	@brief list表删除key下所有记录。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] zoneId 指定表所在zone
     @retval error 错误码
 **/
 func (c *PBClient) ListDeleteAllWithZone(msg proto.Message, zoneId uint32) error
 ```
-#### 3.1.31 list表删除key下多个记录
+#### 3.2.31 list表删除key下多个记录
 ```
 /**
     @brief list表删除key下多个记录，可以使用 SetDefaultZoneId 来设置zoneid； SetDefaultTimeOut 设置超时时间
     @param [IN] msg proto.Message 由proto文件生成的记录结构体
-    @param [IN] indexs []int32 删除key下多个记录
-    @retval map[int32]proto.Message 查询结果, key为index
+	@param [IN] indexs []int32 删除key下多个记录
+	@retval map[int32]proto.Message 查询结果, key为index
     @retval error 错误码
 **/
 func (c *PBClient) ListDeleteBatch(msg proto.Message, indexs []int32) (map[int32]proto.Message, error)
 
 /**
-    @brief list表删除key下多个记录。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
-    @param [IN] msg proto.Message 由proto文件生成的记录结构体
-    @param [IN] indexs []int32 删除key下多个记录
-    @param [IN] zoneId 指定表所在zone
-    @retval map[int32]proto.Message 查询结果, key为index
+	@brief list表删除key下多个记录。当并发时如果zoneId各不相同，无法通过 SetDefaultZoneId 来设置zoneid，需使用此接口
+	@param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN] indexs []int32 删除key下多个记录
+	@param [IN] zoneId 指定表所在zone
+	@retval map[int32]proto.Message 查询结果, key为index
     @retval error 错误码
 **/
 func (c *PBClient) ListDeleteBatchWithZone(msg proto.Message, indexs []int32, zoneId uint32) (map[int32]proto.Message, error)
 ```
+### 3.3 TcaplusRequest 接口
 
-### 3.2 TcaplusRequest 接口
-
-#### 3.2.1 添加记录
+#### 3.3.2 添加记录
 
 一次请求支持添加多条需要操作的记录，通过 AddRecord 实现此逻辑，同时为兼容 TcaplusDB 的 List 类型表，支持添加记录到 List 记录的指定下标位置，相当于在指定数组下标下添加一条要操作的记录。本文档只介绍 Generic 表，所以对于 AddRecord 的下标索引默认为`0`即可。
 
@@ -814,7 +858,7 @@ func (c *PBClient) ListDeleteBatchWithZone(msg proto.Message, indexs []int32, zo
 AddRecord(index int32) (*record.Record, error)
 ```
 
-#### 3.2.2 设置请求异步 ID
+#### 3.3.2 设置请求异步 ID
 
 此接口主要是为映射发送请求体与响应请求体之间的关系，通过此 ID 来表示响应请求属于哪个发送请求。
 
@@ -826,7 +870,7 @@ AddRecord(index int32) (*record.Record, error)
 SetAsyncId(id uint64)
 ```
 
-#### 3.2.3 设置版本校验规则
+#### 3.3.3 设置版本校验规则
 
 通过版本校验接口，可以灵活设置数据的版本号，也可设置严格的写入数据校验机制，避免数据写乱、写错，极大的保障了数据的一致性、安全性。
 
@@ -843,7 +887,7 @@ SetAsyncId(id uint64)
 SetVersionPolicy(p uint8) error
 ```
 
-#### 3.2.4 设置响应标志
+#### 3.3.4 设置响应标志
 
 设置响应包返回的格式，如只返回响应成功与否、返回原始记录或只返回新的记录。主要用于比对发送的数据是否和接收的数据保持一致，可减少研发自身去判断此类逻辑的工作量。
 
@@ -858,9 +902,178 @@ SetVersionPolicy(p uint8) error
     @retval error      错误码
 **/
 SetResultFlag(flag int) error
+
+/**
+    @brief	设置响应标志。主要是本次请求成功执行后返回给前端的数据
+
+		result_flag 的取值范围如下:
+
+	 TCaplusValueFlag_NOVALUE = 0,			  // 不返回任何返回值
+	 TCaplusValueFlag_SAMEWITHREQUEST = 1,	  // 返回同请求一致的值
+	 TCaplusValueFlag_ALLVALUE = 2, 		  // 返回tcapsvr端操作后所有字段的值
+	 TCaplusValueFlag_ALLOLDVALUE = 3,		  // 返回tcapsvr端操作前所有字段的值
+
+
+	下面是各个支持的命令字在设置不同的result_flag下执行成功后返回给API端的数据详细情况:
+
+	 1. TCAPLUS_API_INSERT_REQ TCAPLUS_API_BATCH_INSERT_REQ
+		 如果设置的是TCaplusValueFlag_NOVALUE, 则操作成功后不返回数据
+		 如果设置的是TCaplusValueFlag_SAMEWITHREQUEST, 则操作成功后返回和请求一致的数据
+		 如果设置的是TCaplusValueFlag_ALLVALUE, 则操作成功后返回本次insert操作后的数据
+		 如果设置的是TCaplusValueFlag_ALLOLDVALUE, 则操作成功后返回空数据
+
+	 2. TCAPLUS_API_REPLACE_REQ TCAPLUS_API_BATCH_REPLACE_REQ
+		 如果设置的是TCaplusValueFlag_NOVALUE, 则操作成功后不返回数据
+		 如果设置的是TCaplusValueFlag_SAMEWITHREQUEST, 则操作成功后返回和请求一致的数据
+		 如果设置的是TCaplusValueFlag_ALLVALUE, 则操作成功后返回本次replace操作后的数据
+		 如果设置的是TCaplusValueFlag_ALLOLDVALUE, 则操作成功后返回tcapsvr端操作前的数据, 如果tcapsvr端没有数据,即返回为空
+
+	 3. TCAPLUS_API_UPDATE_REQ TCAPLUS_API_BATCH_UPDATE_REQ
+		 如果设置的是TCaplusValueFlag_NOVALUE, 则操作成功后不返回数据
+		 如果设置的是TCaplusValueFlag_SAMEWITHREQUEST, 则操作成功后返回和请求一致的数据
+		 如果设置的是TCaplusValueFlag_ALLVALUE, 则操作成功后返回本次update操作后的数据
+		 如果设置的是TCaplusValueFlag_ALLOLDVALUE, 则操作成功后返回tcapsvr端操作前的数据
+
+	 4. TCAPLUS_API_INCREASE_REQ
+		 如果设置的是TCaplusValueFlag_NOVALUE, 则操作成功后不返回数据
+		 如果设置的是TCaplusValueFlag_SAMEWITHREQUEST, 则操作成功后返回和请求一致的数据
+		 如果设置的是TCaplusValueFlag_ALLVALUE, 则操作成功后返回本次increase操作后的数据
+		 如果设置的是TCaplusValueFlag_ALLOLDVALUE, 则操作成功后返回tcapsvr端操作前的数据, 如果tcapsvr端没有数据,即返回为空
+
+	 5. TCAPLUS_API_DELETE_REQ TCAPLUS_API_BATCH_DELETE_REQ
+		 如果设置的是TCaplusValueFlag_NOVALUE, 则操作成功后不返回数据
+		 如果设置的是TCaplusValueFlag_SAMEWITHREQUEST, 则操作成功后返回和请求一致的数据
+		 如果设置的是TCaplusValueFlag_ALLVALUE, 则操作成功后返回空数据
+		 如果设置的是TCaplusValueFlag_ALLOLDVALUE, 则操作成功后返回tcapsvr端操作前的数据
+
+	 6. TCAPLUS_API_LIST_DELETE_BATCH_REQ
+		 如果设置的是TCaplusValueFlag_NOVALUE, 则操作成功后不返回数据
+		 如果设置的是TCaplusValueFlag_SAMEWITHREQUEST, 则操作成功后返回和请求一致的数据, 暂时没有实现
+		 如果设置的是TCaplusValueFlag_ALLVALUE, 则操作成功后不返回数据
+		 如果设置的是TCaplusValueFlag_ALLOLDVALUE, 则操作成功后返回tcapsvr端操作前的数据, 凡是本次成功删除的index对应的数据都会返回
+
+	 7. TCAPLUS_API_LIST_ADDAFTER_REQ
+		 如果设置的是TCaplusValueFlag_NOVALUE, 则操作成功后不返回数据
+		 如果设置的是TCaplusValueFlag_SAMEWITHREQUEST, 则操作成功后返回和请求一致的数据, 暂时没有实现
+		 如果设置的是TCaplusValueFlag_ALLVALUE, 则操作成功后, 返回本次插入的记录和本次淘汰的数据记录
+		 如果设置的是TCaplusValueFlag_ALLOLDVALUE, 则操作成功后不返回数据
+
+	 8. TCAPLUS_API_LIST_DELETE_REQ
+		 如果设置的是TCaplusValueFlag_NOVALUE, 则操作成功后不返回数据
+		 如果设置的是TCaplusValueFlag_SAMEWITHREQUEST, 则操作成功后返回和请求一致的数据, 暂时没有实现
+		 如果设置的是TCaplusValueFlag_ALLVALUE, 则操作成功后返回空数据
+		 如果设置的是TCaplusValueFlag_ALLOLDVALUE, 则操作成功后返回tcapsvr端listdelete前的数据
+
+	 9. TCAPLUS_API_LIST_REPLACE_REQ
+		 如果设置的是TCaplusValueFlag_NOVALUE, 则操作成功后不返回数据
+		 如果设置的是TCaplusValueFlag_SAMEWITHREQUEST, 则操作成功后返回和请求一致的数据, 暂时没有实现
+		 如果设置的是TCaplusValueFlag_ALLVALUE, 则操作成功后返回tcapsvr端listreplace后的数据
+		 如果设置的是TCaplusValueFlag_ALLOLDVALUE, 则操作成功后返回tcapsvr端listreplace前的数据
+	10. TCAPLUS_API_LIST_REPLACE_BATCH_REQ
+		 如果设置的是TCaplusValueFlag_NOVALUE, 操作成功后返回和请求一致的数据
+		 如果设置的是TCaplusValueFlag_SAMEWITHREQUEST, 则操作成功后返回和请求一致的数据
+		 如果设置的是TCaplusValueFlag_ALLVALUE, 则操作成功后返回tcapsvr端listreplace后的数据
+		 如果设置的是TCaplusValueFlag_ALLOLDVALUE, 则操作成功后返回tcapsvr端listreplace前的数据
+
+	 @param  [IN] result_flag  请求标志:
+								 0表示: 只需返回操作执行成功与否
+								 1表示: 返回与请求字段一致
+								 2表示: 须返回变更记录的所有字段最新数据
+								 3表示: 须返回变更记录的所有字段旧数据
+
+								 对于batch_get请求，该字段设置为大于0时，某个key查询记录不存在或svr端产生的其它错误时会返回对应的key，
+								 从而知道是哪个key对应的记录失败了
+	 @retval 0	  设置成功
+	 @retval <0   失败，返回对应的错误码。通常因为未初始化。
+
+*/
+
+SetResultFlagForSuccess (result_flag byte) int
+
+/**
+    @brief	设置响应标志。主要是本次请求执行失败后返回给前端的数据
+
+		result_flag 的取值范围如下:
+
+		TCaplusValueFlag_NOVALUE = 0,			 // 不返回任何返回值
+		TCaplusValueFlag_SAMEWITHREQUEST = 1,	 // 返回同请求一致的值
+		TCaplusValueFlag_ALLVALUE = 2,			 // 返回tcapsvr端操作后所有字段的值
+		TCaplusValueFlag_ALLOLDVALUE = 3,		 // 返回tcapsvr端操作前所有字段的值
+
+
+	   下面是各个支持的命令字在设置不同的result_flag下执行失败后返回给API端的数据详细情况:
+
+		1. TCAPLUS_API_INSERT_REQ  TCAPLUS_API_BATCH_INSERT_REQ
+			如果设置的是TCaplusValueFlag_NOVALUE, 则操作失败后不返回数据
+			如果设置的是TCaplusValueFlag_SAMEWITHREQUEST, 则操作失败后返回和请求一致的数据
+			如果设置的是TCaplusValueFlag_ALLVALUE, 不合理场景
+			如果设置的是TCaplusValueFlag_ALLOLDVALUE, 如果获取到了tcapsvr端的数据则返回tcpasvr端的数据,如果没有获取到tcapsvr端的数据则返回空
+
+		2. TCAPLUS_API_REPLACE_REQ  TCAPLUS_API_BATCH_REPLACE_REQ
+			如果设置的是TCaplusValueFlag_NOVALUE, 则操作失败后不返回数据
+			如果设置的是TCaplusValueFlag_SAMEWITHREQUEST, 则操作失败后返回和请求一致的数据
+			如果设置的是TCaplusValueFlag_ALLVALUE, 不合理场景
+			如果设置的是TCaplusValueFlag_ALLOLDVALUE, 如果获取到了tcapsvr端的数据则返回tcpasvr端的数据,如果没有获取到tcapsvr端的数据则返回空
+
+		3. TCAPLUS_API_UPDATE_REQ  TCAPLUS_API_BATCH_UPDATE_REQ
+			如果设置的是TCaplusValueFlag_NOVALUE, 则操作失败后不返回数据
+			如果设置的是TCaplusValueFlag_SAMEWITHREQUEST, 则操作失败后返回和请求一致的数据
+			如果设置的是TCaplusValueFlag_ALLVALUE, 不合理场景
+			如果设置的是TCaplusValueFlag_ALLOLDVALUE, 如果获取到了tcapsvr端的数据则返回tcpasvr端的数据,如果没有获取到tcapsvr端的数据则返回空
+
+		4. TCAPLUS_API_INCREASE_REQ
+			如果设置的是TCaplusValueFlag_NOVALUE, 则操作失败后不返回数据
+			如果设置的是TCaplusValueFlag_SAMEWITHREQUEST, 则操作失败后返回和请求一致的数据
+			如果设置的是TCaplusValueFlag_ALLVALUE, 不合理场景
+			如果设置的是TCaplusValueFlag_ALLOLDVALUE, 如果获取到了tcapsvr端的数据则返回tcpasvr端的数据,如果没有获取到tcapsvr端的数据则返回空
+
+		5. TCAPLUS_API_DELETE_REQ TCAPLUS_API_BATCH_DELETE_REQ
+			如果设置的是TCaplusValueFlag_NOVALUE, 则操作失败后不返回数据
+			如果设置的是TCaplusValueFlag_SAMEWITHREQUEST, 则操作失败后返回和请求一致的数据
+			如果设置的是TCaplusValueFlag_ALLVALUE, 不合理场景
+			如果设置的是TCaplusValueFlag_ALLOLDVALUE, 如果获取到了tcapsvr端的数据则返回tcpasvr端的数据,如果没有获取到tcapsvr端的数据则返回空
+
+		6. TCAPLUS_API_LIST_DELETE_BATCH_REQ
+			如果设置的是TCaplusValueFlag_NOVALUE, 则操作失败后不返回数据
+			如果设置的是TCaplusValueFlag_SAMEWITHREQUEST, 则操作失败后返回和请求一致的数据, 暂时没有实现
+			如果设置的是TCaplusValueFlag_ALLVALUE, 不合理场景
+			如果设置的是TCaplusValueFlag_ALLOLDVALUE, 则操作成功后返回tcapsvr端操作前的数据, 凡是本次成功删除的index对应的数据都会返回
+
+		7. TCAPLUS_API_LIST_ADDAFTER_REQ
+			如果设置的是TCaplusValueFlag_NOVALUE, 则操作失败后不返回数据
+			如果设置的是TCaplusValueFlag_SAMEWITHREQUEST, 则操作失败后返回和请求一致的数据, 暂时没有实现
+			如果设置的是TCaplusValueFlag_ALLVALUE, 不合理场景
+			如果设置的是TCaplusValueFlag_ALLOLDVALUE, 不返回数据
+
+		8. TCAPLUS_API_LIST_DELETE_REQ
+			如果设置的是TCaplusValueFlag_NOVALUE, 则操作失败后不返回数据
+			如果设置的是TCaplusValueFlag_SAMEWITHREQUEST, 则操作失败后返回和请求一致的数据, 暂时没有实现
+			如果设置的是TCaplusValueFlag_ALLVALUE, 不合理场景
+			如果设置的是TCaplusValueFlag_ALLOLDVALUE, 如果获取到了tcapsvr端的数据则返回tcpasvr端的数据,如果没有获取到tcapsvr端的数据则返回空
+
+		9. TCAPLUS_API_LIST_REPLACE_REQ
+			如果设置的是TCaplusValueFlag_NOVALUE, 则操作失败后不返回数据
+			如果设置的是TCaplusValueFlag_SAMEWITHREQUEST, 则操作失败后返回和请求一致的数据, 暂时没有实现
+			如果设置的是TCaplusValueFlag_ALLVALUE, 不合理场景
+			如果设置的是TCaplusValueFlag_ALLOLDVALUE, 如果获取到了tcapsvr端的数据则返回tcpasvr端的数据,如果没有获取到tcapsvr端的数据则返回空
+
+    @param	[IN] result_flag  请求标志:
+									0表示: 只需返回操作执行成功与否
+									1表示: 返回与请求字段一致
+									2表示: 须返回变更记录的所有字段最新数据
+									3表示: 须返回变更记录的所有字段旧数据
+
+									对于batch_get请求，该字段设置为大于0时，某个key查询记录不存在或svr端产生的其它错误时会返回对应的key，
+									从而知道是哪个key对应的记录失败了
+    @retval 0	 设置成功
+    @retval <0	 失败，返回对应的错误码。通常因为未初始化。
+
+*/
+
+SetResultFlagForFail (result_flag byte) int
 ```
 
-#### 3.2.5 设置用户缓存
+#### 3.3.5 设置用户缓存
 
 可以简单理解是一种上下文 Context 机制。用户缓存主要用于一些全局变量场景，对于异步调用模式，处理响应数据是异步的，有一些数据在发送请求时用到，同时也希望在响应请求处理时用到，对于异步请求这个场景研发自己实现的话需要设置大量的全局变量来做，不好管理。有了 UserBuffer，就不用设置大量的全局变量来保存一些发送与接收请求都需要用到的数据，直接通过请求本身来传递此类数据。也大大节省了研发工作量。另一种场景是用于保存请求 id, 类似上面 SetAsyncId 接口，以实现上下文 Context 这种效果。
 
@@ -873,7 +1086,7 @@ SetResultFlag(flag int) error
 SetUserBuff(userBuffer []byte) error
 ```
 
-#### 3.2.6 返回记录条数限制
+#### 3.3.6 返回记录条数限制
 
 此设置可以避免一次返回过多数据导致返回记录分包不正常。
 
@@ -893,7 +1106,7 @@ SetUserBuff(userBuffer []byte) error
 SetResultLimit(limit int32, offset int32) int32
 ```
 
-#### 3.2.7 设置分包
+#### 3.3.7 设置分包
 
 ```
 /**
@@ -908,7 +1121,7 @@ SetResultLimit(limit int32, offset int32) int32
 SetMultiResponseFlag(multi_flag byte) int32
 ```
 
-#### 3.2.8 设置 sql 语句
+#### 3.3.8 设置 sql 语句
 
 用于 IndexQuery 接口，二级索引查询通过设置 SQL 来实现查询逻辑。SQL 语法参考`附录`。
 
@@ -922,9 +1135,9 @@ SetMultiResponseFlag(multi_flag byte) int32
 SetSql(query string) int
 ```
 
-### 3.3 Record 接口
+### 3.4 Record 接口
 
-#### 3.3.1 SetPBData 和 GetPBData 接口
+#### 3.4.1 SetPBData 和 GetPBData 接口，专用于PB表
 
 通过 PB Message，对记录进行赋值(请求消息)和获取(响应消息)
 
@@ -946,7 +1159,7 @@ func (r *Record) SetPBData(message proto.Message) ([]byte, error)
 func (r *Record) GetPBData(data proto.Message) ([]byte, error)
 ```
 
-#### 3.3.2 设置记录版本号
+#### 3.4.2 设置记录版本号
 
 ```
 /**
@@ -964,7 +1177,7 @@ func (r *Record) GetPBData(data proto.Message) ([]byte, error)
 func (r *Record) SetVersion(v int32)
 ```
 
-#### 3.3.3 获取记录版本号
+#### 3.4.3 获取记录版本号
 
 ```
 /**
@@ -974,7 +1187,7 @@ func (r *Record) SetVersion(v int32)
 func (r *Record) GetVersion() int32
 ```
 
-#### 3.3.4 SetPBFieldValues 和 GetPBFieldValues 获取部分记录值
+#### 3.4.4 SetPBFieldValues 和 GetPBFieldValues 获取部分记录值，专用于PB表
 
 主要用于`FieldGet, FieldUpdate, FieldIncrease`三个接口。用于设置需要操作的记录部分字段情况。
 
@@ -998,7 +1211,7 @@ func (r *Record) SetPBFieldValues(message proto.Message, values []string) ([]byt
 func (r *Record) GetPBFieldValues(message proto.Message) error
 ```
 
-#### 3.3.5 设置部分 key 字段
+#### 3.4.5 设置部分 key 字段，专用于PB表
 
 用于根据表定义中的主键索引字段来查询数据。
 
@@ -1013,20 +1226,104 @@ func (r *Record) GetPBFieldValues(message proto.Message) error
 func (r *Record) SetPBPartKeys(message proto.Message, keys []string) ([]byte, error)
 ```
 
-#### 3.3.6 获取记录 key 编码值
+#### 3.4.6 获取记录 key 编码值，专用于PB表
 
 ```
 /**
-    @brief 获取记录key编码值
+    @brief 获取记录key编码值，专用于PB表
     @retval []byte 由记录key字段编码生成，由于多条记录的响应记录是无序的，可以用这个值来匹配记录
     @retval error 错误码
 **/
 func (r *Record) GetPBKey() ([]byte, error)
 ```
 
-### 3.4 TcaplusResponse 接口
+#### 3.4.7 SetData 和 GetData 接口，专用于TDR表
 
-#### 3.4.1 获取响应结果
+```
+/**
+	@brief  基于TDR描述设置record数据
+	@param [IN] data  基于TDR描述record接口数据，tdr的xml通过工具生成的go结构体，包含的TdrTableSt接口的一系列方法
+	@retval error     错误码
+**/
+func (r *Record) SetData(data TdrTableSt) error 
+
+/**
+	@brief  基于TDR描述读取record数据
+	@param [IN] data     基于TDR描述record接口数据，tdr的xml通过工具生成的go结构体，包含的TdrTableSt接口的一系列方法
+	@retval error     错误码
+**/
+func (r *Record) GetData(data TdrTableSt) error
+```
+
+#### 3.4.8 SetKey 和 GetKey 接口，专用于TDR表
+
+```
+/**
+    @brief  通用的key字段内容设置
+    @param  [in] name         	字段名称，最大长度32
+    @param  [in] data         	字段内容，最大长度1024字节，必须明确数据类型，必须和tdr xml表中的类型一致
+								支持bool, byte, int8, int16, uint16, int32, uint32, int64, uint64, float32, float64，string, []byte
+    @notice		请根据xml表准确填写类型，最好调用SetKeyInt8等接口
+*/
+func (r *Record) SetKey(name string, data interface{}) error
+
+/**
+    @brief  通用的key字段内容获取
+    @param  [in] name         	字段名称，最大长度32
+    @param  [in] data         	字段内容指针，最大长度1024字节，必须明确数据类型，必须和tdr xml表中的类型一致
+								支持*bool, *byte, *int8, *int16, *uint16, *int32, *uint32, *int64, *uint64, *float32, *float64，*string, *[]byte
+    @notice		请根据xml表准确填写类型，最好调用GetKeyInt8等接口
+*/
+func (r *Record) GetKey(name string, data interface{}) error
+```
+
+#### 3.4.9 SetValue 和 GetValue 接口，专用于TDR表
+
+```
+/**
+    @brief  通用的value字段内容设置
+    @param  [in] name         	字段名称，最大长度32
+    @param  [in] data         	字段内容，最大长度1024字节，必须明确数据类型，必须和tdr xml表中的类型一致
+								支持bool, byte, int8, int16, uint16, int32, uint32, int64, uint64, float32, float64，string, []byte
+    @notice		请根据xml表准确填写类型，最好调用SetValueInt8等接口
+*/
+func (r *Record) SetValue(name string, data interface{}) error
+
+/**
+    @brief  通用的value字段内容获取
+    @param  [in] name         	字段名称，最大长度32
+    @param  [in] data         	字段内容指针，最大长度1024字节，必须明确数据类型，必须和tdr xml表中的类型一致
+								支持*bool, *byte, *int8, *int16, *uint16, *int32, *uint32, *int64, *uint64, *float32, *float64，*string, *[]byte
+    @notice		请根据xml表准确填写类型，最好调用GetValueInt8等接口
+*/
+func (r *Record) GetValue(name string, data interface{}) error
+```
+
+#### 3.4.10 条件过滤
+
+```
+/**
+	@brief  设置过滤条件
+	@param [IN] query     过滤条件例如：fieldValue > 4
+	@retval int     错误码
+**/
+func (r *Record) SetCondition(query string) int
+```
+#### 3.4.11 条件更新
+
+```
+/**
+	@brief  设置附加操作
+	@param [IN] operation     附加操作：PUSH gameids #[-1][$=123]
+	@param [IN] operateOption 附加操作类型 0|1
+	@retval int     错误码
+**/
+func (r *Record) SetOperation(operation string, operateOption int32) int
+```
+
+### 3.5 TcaplusResponse 接口
+
+#### 3.5.1 获取响应结果
 
 ```
 /*
@@ -1036,7 +1333,7 @@ func (r *Record) GetPBKey() ([]byte, error)
 GetResult() int
 ```
 
-#### 3.4.2 获取表名
+#### 3.5.2 获取表名
 
 ```
 /*
@@ -1046,7 +1343,7 @@ GetResult() int
 GetTableName() string
 ```
 
-#### 3.4.3 获取 appId
+#### 3.5.3 获取 appId
 
 ```
 /*
@@ -1056,7 +1353,7 @@ GetTableName() string
 GetAppId() uint64
 ```
 
-#### 3.4.4 获取 zoneId
+#### 3.5.4 获取 zoneId
 
 ```
 /*
@@ -1066,7 +1363,7 @@ GetAppId() uint64
 GetZoneId() uint32
 ```
 
-#### 3.4.5 获取响应命令字
+#### 3.5.5 获取响应命令字
 
 ```
 /*
@@ -1076,7 +1373,7 @@ GetZoneId() uint32
 GetCmd() int
 ```
 
-#### 3.4.6 获取响应异步 ID
+#### 3.5.6 获取响应异步 ID
 
 ```
 /*
@@ -1086,7 +1383,7 @@ GetCmd() int
 GetAsyncId() uint64
 ```
 
-#### 3.4.7 获取响应中记录数
+#### 3.5.7 获取响应中记录数
 
 ```
 /*
@@ -1096,7 +1393,7 @@ GetAsyncId() uint64
 GetRecordCount() int
 ```
 
-#### 3.4.8 获取响应中一条记录
+#### 3.5.8 获取响应中一条记录
 
 ```
 /*
@@ -1107,7 +1404,7 @@ GetRecordCount() int
 FetchRecord() (*record.Record, error)
 ```
 
-#### 3.4.9 获取响应中用户缓存信息
+#### 3.5.9 获取响应中用户缓存信息
 
 ```
 /**
@@ -1117,7 +1414,7 @@ FetchRecord() (*record.Record, error)
 GetUserBuffer() []byte
 ```
 
-#### 3.4.10 获取响应中的序列号
+#### 3.5.10 获取响应中的序列号
 
 ```
 /**
@@ -1126,7 +1423,7 @@ GetUserBuffer() []byte
 GetSeq() int32
 ```
 
-#### 3.4.11 获取分布式索引结果
+#### 3.5.11 获取分布式索引结果
 
 ```
 /*
@@ -1149,7 +1446,7 @@ ProcAggregationSqlQueryType() ([]string, error)
 GetSqlType() int
 ```
 
-#### 3.4.12 判断是否有更多的回包
+#### 3.5.12 判断是否有更多的回包
 
 ```
 /*
@@ -1159,7 +1456,7 @@ GetSqlType() int
 HaveMoreResPkgs() int
 ```
 
-#### 3.4.13 获取整个结果中的记录条数
+#### 3.5.13 获取整个结果中的记录条数
 
 ```
 /**
@@ -1182,7 +1479,7 @@ HaveMoreResPkgs() int
 */
 GetRecordMatchCount() int
 ```
-#### 3.4.14 获取表记录总数
+#### 3.5.14 获取表记录总数
 ```
 /*
     @获取表的记录总数，只适用于TCAPLUS_API_GET_TABLE_RECORD_COUNT_REQ请求获取返回结果
@@ -1191,11 +1488,11 @@ GetRecordMatchCount() int
 GetTableRecordCount() int
 ```
 
-### 3.5 遍历
+### 3.6 遍历
 
-从 3.1.19 获取遍历器
+从 3.2.19 获取遍历器
 
-#### 3.5.1 限制条件（非必须）
+#### 3.6.1 限制条件（非必须）
 
 ```
 /**
@@ -1228,7 +1525,7 @@ func (t *Traverser) SetOnlyReadFromSlave(flag bool) error
 func (t *Traverser) SetUserBuff(buf []byte) error
 ```
 
-#### 3.5.2 开始遍历
+#### 3.6.2 开始遍历
 
 ```
 // 开始遍历，仅当状态为TraverseStateReady可调用
@@ -1405,5 +1702,30 @@ select sum(a) as sum_a from table where a > 1000;
 - 不支持类似 select \* from table where a >= b 的查询；
 - 不支持其他未提到的查询。
 
-## 6. 其它
+## 6. Release Notes
 
+### v0.6.2:
+- 优化易用性，增加example/sync2.0接口
+- pb和tdr均支持TTL功能
+- pb和tdr均支持generic表的batchReplace batchUpdate batchDelete batchInsert功能
+- pb和tdr均支持list表的batch接口listbatchGet listbatchaddafter listbatchreplace
+
+### v0.6.3:
+- 修复flag设置错误的bug
+
+### v0.6.4:
+- 修改net日志级别
+- 修复insert resultflagforfail 不生效的问题
+- 新增初始化失败的错误码返回
+
+### v0.6.5:
+- 优化日志
+- 支持条件更新的operation
+- 修复SetResultFlagForSuccess和SetResultFlagForFail无法同时使用
+
+### v0.6.6:
+- 初始化request时条件更新字段重置
+- batchGet支持SetExpireTime
+
+### v0.6.7:
+- pb表支持deletebypartkey

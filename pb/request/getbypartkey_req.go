@@ -31,6 +31,7 @@ func newGetByPartKeyRequest(appId uint64, zoneId uint32, tableName string, cmd i
 	pkg.Body.GetByPartKeyReq.Limit = -1
 	pkg.Body.GetByPartKeyReq.ValueInfo.FieldNum = 0
 	pkg.Body.GetByPartKeyReq.ValueInfo.FieldName = nil
+	pkg.Body.GetByPartKeyReq.Condition = ""
 	req := &getByPartKeyRequest{
 		appId:        appId,
 		zoneId:       zoneId,
@@ -120,6 +121,7 @@ func (req *getByPartKeyRequest) Pack() ([]byte, error) {
 
 	if logger.GetLogLevel() == "DEBUG" {
 		logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+		logger.DEBUG("%s", common.CovertToJson(req.pkg.Body.GetByPartKeyReq))
 	}
 	data, err := req.pkg.Pack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion)
 	if err != nil {

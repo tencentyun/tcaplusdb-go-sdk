@@ -38,15 +38,17 @@ func newListReplaceRequest(appId uint64, zoneId uint32, tableName string, cmd in
 	pkg.Body.ListReplaceReq.CheckVersiontType = 1
 	pkg.Body.ListReplaceReq.ElementIndex = 0
 	pkg.Body.ListReplaceReq.Flag = 0
+	pkg.Body.ListReplaceReq.Condition = ""
 	req := &listReplaceRequest{
-		appId:     appId,
-		zoneId:    zoneId,
-		tableName: tableName,
-		cmd:       cmd,
-		seq:       seq,
-		record:    nil,
-		pkg:       pkg,
-		isPB:      isPB,
+		appId:        appId,
+		zoneId:       zoneId,
+		tableName:    tableName,
+		cmd:          cmd,
+		seq:          seq,
+		record:       nil,
+		pkg:          pkg,
+		valueNameMap: make(map[string]bool),
+		isPB:         isPB,
 	}
 	return req, nil
 }
@@ -126,6 +128,7 @@ func (req *listReplaceRequest) Pack() ([]byte, error) {
 	}
 	if logger.GetLogLevel() == "DEBUG" {
 		logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+		logger.DEBUG("%s", common.CovertToJson(req.pkg.Body.ListGetReq))
 	}
 	data, err := req.pkg.Pack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion)
 	if err != nil {
@@ -189,8 +192,9 @@ func (req *listReplaceRequest) SetResultFlagForSuccess(flag byte) int {
 		return terror.ParameterInvalid
 	}
 	// 0(1个bit位) | 本版本开始该位设置为1(1个bit位) | 成功时的标识(2个bit位) | 失败时的标识(2个bit位) | 本版本以前的标识(2个bit位)
-	req.pkg.Body.ListReplaceReq.Flag = flag << 4
-	req.pkg.Body.ListReplaceReq.Flag |= 1 << 6
+	flag = flag << 4
+	flag |= 1 << 6
+	req.pkg.Body.ListReplaceReq.Flag |= flag
 	return terror.GEN_ERR_SUC
 }
 
@@ -200,8 +204,9 @@ func (req *listReplaceRequest) SetResultFlagForFail(flag byte) int {
 		return terror.ParameterInvalid
 	}
 	// 0(1个bit位) | 本版本开始该位设置为1(1个bit位) | 成功时的标识(2个bit位) | 失败时的标识(2个bit位) | 本版本以前的标识(2个bit位)
-	req.pkg.Body.ListReplaceReq.Flag = flag << 2
-	req.pkg.Body.ListReplaceReq.Flag |= 1 << 6
+	flag = flag << 2
+	flag |= 1 << 6
+	req.pkg.Body.ListReplaceReq.Flag |= flag
 	return terror.GEN_ERR_SUC
 }
 

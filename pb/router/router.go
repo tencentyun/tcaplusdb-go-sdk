@@ -4,6 +4,7 @@ import (
 	"container/list"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/common"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/config"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/tnet"
@@ -315,12 +316,14 @@ func (r *Router) SetHeartbeatInterval(heartbeatInterval time.Duration) {
 
 func (r *Router) CheckTable(zoneId uint32, tableName string) error {
 	if proxy, exist := r.proxyMap[zoneId]; !exist {
-		return &terror.ErrorCode{Code: terror.ZoneIdNotExist}
+		return &terror.ErrorCode{Code: terror.ZoneIdNotExist,
+			Message: fmt.Sprintf("zone %d not exit", zoneId)}
 	} else {
 		proxy.tbMutex.RLock()
 		defer proxy.tbMutex.RUnlock()
 		if _, exist := proxy.tableNameList[tableName]; !exist {
-			return &terror.ErrorCode{Code: terror.TableNotExist}
+			return &terror.ErrorCode{Code: terror.TableNotExist,
+				Message: fmt.Sprintf("zone %d table %s not exit", zoneId, tableName)}
 		}
 	}
 
@@ -352,7 +355,7 @@ func (r *Router) GetError() error {
 	}
 
 	if len(errStr) > 0 {
-		return  errors.New(errStr)
+		return errors.New(errStr)
 	}
 
 	if len(r.proxyMap) == 0 {

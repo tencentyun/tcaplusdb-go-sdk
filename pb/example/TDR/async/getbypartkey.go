@@ -3,12 +3,63 @@ package main
 import (
 	"fmt"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/example/TDR/async/service_info"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/logger"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/cmd"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/terror"
 	"strconv"
+	"sync"
+	"time"
 )
 
 func getPartKeyExample() {
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	// 在另一协程处理响应消息
+	go func() {
+		defer wg.Done()
+		for {
+			// resp err 均为 nil 说明响应池中没有任何响应
+			resp, err := client.RecvResponse()
+			if err != nil {
+				logger.ERR("RecvResponse error:%s", err)
+				continue
+			} else if resp == nil {
+				time.Sleep(time.Microsecond * 5)
+				continue
+			}
+
+			//带回请求的异步ID
+			fmt.Printf("resp success, AsyncId:%d\n", resp.GetAsyncId())
+			tcapluserr := resp.GetResult()
+			if tcapluserr != 0 {
+				fmt.Printf("response ret %s\n",
+					"errCode: "+strconv.Itoa(tcapluserr)+", errMsg: "+terror.ErrorCodes[tcapluserr])
+				return
+			}
+			//response中带有获取的记录
+			fmt.Printf("response success record count %d\n", resp.GetRecordCount())
+			for i := 0; i < resp.GetRecordCount(); i++ {
+				record, err := resp.FetchRecord()
+				if err != nil {
+					fmt.Printf("FetchRecord failed %s\n", err.Error())
+					return
+				}
+				//通过GetData获取记录
+				data := service_info.NewService_Info()
+				if err := record.GetData(data); err != nil {
+					fmt.Printf("record.GetData failed %s\n", err.Error())
+					return
+				}
+				fmt.Printf("response record data %+v, route: %s\n",
+					data, string(data.Routeinfo[0:data.Routeinfo_Len]))
+			}
+			//判断是否有分包
+			if 1 == resp.HaveMoreResPkgs() {
+				continue
+			}
+			return
+		}
+	}()
 	//创建Get请求
 	req, err := client.NewRequest(ZoneId, TableName, cmd.TcaplusApiGetByPartkeyReq)
 	if err != nil {
@@ -33,61 +84,15 @@ func getPartKeyExample() {
 	//data.Envdata = "oaasqomk"
 	data.Name = "com"
 	//将tdr的数据设置到请求的记录中
-	//	flist := []string {"updatetime"}
 	var flist []string = nil
 	if err := rec.SetDataWithIndexAndField(data, flist, "Index_Gameid_Name"); err != nil {
 		fmt.Printf("SetData failed %v\n", err.Error())
 		return
 	}
 	fmt.Printf("+++++++++++++++++++++++++value map : %d\n", len(rec.ValueMap))
-	fmt.Printf("getPartKeyExample SetData finish\n")
 	if err := client.SendRequest(req); err != nil {
 		fmt.Printf("SendRequest failed %v\n", err.Error())
 		return
 	}
-	var total int = 0
-	for {
-		fmt.Printf("getPartKeyExample send finish\n")
-		resp, err := recvResponse(client)
-		if err != nil {
-			fmt.Printf("recv err %s\n", err.Error())
-			return
-		}
-		//带回请求的异步ID
-		fmt.Printf("getPartKeyExample resp success, AsyncId:%d\n", resp.GetAsyncId())
-		tcapluserr := resp.GetResult()
-		if tcapluserr != 0 {
-			fmt.Printf("response ret %s\n",
-				"errCode: "+strconv.Itoa(tcapluserr)+", errMsg: "+terror.ErrorCodes[tcapluserr])
-			return
-		}
-		haveMore := resp.HaveMoreResPkgs()
-		//response中带有获取的记录
-		total += resp.GetRecordCount()
-		fmt.Printf("getPartKeyExample response success record count %d, total:%d\n",
-			resp.GetRecordCount(), total)
-		//idx_max := resp.GetRecordCount()
-		//receive_flag := resp.(*response.GetByPartKeyResponse).IsRspReceiveFinish()
-		//fmt.Printf("getPartKeyExample response success record count %d\n", resp.GetRecordCount())
-
-		//for i := 0; i < idx_max; i++ {
-		//	record, err := resp.FetchRecord()
-		//	if err != nil {
-		//		fmt.Printf("FetchRecord failed %s\n", err.Error())
-		//		return
-		//	}
-		//	//通过GetData获取记录
-		//	data := service_info.NewService_Info()
-		//	if err := record.GetData(data); err != nil {
-		//		fmt.Printf("record.GetData failed %s\n", err.Error())
-		//		return
-		//	}
-		//	//fmt.Printf("")
-		//	//fmt.Printf("getPartKeyExample response record data %+v, route: %s\n",
-		//	data, string(data.Routeinfo[0:data.Routeinfo_Len]))
-		//}
-		if 0 == haveMore {
-			break
-		}
-	}
+	wg.Wait()
 }

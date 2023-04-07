@@ -3,17 +3,11 @@ package main
 import (
 	"fmt"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/example/PB/table/tcaplusservice"
-	"github.com/tencentyun/tcaplusdb-go-sdk/pb/example/PB/tools"
 	"google.golang.org/protobuf/proto"
 	"time"
 )
 
-func main() {
-	// 创建 client，配置日志，连接数据库
-	client := tools.InitPBSyncClient()
-	defer client.Close()
-	client.SetDefaultZoneId(tools.ZoneId)
-
+func BatchInsertExample() {
 	//batch insert 10 data
 	var msgs []proto.Message
 	id := time.Now().UnixNano()

@@ -606,7 +606,7 @@ func (r *Record) GetData(data TdrTableSt) error {
 			}
 
 			if len(vData) <= 2 {
-				logger.WARN("getFieldFunc %s struct data len < 2", fieldTag)
+				logger.DEBUG("getFieldFunc %s struct data len < 2", fieldTag)
 				continue
 			}
 
@@ -662,7 +662,7 @@ func (r *Record) GetData(data TdrTableSt) error {
 			}
 
 			if len(vData) <= 2 {
-				logger.WARN("getFieldFunc %s array data len < 2", fieldTag)
+				logger.DEBUG("getFieldFunc %s array data len < 2", fieldTag)
 				continue
 			}
 

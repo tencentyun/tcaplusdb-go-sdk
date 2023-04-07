@@ -15,12 +15,11 @@ func updateExample() {
 		fmt.Printf("NewRequest TcaplusApiUpdateReq failed %v\n", err.Error())
 		return
 	}
-	fmt.Printf("updateExample NewRequest TcaplusApiUpdateReq finish\n")
+	// 设置ResultFlag标志。0标志只需返回成功与否,1标志返回同请求一致的值,2标志返回操作后所有字段的值,3标志返回操作前所有字段的值
 	if err := req.SetResultFlag(3); err != nil {
 		fmt.Printf("SetResultFlag failed %v\n", err.Error())
 		return
 	}
-	fmt.Printf("updateExample SetResultFlag finish\n")
 
 	//为request添加一条记录，（index只有在list表中支持，generic不校验）
 	rec, err := req.AddRecord(0)
@@ -28,7 +27,7 @@ func updateExample() {
 		fmt.Printf("updateExample AddRecord failed %v\n", err.Error())
 		return
 	}
-	fmt.Printf("updateExample AddRecord finish\n")
+
 	//申请tdr结构体并赋值，最好调用tdr pkg的NewXXX函数，会将成员初始化为tdr定义的tdr默认值，
 	// 不要自己new，自己new，某些结构体未初始化，存在panic的风险
 	data := service_info.NewService_Info()
@@ -55,10 +54,6 @@ func updateExample() {
 			fmt.Printf("response ret errCode: %d, errMsg: %s", tcapluserr, terror.GetErrMsg(tcapluserr))
 			return
 		}
-		//获取同步请求Seq
-		fmt.Printf("request Seq %d\n", req.GetSeq())
-		//获取回应消息的序列号
-		fmt.Printf("respond seq: %d \n", resp.GetSeq())
 		//response中带有获取的旧记录
 		fmt.Printf("updateExample response success record count %d\n", resp.GetRecordCount())
 		for i := 0; i < resp.GetRecordCount(); i++ {

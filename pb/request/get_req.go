@@ -36,6 +36,7 @@ func newGetRequest(appId uint64, zoneId uint32, tableName string, cmd int,
 	pkg.Body.GetReq.ValueInfo.FieldNum_ = 0
 	pkg.Body.GetReq.ValueInfo.Fields_ = nil
 	pkg.Body.GetReq.ExpireTime = 0
+	pkg.Body.GetReq.Condition = ""
 	req := &getRequest{
 		appId:        appId,
 		zoneId:       zoneId,
@@ -114,6 +115,7 @@ func (req *getRequest) Pack() ([]byte, error) {
 
 	if logger.GetLogLevel() == "DEBUG" {
 		logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+		logger.DEBUG("%s", common.CovertToJson(req.pkg.Body.GetReq))
 	}
 	data, err := req.pkg.Pack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion)
 	if err != nil {

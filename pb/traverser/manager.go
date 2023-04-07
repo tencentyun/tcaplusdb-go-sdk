@@ -87,7 +87,7 @@ func (m *TraverserManager) OnRecvResponse(zoneId uint32, msg *tcaplus_protocol_c
 		return &terror.ErrorCode{Code: terror.API_ERR_INVALID_OBJ_STATUE}
 	}
 
-	if cmd.TcaplusApiTableTraverseRes == msg.Head.Cmd || cmd.TcaplusApiListTableTraverseRes == msg.Head.Cmd{
+	if cmd.TcaplusApiTableTraverseRes == msg.Head.Cmd || cmd.TcaplusApiListTableTraverseRes == msg.Head.Cmd {
 		asyncId := t.asyncId
 		if 0 == t.asyncId {
 			asyncId = uint64(t.traverseId)<<32 | uint64(t.requestId)

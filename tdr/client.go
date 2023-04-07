@@ -140,13 +140,13 @@ func (c *client) Dial(appId uint64, zoneList []uint32, dirUrl string, signature 
 		c.netServer.stopNetWork <- true
 		c.ctrl.Wait()
 		//dir err
-		if err := c.netServer.dirServer.GetError(); err != nil{
+		if err := c.netServer.dirServer.GetError(); err != nil {
 			logger.ERR("dir err %s", err.Error())
 			return err
 		}
 
 		//proxy err
-		if err := c.netServer.router.GetError(); err != nil{
+		if err := c.netServer.router.GetError(); err != nil {
 			logger.ERR("router err %s", err.Error())
 			return err
 		}

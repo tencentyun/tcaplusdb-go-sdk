@@ -239,6 +239,6 @@ func GetLogLevel() string {
 	} else if LogConf != nil {
 		return LogConf.LogLevel
 	} else {
-		return "DEBUG"
+		return "INFO"
 	}
 }

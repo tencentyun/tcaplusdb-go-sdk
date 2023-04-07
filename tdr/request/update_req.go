@@ -41,6 +41,7 @@ func newUpdateRequest(appId uint64, zoneId uint32, tableName string, cmd int,
 	pkg.Body.UpdateReq.IncreaseValueInfo.FieldNum = 0
 	pkg.Body.UpdateReq.IncreaseValueInfo.Fields = nil
 	pkg.Body.UpdateReq.IncreaseValueInfo.Version = 0
+	pkg.Body.UpdateReq.Condition = ""
 	req := &updateRequest{
 		appId:        appId,
 		zoneId:       zoneId,
@@ -74,6 +75,7 @@ func (req *updateRequest) AddRecord(index int32) (*record.Record, error) {
 	rec.KeySet = req.pkg.Head.KeyInfo
 	rec.ValueSet = req.pkg.Body.UpdateReq.ValueInfo
 	rec.Condition = &req.pkg.Body.UpdateReq.Condition
+	rec.Operation = &req.pkg.Body.UpdateReq.Operation
 	rec.UpdFieldSet = req.pkg.Body.UpdateReq.IncreaseValueInfo
 	req.record = rec
 	return rec, nil
@@ -125,6 +127,7 @@ func (req *updateRequest) Pack() ([]byte, error) {
 
 	if logger.GetLogLevel() == "DEBUG" {
 		logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+		logger.DEBUG("%s", common.CovertToJson(req.pkg.Body.UpdateReq))
 	}
 	data, err := req.pkg.Pack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion)
 	if err != nil {
@@ -187,8 +190,9 @@ func (req *updateRequest) SetResultFlagForSuccess(flag byte) int {
 		return terror.ParameterInvalid
 	}
 	// 0(1个bit位) | 本版本开始该位设置为1(1个bit位) | 成功时的标识(2个bit位) | 失败时的标识(2个bit位) | 本版本以前的标识(2个bit位)
-	req.pkg.Body.UpdateReq.Flag = flag << 4
-	req.pkg.Body.UpdateReq.Flag |= 1 << 6
+	flag = flag << 4
+	flag |= 1 << 6
+	req.pkg.Body.UpdateReq.Flag |= flag
 	return terror.GEN_ERR_SUC
 }
 
@@ -198,8 +202,9 @@ func (req *updateRequest) SetResultFlagForFail(flag byte) int {
 		return terror.ParameterInvalid
 	}
 	// 0(1个bit位) | 本版本开始该位设置为1(1个bit位) | 成功时的标识(2个bit位) | 失败时的标识(2个bit位) | 本版本以前的标识(2个bit位)
-	req.pkg.Body.UpdateReq.Flag = flag << 2
-	req.pkg.Body.UpdateReq.Flag |= 1 << 6
+	flag = flag << 2
+	flag |= 1 << 6
+	req.pkg.Body.UpdateReq.Flag |= flag
 	return terror.GEN_ERR_SUC
 }
 

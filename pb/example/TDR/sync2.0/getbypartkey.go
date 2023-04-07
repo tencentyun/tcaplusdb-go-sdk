@@ -14,6 +14,7 @@ func getPartKeyExample() {
 	//data.Envdata = "oaasqomk"
 	data.Name = "com"
 
+	//设置返回记录数，不设置则全部返回
 	opt := &option.TDROpt{Limit: 3}
 	res, err := client.DoGetByPartKey(TableName, data, "Index_Gameid_Name", opt)
 	if err != nil {

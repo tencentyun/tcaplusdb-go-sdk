@@ -31,7 +31,7 @@ type proxy struct {
 	removeServerList  map[string]*server
 }
 
-func (p *proxy) GetErrorStr() string{
+func (p *proxy) GetErrorStr() string {
 	var errStr string
 	for _, v := range p.usingServerList {
 		if v.error != nil {
@@ -56,7 +56,7 @@ func (p *proxy) CheckAvailable() (int, error) {
 	}
 
 	signSucCount := 0
-	signFailCount :=0
+	signFailCount := 0
 	var err error
 	for _, v := range p.hashList {
 		if v.isAvailable() {

@@ -29,6 +29,7 @@ func newListGetRequest(appId uint64, zoneId uint32, tableName string, cmd int,
 	pkg.Body.ListGetReq.ElementValueNames.FieldNum = 0
 	pkg.Body.ListGetReq.ElementIndex = 0
 	pkg.Body.ListGetReq.ElementValueNames.FieldName = nil
+	pkg.Body.ListGetReq.Condition = ""
 	req := &listGetRequest{
 		appId:        appId,
 		zoneId:       zoneId,
@@ -122,6 +123,7 @@ func (req *listGetRequest) Pack() ([]byte, error) {
 
 	if logger.GetLogLevel() == "DEBUG" {
 		logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+		logger.DEBUG("%s", common.CovertToJson(req.pkg.Body.ListGetReq))
 	}
 	data, err := req.pkg.Pack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion)
 	if err != nil {

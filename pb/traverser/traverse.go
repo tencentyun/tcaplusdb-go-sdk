@@ -50,7 +50,7 @@ type Traverser struct {
 
 	//for list
 	keyTraversedCnt int64 //已遍历的key数量
-	totalKeyLimit int64 //遍历的key上限
+	totalKeyLimit   int64 //遍历的key上限
 
 	seqForSync int32
 
@@ -61,15 +61,15 @@ type Traverser struct {
 
 func newTraverser(zoneId uint32, table string) *Traverser {
 	t := &Traverser{
-		state:        TraverseStateReady,
-		zoneId:       zoneId,
-		tableName:    table,
-		beginIndex:   -1,
-		endIndex:     -1,
-		resNumPerReq: 1,
-		limit:        -1,
+		state:         TraverseStateReady,
+		zoneId:        zoneId,
+		tableName:     table,
+		beginIndex:    -1,
+		endIndex:      -1,
+		resNumPerReq:  1,
+		limit:         -1,
 		totalKeyLimit: -1,
-		traverseId:   atomic.AddUint32(&id, 1),
+		traverseId:    atomic.AddUint32(&id, 1),
 	}
 	return t
 }
@@ -310,7 +310,7 @@ func (t *Traverser) sendListTraverseRequest() error {
 
 	p := req.GetTcaplusPackagePtr().Body.ListTableTraverseReq
 	keyLimit := int64(1)
-	if t.totalKeyLimit > 0 && t.totalKeyLimit - t.keyTraversedCnt > 1 {
+	if t.totalKeyLimit > 0 && t.totalKeyLimit-t.keyTraversedCnt > 1 {
 		keyLimit = t.totalKeyLimit - t.keyTraversedCnt
 	}
 	t.seq = t.seq + uint64(tcaplus_protocol_cs.TCAPLUS_MAX_LIST_ELEMENTS_NUM)
@@ -416,7 +416,7 @@ func (t *Traverser) onRecvResponse(msg *tcaplus_protocol_cs.TCaplusPkg, drop *bo
 			t.traversedCnt = msg.Body.TableTraverseRes.TraversedCnt
 
 			if t.shardCompleted > 0 {
-				if t.shardCurId < t.shardCnt - 1{
+				if t.shardCurId < t.shardCnt-1 {
 					next = true
 				}
 			} else {
@@ -470,7 +470,7 @@ func (t *Traverser) onRecvResponse(msg *tcaplus_protocol_cs.TCaplusPkg, drop *bo
 			}
 
 			if t.shardCompleted > 0 {
-				if t.shardCurId < t.shardCnt - 1 {
+				if t.shardCurId < t.shardCnt-1 {
 					next = true
 				}
 			}
@@ -500,7 +500,7 @@ func (t *Traverser) onRecvResponse(msg *tcaplus_protocol_cs.TCaplusPkg, drop *bo
 	if t.shardCompleted > 0 && t.shardCurId >= t.shardCnt-1 {
 		finish = true
 	} else {
-		if 0 == t.tableType {// generic 表
+		if 0 == t.tableType { // generic 表
 			if t.limit > 0 && t.traversedCnt >= t.limit {
 				finish = true
 			}

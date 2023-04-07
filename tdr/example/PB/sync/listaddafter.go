@@ -10,13 +10,9 @@ import (
 	"time"
 )
 
-func main() {
-	// 创建 client，配置日志，连接数据库
-	client := tools.InitPBSyncClient()
-	defer client.Close()
-
+func ListAddafterExample() {
 	// 生成 listaddafter 请求
-	req, err := client.NewRequest(tools.ZoneId, "tb_online_list", cmd.TcaplusApiListAddAfterReq)
+	req, err := client.NewRequest(tools.Zone, "tb_online_list", cmd.TcaplusApiListAddAfterReq)
 	if err != nil {
 		logger.ERR("NewRequest error:%s", err)
 		return
@@ -40,7 +36,6 @@ func main() {
 		Timekey:   "test",
 		Gamesvrid: "lol",
 	}
-	client.ListDeleteAll(msg)
 	// 第一个返回值为记录的keybuf，用来唯一确定一条记录，多用于请求与响应记录相对应，此处无用
 	// key 字段必填，通过 proto 文件设置 key
 	// 本例中为 option(tcaplusservice.tcaplus_primary_key) = "openid,tconndid,timekey";
@@ -50,15 +45,8 @@ func main() {
 		return
 	}
 
-	// （非必须，默认为 0）insert 请求设置 2 时将返回此次插入的记录，0 1 3 不返回记录
+	// 请求标志。0标志只需返回成功与否,1标志返回同请求一致的值,2标志返回操作后所有字段的值,3标志返回操作前所有字段的值
 	req.SetResultFlagForSuccess(2)
-
-	// （非必须）设置userbuf，在响应中带回。这个是个开放功能，比如某些临时字段不想保存在全局变量中，
-	// 可以通过设置userbuf在发送端接收短传递，也可以起异步id的作用
-	req.SetUserBuff([]byte("user buffer test"))
-
-	// （非必须）防止此条记录已存在
-	client.ListDeleteAll(msg)
 
 	// 发送请求,接收响应
 	resp, err := client.Do(req, 5*time.Second)
@@ -73,9 +61,6 @@ func main() {
 		logger.ERR("insert error:%s", terror.GetErrMsg(errCode))
 		return
 	}
-
-	// 获取userbuf
-	fmt.Println(string(resp.GetUserBuffer()))
 
 	// 如果有返回记录则用以下接口进行获取
 	for i := 0; i < resp.GetRecordCount(); i++ {

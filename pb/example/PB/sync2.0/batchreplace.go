@@ -3,34 +3,20 @@ package main
 import (
 	"fmt"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/example/PB/table/tcaplusservice"
-	"github.com/tencentyun/tcaplusdb-go-sdk/pb/example/PB/tools"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/option"
 	"google.golang.org/protobuf/proto"
-	"time"
 )
 
-func main() {
-	// 创建 client，配置日志，连接数据库
-	client := tools.InitPBSyncClient()
-	defer client.Close()
-	client.SetDefaultZoneId(tools.ZoneId)
-
-	//batch insert 10 data
+func BatchReplaceExample() {
+	//batch replace 10 data
 	var msgs []proto.Message
-	id := time.Now().UnixNano()
 	for i := 0; i < 10; i++ {
 		data := &tcaplusservice.GamePlayers{}
-		data.PlayerId = id
+		data.PlayerId = int64(i)
 		data.PlayerName = "batchInsert"
 		data.PlayerEmail = fmt.Sprintf("%d", i)
 		data.Pay = &tcaplusservice.Payment{Amount: uint64(i), PayId: 2, Method: 3}
 		msgs = append(msgs, data)
-	}
-
-	err := client.DoBatchInsert(msgs, nil)
-	if err != nil {
-		fmt.Println(err.Error())
-		return
 	}
 
 	//batch replace
@@ -39,12 +25,7 @@ func main() {
 		VersionPolicy:        option.CheckDataVersionAutoIncrease,
 	}
 
-	for _, msg := range msgs {
-		msg.(*tcaplusservice.GamePlayers).Pay.PayId = 3
-		opt.BatchVersion = append(opt.BatchVersion, 1)
-	}
-
-	err = client.DoBatchReplace(msgs, opt)
+	err := client.DoBatchReplace(msgs, opt)
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -59,6 +40,5 @@ func main() {
 			return
 		}
 	}
-
 	fmt.Println("DoBatchReplace success")
 }

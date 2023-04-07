@@ -31,6 +31,12 @@ func (c *Client) DoListSimple(table string, data record.TdrTableSt, index int32,
 			return index, &terror.ErrorCode{Code: ret, Message: "SetCondition maybe not support or len too long"}
 		}
 	}
+	if opt != nil && len(opt.Operation) > 0 {
+		if ret := rec.SetOperation(opt.Operation, 0); ret != 0 {
+			logger.ERR("SetOperation error:%d", ret)
+			return index, &terror.ErrorCode{Code: ret, Message: "SetOperation failed, maybe not support or len too long"}
+		}
+	}
 
 	err = rec.SetData(data)
 	if err != nil {
@@ -62,7 +68,7 @@ func (c *Client) DoListSimple(table string, data record.TdrTableSt, index int32,
 
 	ret := res.GetResult()
 	if ret != 0 {
-		return index, &terror.ErrorCode{Code: ret}
+		err = &terror.ErrorCode{Code: ret}
 	}
 
 	if res.GetRecordCount() > 0 {
@@ -87,7 +93,7 @@ func (c *Client) DoListSimple(table string, data record.TdrTableSt, index int32,
 			return index, err
 		}
 	}
-	return index, nil
+	return index, err
 }
 
 func (c *Client) needGetData(opt *option.TDROpt) bool {
@@ -115,6 +121,12 @@ func (c *Client) setRecOpt(rec *record.Record, opt *option.TDROpt) error {
 		if ret := rec.SetCondition(opt.Condition); ret != 0 {
 			logger.ERR("SetCondition error:%d", ret)
 			return &terror.ErrorCode{Code: ret, Message: "SetCondition failed, maybe not support or len too long"}
+		}
+	}
+	if len(opt.Operation) > 0 {
+		if ret := rec.SetOperation(opt.Operation, 0); ret != 0 {
+			logger.ERR("SetOperation error:%d", ret)
+			return &terror.ErrorCode{Code: ret, Message: "SetOperation failed, maybe not support or len too long"}
 		}
 	}
 
@@ -177,7 +189,7 @@ func (c *Client) doSimple(table string, data record.TdrTableSt, apiCmd int, opt 
 
 	ret := res.GetResult()
 	if ret != 0 {
-		return &terror.ErrorCode{Code: ret}
+		err = &terror.ErrorCode{Code: ret}
 	}
 
 	if res.GetRecordCount() > 0 {
@@ -201,7 +213,7 @@ func (c *Client) doSimple(table string, data record.TdrTableSt, apiCmd int, opt 
 			return err
 		}
 	}
-	return nil
+	return err
 }
 
 func (c *Client) setReqOpt(req request.TcaplusRequest, opt *option.TDROpt) error {
@@ -335,6 +347,10 @@ func (c *Client) setBatchReqOpt(req request.TcaplusRequest, opt *option.TDROpt) 
 		req.SetFieldNames(opt.FieldNames)
 	}
 
+	if opt.ExpireTime != 0 {
+		req.SetExpireTime(opt.ExpireTime)
+	}
+
 	return nil
 }
 func (c *Client) doListBatch(table string, data record.TdrTableSt, indexs []int32,
@@ -355,6 +371,12 @@ func (c *Client) doListBatch(table string, data record.TdrTableSt, indexs []int3
 		if ret := rec.SetCondition(opt.Condition); ret != 0 {
 			logger.ERR("SetCondition error:%d", ret)
 			return nil, &terror.ErrorCode{Code: ret, Message: "SetCondition failed, maybe not support or len too long"}
+		}
+	}
+	if opt != nil && len(opt.Operation) > 0 {
+		if ret := rec.SetOperation(opt.Operation, 0); ret != 0 {
+			logger.ERR("SetOperation error:%d", ret)
+			return nil, &terror.ErrorCode{Code: ret, Message: "SetOperation failed, maybe not support or len too long"}
 		}
 	}
 
@@ -381,7 +403,7 @@ func (c *Client) doListBatch(table string, data record.TdrTableSt, indexs []int3
 
 	tmpIdxMap := map[int32]struct{}{}
 	for _, index := range indexs {
-		if _, exist := tmpIdxMap[index]; exist{
+		if _, exist := tmpIdxMap[index]; exist {
 			logger.ERR("batch record exist duplicate index")
 			return nil, &terror.ErrorCode{Code: terror.ParameterInvalid, Message: "batch record exist duplicate index"}
 		}
@@ -473,6 +495,12 @@ func (c *Client) doListBatchRecord(table string, dataSlice []record.TdrTableSt, 
 			if ret := rec.SetCondition(opt.Condition); ret != 0 {
 				logger.ERR("SetCondition error:%d", ret)
 				return &terror.ErrorCode{Code: ret, Message: "SetCondition failed, maybe not support or len too long"}
+			}
+		}
+		if opt != nil && len(opt.Operation) > 0 {
+			if ret := rec.SetOperation(opt.Operation, 0); ret != 0 {
+				logger.ERR("SetOperation error:%d", ret)
+				return &terror.ErrorCode{Code: ret, Message: "SetOperation failed, maybe not support or len too long"}
 			}
 		}
 
@@ -604,6 +632,12 @@ func (c *Client) doBatch(table string, dataSlice []record.TdrTableSt, apiCmd int
 				return &terror.ErrorCode{Code: ret, Message: "SetCondition failed, maybe not support or len too long"}
 			}
 		}
+		if opt != nil && len(opt.Operation) > 0 {
+			if ret := rec.SetOperation(opt.Operation, 0); ret != 0 {
+				logger.ERR("SetOperation error:%d", ret)
+				return &terror.ErrorCode{Code: ret, Message: "SetOperation failed, maybe not support or len too long"}
+			}
+		}
 
 		if opt != nil && (opt.BatchVersion)[i] > 0 {
 			rec.SetVersion((opt.BatchVersion)[i])
@@ -641,6 +675,7 @@ func (c *Client) doBatch(table string, dataSlice []record.TdrTableSt, apiCmd int
 			if recErr != nil {
 				globalErr = recErr
 				logger.DEBUG("FetchRecord error:%s", recErr)
+				continue
 			}
 
 			if resRec == nil {
@@ -702,7 +737,7 @@ func (c *Client) doBatch(table string, dataSlice []record.TdrTableSt, apiCmd int
 	return globalErr
 }
 
-func (c *Client) doPartKeyGet(table string, data record.TdrTableSt, indexName string, apiCmd int, opt *option.TDROpt,
+func (c *Client) doPartKey(table string, data record.TdrTableSt, indexName string, apiCmd int, opt *option.TDROpt,
 	zoneId uint32) ([]*record.Record, error) {
 	req, err := c.NewRequest(zoneId, table, apiCmd)
 	if err != nil {
@@ -728,6 +763,12 @@ func (c *Client) doPartKeyGet(table string, data record.TdrTableSt, indexName st
 		if ret := rec.SetCondition(opt.Condition); ret != 0 {
 			logger.ERR("SetCondition error:%d", ret)
 			return nil, &terror.ErrorCode{Code: ret, Message: "SetCondition failed, maybe not support or len too long"}
+		}
+	}
+	if opt != nil && len(opt.Operation) > 0 {
+		if ret := rec.SetOperation(opt.Operation, 0); ret != 0 {
+			logger.ERR("SetOperation error:%d", ret)
+			return nil, &terror.ErrorCode{Code: ret, Message: "SetOperation failed, maybe not support or len too long"}
 		}
 	}
 
@@ -777,7 +818,7 @@ func (c *Client) doPartKeyGet(table string, data record.TdrTableSt, indexName st
 		}
 	}
 
-	if len(recordSlice) == 0 && globalErr == nil {
+	if len(recordSlice) == 0 && globalErr == nil && apiCmd == cmd.TcaplusApiGetByPartkeyReq {
 		return nil, &terror.ErrorCode{Code: terror.TXHDB_ERR_RECORD_NOT_EXIST}
 	}
 
@@ -912,9 +953,28 @@ func (c *Client) DoGetByPartKey(table string, data record.TdrTableSt, indexName 
 		return nil, &terror.ErrorCode{Code: terror.ParameterInvalid, Message: "indexName is empty"}
 	}
 	if len(zoneId) == 1 {
-		return c.doPartKeyGet(table, data, indexName, cmd.TcaplusApiGetByPartkeyReq, opt, zoneId[0])
+		return c.doPartKey(table, data, indexName, cmd.TcaplusApiGetByPartkeyReq, opt, zoneId[0])
 	}
-	return c.doPartKeyGet(table, data, indexName, cmd.TcaplusApiGetByPartkeyReq, opt, uint32(c.defZone))
+	return c.doPartKey(table, data, indexName, cmd.TcaplusApiGetByPartkeyReq, opt, uint32(c.defZone))
+}
+
+/**
+    @brief 根据表的部分key字段删除记录
+	@param [IN]  table 表名
+	@param [IN/OUT] data  tdr结构体由TdrCodeGen生成的记录结构体, 若有记录返回会更新为返回的记录
+	@param [IN/OUT] opt 可选参数
+	@param [IN] zoneId 可选参数，不设置则取默认zone，默认zone可通过client.SetDefaultZoneId设置
+    @retval error 错误码
+**/
+func (c *Client) DoDeleteByPartKey(table string, data record.TdrTableSt, indexName string, opt *option.TDROpt,
+	zoneId ...uint32) ([]*record.Record, error) {
+	if len(indexName) == 0 {
+		return nil, &terror.ErrorCode{Code: terror.ParameterInvalid, Message: "indexName is empty"}
+	}
+	if len(zoneId) == 1 {
+		return c.doPartKey(table, data, indexName, cmd.TcaplusApiDeleteByPartkeyReq, opt, zoneId[0])
+	}
+	return c.doPartKey(table, data, indexName, cmd.TcaplusApiDeleteByPartkeyReq, opt, uint32(c.defZone))
 }
 
 /**

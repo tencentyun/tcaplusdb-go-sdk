@@ -8,12 +8,7 @@ import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/option"
 )
 
-func main() {
-	// 创建 client，配置日志，连接数据库
-	client := tools.InitPBSyncClient()
-	defer client.Close()
-	client.SetDefaultZoneId(tools.ZoneId)
-
+func ReplaceExample() {
 	// 向记录中填充数据
 	msg := &tcaplusservice.GamePlayers{
 		PlayerId:        10805514,

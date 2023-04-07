@@ -43,7 +43,7 @@ type DirServer struct {
 	//心跳时间间隔s, 10s
 	heartbeatInterval time.Duration
 	lastHeartbeatTime time.Time
-	error error
+	error             error
 }
 
 func (dir *DirServer) Init(appId uint64, zoneList []uint32, dirUrl string, signature string) error {
@@ -106,7 +106,7 @@ func (dir *DirServer) DisConnect() {
 
 //初始化超时，获取dir的error信息
 func (dir *DirServer) GetError() error {
-	return  dir.error
+	return dir.error
 }
 
 //从列表中选择一个连接dir

@@ -16,7 +16,9 @@ func batchGetExample() {
 		data.Name = fmt.Sprintf("%d", i)
 		dataSlice = append(dataSlice, data)
 	}
-	opt := &option.TDROpt{}
+	opt := &option.TDROpt{
+		MultiFlag: 1,
+	}
 	if err := client.DoBatchGet(TableName, dataSlice, opt); err != nil {
 		fmt.Println(err.Error())
 		return

@@ -30,7 +30,7 @@ type server struct {
 	lastRspTime time.Time
 	router      *Router
 	prepareStop bool //proxy准备stop
-	error error
+	error       error
 }
 
 func (s *server) getSignUpStat() uint32 {
@@ -309,7 +309,7 @@ func (s *server) processRsp(msg *tcaplus_protocol_cs.TCaplusPkg) {
 		cmd.TcaplusApiListGetBatchRes,
 		cmd.TcaplusApiListReplaceBatchRes:
 		if logger.GetLogLevel() == "DEBUG" {
-			logger.DEBUG("recv proxy %s response %s", s.proxyUrl, common.CsHeadVisualize(msg.Head))
+			s.printRsp(msg)
 		}
 		router := s.router
 		if msg.Head.Cmd == cmd.TcaplusApiTableTraverseRes || msg.Head.Cmd == cmd.TcaplusApiListTableTraverseRes ||
@@ -325,5 +325,83 @@ func (s *server) processRsp(msg *tcaplus_protocol_cs.TCaplusPkg) {
 
 	default:
 		logger.ERR("zone %d proxy %s msg %s invalid", s.zoneId, s.proxyUrl, common.CsHeadVisualize(msg.Head))
+	}
+}
+
+func (s *server) printRsp(msg *tcaplus_protocol_cs.TCaplusPkg) {
+	logger.DEBUG("recv proxy %s response %s", s.proxyUrl, common.CsHeadVisualize(msg.Head))
+	switch int(msg.Head.Cmd) {
+	case cmd.TcaplusApiAppSignUpRes:
+		logger.DEBUG("recv proxy %s TcaplusApiAppSignUpRes %s", s.proxyUrl, common.CovertToJson(msg.Body.AppSignupRes))
+	case cmd.TcaplusApiNotifyStopReq:
+		logger.DEBUG("recv proxy %s TcaplusApiNotifyStopReq", s.proxyUrl)
+	case cmd.TcaplusApiInsertRes:
+		logger.DEBUG("recv proxy %s TcaplusApiInsertRes %s", s.proxyUrl, common.CovertToJson(msg.Body.InsertRes))
+	case cmd.TcaplusApiGetRes:
+		logger.DEBUG("recv proxy %s TcaplusApiGetRes %s", s.proxyUrl, common.CovertToJson(msg.Body.GetRes))
+	case cmd.TcaplusApiUpdateRes:
+		logger.DEBUG("recv proxy %s TcaplusApiUpdateRes %s", s.proxyUrl, common.CovertToJson(msg.Body.UpdateRes))
+	case cmd.TcaplusApiReplaceRes:
+		logger.DEBUG("recv proxy %s TcaplusApiReplaceRes %s", s.proxyUrl, common.CovertToJson(msg.Body.ReplaceRes))
+	case cmd.TcaplusApiDeleteRes:
+		logger.DEBUG("recv proxy %s TcaplusApiDeleteRes %s", s.proxyUrl, common.CovertToJson(msg.Body.DeleteRes))
+	case cmd.TcaplusApiBatchGetRes:
+		logger.DEBUG("recv proxy %s TcaplusApiBatchGetRes %s", s.proxyUrl, common.CovertToJson(msg.Body.BatchGetRes))
+	case cmd.TcaplusApiGetByPartkeyRes:
+		logger.DEBUG("recv proxy %s TcaplusApiGetByPartkeyRes %s", s.proxyUrl, common.CovertToJson(msg.Body.GetByPartKeyRes))
+	case cmd.TcaplusApiDeleteByPartkeyRes:
+		logger.DEBUG("recv proxy %s TcaplusApiDeleteByPartkeyRes %s", s.proxyUrl, common.CovertToJson(msg.Body.DeleteByPartkeyRes))
+	case cmd.TcaplusApiIncreaseRes:
+		logger.DEBUG("recv proxy %s TcaplusApiIncreaseRes %s", s.proxyUrl, common.CovertToJson(msg.Body.IncreaseRes))
+	case cmd.TcaplusApiListGetAllRes:
+		logger.DEBUG("recv proxy %s TcaplusApiListGetAllRes %s", s.proxyUrl, common.CovertToJson(msg.Body.ListGetAllRes))
+	case cmd.TcaplusApiListAddAfterRes:
+		logger.DEBUG("recv proxy %s TcaplusApiListAddAfterRes %s", s.proxyUrl, common.CovertToJson(msg.Body.ListAddAfterRes))
+	case cmd.TcaplusApiListGetRes:
+		logger.DEBUG("recv proxy %s TcaplusApiListGetRes %s", s.proxyUrl, common.CovertToJson(msg.Body.ListGetRes))
+	case cmd.TcaplusApiListDeleteRes:
+		logger.DEBUG("recv proxy %s TcaplusApiListDeleteRes %s", s.proxyUrl, common.CovertToJson(msg.Body.ListDeleteRes))
+	case cmd.TcaplusApiListDeleteAllRes:
+		logger.DEBUG("recv proxy %s TcaplusApiListDeleteAllRes %s", s.proxyUrl, common.CovertToJson(msg.Body.ListDeleteAllRes))
+	case cmd.TcaplusApiListReplaceRes:
+		logger.DEBUG("recv proxy %s TcaplusApiListReplaceRes %s", s.proxyUrl, common.CovertToJson(msg.Body.ListReplaceRes))
+	case cmd.TcaplusApiListDeleteBatchRes:
+		logger.DEBUG("recv proxy %s TcaplusApiListDeleteBatchRes %s", s.proxyUrl, common.CovertToJson(msg.Body.ListDeleteBatchRes))
+	case cmd.TcaplusApiSqlRes:
+		logger.DEBUG("recv proxy %s TcaplusApiSqlRes %s", s.proxyUrl, common.CovertToJson(msg.Body.TCaplusSqlRes))
+	case cmd.TcaplusApiMetadataGetRes:
+		logger.DEBUG("recv proxy %s TcaplusApiMetadataGetRes %s", s.proxyUrl, common.CovertToJson(msg.Body.MetadataGetRes))
+	case cmd.TcaplusApiPBFieldGetRes:
+		logger.DEBUG("recv proxy %s TcaplusApiPBFieldGetRes %s", s.proxyUrl, common.CovertToJson(msg.Body.TCaplusPbFieldGetRes))
+	case cmd.TcaplusApiPBFieldUpdateRes:
+		logger.DEBUG("recv proxy %s TcaplusApiPBFieldUpdateRes %s", s.proxyUrl, common.CovertToJson(msg.Body.TCaplusPbFieldUpdateRes))
+	case cmd.TcaplusApiPBFieldIncreaseRes:
+		logger.DEBUG("recv proxy %s TcaplusApiPBFieldIncreaseRes %s", s.proxyUrl, common.CovertToJson(msg.Body.TCaplusPbFieldIncRes))
+	case cmd.TcaplusApiGetShardListRes:
+		logger.DEBUG("recv proxy %s TcaplusApiGetShardListRes %s", s.proxyUrl, common.CovertToJson(msg.Body.GetShardListRes))
+	case cmd.TcaplusApiTableTraverseRes:
+		logger.DEBUG("recv proxy %s TcaplusApiTableTraverseRes %s", s.proxyUrl, common.CovertToJson(msg.Body.TableTraverseRes))
+	case cmd.TcaplusApiListTableTraverseRes:
+		logger.DEBUG("recv proxy %s TcaplusApiListTableTraverseRes %s", s.proxyUrl, common.CovertToJson(msg.Body.ListTableTraverseRes))
+	case cmd.TcaplusApiGetTableRecordCountRes:
+		logger.DEBUG("recv proxy %s TcaplusApiGetTableRecordCountRes %s", s.proxyUrl, common.CovertToJson(msg.Body.GetTableRecordCountRes))
+	case cmd.TcaplusApiSetTtlRes:
+		logger.DEBUG("recv proxy %s TcaplusApiSetTtlRes %s", s.proxyUrl, common.CovertToJson(msg.Body.TCaplusSetTTLRes))
+	case cmd.TcaplusApiGetTtlRes:
+		logger.DEBUG("recv proxy %s TcaplusApiGetTtlRes %s", s.proxyUrl, common.CovertToJson(msg.Body.TCaplusGetTTLRes))
+	case cmd.TcaplusApiBatchDeleteRes:
+		logger.DEBUG("recv proxy %s TcaplusApiBatchDeleteRes %s", s.proxyUrl, common.CovertToJson(msg.Body.BatchDeleteRes))
+	case cmd.TcaplusApiBatchInsertRes:
+		logger.DEBUG("recv proxy %s TcaplusApiBatchInsertRes %s", s.proxyUrl, common.CovertToJson(msg.Body.BatchInsertRes))
+	case cmd.TcaplusApiBatchReplaceRes:
+		logger.DEBUG("recv proxy %s TcaplusApiBatchReplaceRes %s", s.proxyUrl, common.CovertToJson(msg.Body.BatchReplaceRes))
+	case cmd.TcaplusApiBatchUpdateRes:
+		logger.DEBUG("recv proxy %s TcaplusApiBatchUpdateRes %s", s.proxyUrl, common.CovertToJson(msg.Body.BatchUpdateRes))
+	case cmd.TcaplusApiListAddAfterBatchRes:
+		logger.DEBUG("recv proxy %s TcaplusApiListAddAfterBatchRes %s", s.proxyUrl, common.CovertToJson(msg.Body.ListAddAfterBatchRes))
+	case cmd.TcaplusApiListGetBatchRes:
+		logger.DEBUG("recv proxy %s TcaplusApiListGetBatchRes %s", s.proxyUrl, common.CovertToJson(msg.Body.ListGetBatchRes))
+	case cmd.TcaplusApiListReplaceBatchRes:
+		logger.DEBUG("recv proxy %s TcaplusApiListReplaceBatchRes %s", s.proxyUrl, common.CovertToJson(msg.Body.ListReplaceBatchRes))
 	}
 }

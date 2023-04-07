@@ -10,13 +10,9 @@ import (
 	"time"
 )
 
-func main() {
-	// 创建 client，配置日志，连接数据库
-	client := tools.InitPBSyncClient()
-	defer client.Close()
-
+func IndexQueryExample() {
 	// 生成 index query 请求
-	req, err := client.NewRequest(tools.ZoneId, "game_players", cmd.TcaplusApiSqlReq)
+	req, err := client.NewRequest(tools.Zone, "game_players", cmd.TcaplusApiSqlReq)
 	if err != nil {
 		logger.ERR("NewRequest error:%s", err)
 		return
@@ -25,26 +21,6 @@ func main() {
 	query := fmt.Sprintf("select * from game_players where player_id=10805514 and player_name=Calvin")
 	// 设置 sql ，仅用于二级索引请求
 	req.SetSql(query)
-
-	// （非必须）设置userbuf，在响应中带回。这个是个开放功能，比如某些临时字段不想保存在全局变量中，
-	// 可以通过设置userbuf在发送端接收短传递，也可以起异步id的作用
-	req.SetUserBuff([]byte("user buffer test"))
-
-	// （非必须） 防止记录不存在
-	client.Insert(&tcaplusservice.GamePlayers{
-		PlayerId:        10805514,
-		PlayerName:      "Calvin",
-		PlayerEmail:     "calvin@test.com",
-		GameServerId:    10,
-		LoginTimestamp:  []string{"2019-12-12 15:00:00"},
-		LogoutTimestamp: []string{"2019-12-12 16:00:00"},
-		IsOnline:        false,
-		Pay: &tcaplusservice.Payment{
-			PayId:  10101,
-			Amount: 1000,
-			Method: 2,
-		},
-	})
 
 	// 发送请求,接收响应
 	resp, err := client.Do(req, 5*time.Second)
@@ -59,9 +35,6 @@ func main() {
 		logger.ERR("insert error:%s", terror.GetErrMsg(errCode))
 		return
 	}
-
-	// 获取userbuf
-	fmt.Println(string(resp.GetUserBuffer()))
 
 	// 获取查询类型，仅用于 二级索引接口
 	fmt.Println(resp.GetSqlType())

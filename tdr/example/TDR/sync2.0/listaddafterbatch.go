@@ -19,6 +19,8 @@ func listAddAfterBatchExample() {
 		data.Value1 = "value1"
 		data.Value2 = "value2"
 		dataSlice = append(dataSlice, data)
+		//TCAPLUS_API_LIST_PRE_FIRST_INDEX(-2)：新元素插入在第一个元素之前
+		//TCAPLUS_API_LIST_LAST_INDEX(-1)：新元素插入在最后一个元素之后
 		indexs = append(indexs, -1)
 	}
 

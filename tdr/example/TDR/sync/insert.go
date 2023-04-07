@@ -15,7 +15,9 @@ func insertExample() {
 		fmt.Printf("NewRequest TcaplusApiInsertReq failed %v\n", err.Error())
 		return
 	}
-	fmt.Printf("insertExample NewRequest TcaplusApiInsertReq finish\n")
+
+	// 设置ResultFlag标志。0标志只需返回成功与否,1标志返回同请求一致的值,2标志返回操作后所有字段的值,3标志返回操作前所有字段的值
+	req.SetResultFlagForSuccess(2)
 	rec, err := req.AddRecord(0)
 	if err != nil {
 		fmt.Printf("AddRecord failed %v\n", err.Error())
@@ -49,11 +51,21 @@ func insertExample() {
 		tcapluserr := resp.GetResult()
 		if tcapluserr != 0 {
 			fmt.Printf("response ret errCode: %d, errMsg: %s", tcapluserr, terror.GetErrMsg(tcapluserr))
-			return
 		}
-		//获取同步请求Seq
-		fmt.Printf("request Seq %d\n", req.GetSeq())
-		//获取回应消息的序列号
-		fmt.Printf("respond seq: %d \n", resp.GetSeq())
+		for i := 0; i < resp.GetRecordCount(); i++ {
+			record, err := resp.FetchRecord()
+			if err != nil {
+				fmt.Printf("FetchRecord failed %s\n", err.Error())
+				return
+			}
+			//通过GetData获取记录
+			data := service_info.NewService_Info()
+			if err := record.GetData(data); err != nil {
+				fmt.Printf("record.GetData failed %s\n", err.Error())
+				return
+			}
+			fmt.Printf("insert response record data %+v, route: %s\n",
+				data, string(data.Routeinfo[0:data.Routeinfo_Len]))
+		}
 	}
 }

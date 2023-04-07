@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/example/TDR/async/service_info"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/cmd"
-	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/terror"
 )
 
 func updateByPartKeyExample() {
@@ -47,41 +46,41 @@ func updateByPartKeyExample() {
 		return
 	}
 	fmt.Printf("deleteByPartKeyExample send finish\n")
-	//recv response
-	for {
-		resp, err := recvResponse(client)
-		if err != nil {
-			fmt.Printf("recv err %s\n", err.Error())
-			return
-		}
-		//带回请求的异步ID
-		fmt.Printf("updateByPartKeyExample resp success, AsyncId:%d\n", resp.GetAsyncId())
-		tcapluserr := resp.GetResult()
-		if tcapluserr != 0 {
-			fmt.Printf("response ret errCode: %d, errMsg: %s", tcapluserr, terror.GetErrMsg(tcapluserr))
-			return
-		}
-		has_more := resp.HaveMoreResPkgs()
-		//response中带有获取的旧记录
-		fmt.Printf("updateByPartKeyExample response success record count %d\n", resp.GetRecordCount())
-		for i := 0; i < resp.GetRecordCount(); i++ {
-			record, err := resp.FetchRecord()
-			if err != nil {
-				fmt.Printf("FetchRecord failed %s\n", err.Error())
-				return
-			}
-			oldData := service_info.NewService_Info()
-			if err := record.GetData(oldData); err != nil {
-				fmt.Printf("record.GetData failed %s\n", err.Error())
-				return
-			}
-			fmt.Printf("updateByPartKeyExample response record data %+v, route: %s",
-				oldData, string(oldData.Routeinfo[0:oldData.Routeinfo_Len]))
-			//fmt.Printf("updateByPartKeyExample request  record data %+v, route: %s",
-			// data, string(data.Routeinfo[0:data.Routeinfo_Len]))
-		}
-		if 0 == has_more {
-			break
-		}
-	}
+	////recv response
+	//for {
+	//	resp, err := recvResponse(client)
+	//	if err != nil {
+	//		fmt.Printf("recv err %s\n", err.Error())
+	//		return
+	//	}
+	//	//带回请求的异步ID
+	//	fmt.Printf("updateByPartKeyExample resp success, AsyncId:%d\n", resp.GetAsyncId())
+	//	tcapluserr := resp.GetResult()
+	//	if tcapluserr != 0 {
+	//		fmt.Printf("response ret errCode: %d, errMsg: %s", tcapluserr, terror.GetErrMsg(tcapluserr))
+	//		return
+	//	}
+	//	has_more := resp.HaveMoreResPkgs()
+	//	//response中带有获取的旧记录
+	//	fmt.Printf("updateByPartKeyExample response success record count %d\n", resp.GetRecordCount())
+	//	for i := 0; i < resp.GetRecordCount(); i++ {
+	//		record, err := resp.FetchRecord()
+	//		if err != nil {
+	//			fmt.Printf("FetchRecord failed %s\n", err.Error())
+	//			return
+	//		}
+	//		oldData := service_info.NewService_Info()
+	//		if err := record.GetData(oldData); err != nil {
+	//			fmt.Printf("record.GetData failed %s\n", err.Error())
+	//			return
+	//		}
+	//		fmt.Printf("updateByPartKeyExample response record data %+v, route: %s",
+	//			oldData, string(oldData.Routeinfo[0:oldData.Routeinfo_Len]))
+	//		//fmt.Printf("updateByPartKeyExample request  record data %+v, route: %s",
+	//		// data, string(data.Routeinfo[0:data.Routeinfo_Len]))
+	//	}
+	//	if 0 == has_more {
+	//		break
+	//	}
+	//}
 }

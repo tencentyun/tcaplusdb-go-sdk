@@ -205,8 +205,9 @@ func (req *batchUpdateRequest) SetResultFlagForSuccess(flag byte) int {
 		return terror.ParameterInvalid
 	}
 	// 0(1个bit位) | 本版本开始该位设置为1(1个bit位) | 成功时的标识(2个bit位) | 失败时的标识(2个bit位) | 本版本以前的标识(2个bit位)
-	req.pkg.Body.BatchUpdateReq.Flag = flag << 4
-	req.pkg.Body.BatchUpdateReq.Flag |= 1 << 6
+	flag = flag << 4
+	flag |= 1 << 6
+	req.pkg.Body.BatchUpdateReq.Flag |= flag
 	return terror.GEN_ERR_SUC
 }
 
@@ -216,8 +217,9 @@ func (req *batchUpdateRequest) SetResultFlagForFail(flag byte) int {
 		return terror.ParameterInvalid
 	}
 	// 0(1个bit位) | 本版本开始该位设置为1(1个bit位) | 成功时的标识(2个bit位) | 失败时的标识(2个bit位) | 本版本以前的标识(2个bit位)
-	req.pkg.Body.BatchUpdateReq.Flag = flag << 2
-	req.pkg.Body.BatchUpdateReq.Flag |= 1 << 6
+	flag = flag << 2
+	flag |= 1 << 6
+	req.pkg.Body.BatchUpdateReq.Flag |= flag
 	return terror.GEN_ERR_SUC
 }
 

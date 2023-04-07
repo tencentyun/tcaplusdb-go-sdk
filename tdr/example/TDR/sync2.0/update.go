@@ -29,5 +29,4 @@ func updateExample() {
 	}
 	fmt.Println(data)
 	fmt.Println("DoUpdate success")
-	fmt.Println("get success")
 }

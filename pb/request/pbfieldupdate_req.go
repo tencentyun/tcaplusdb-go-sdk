@@ -36,7 +36,7 @@ func newPBFieldUpdateRequest(appId uint64, zoneId uint32, tableName string, cmd 
 	pkg.Body.TCaplusPbFieldUpdateReq.ValueInfo.FieldNum_ = 0
 	pkg.Body.TCaplusPbFieldUpdateReq.ValueInfo.Fields_ = nil
 	pkg.Body.TCaplusPbFieldUpdateReq.CheckVersionType = 1
-
+	pkg.Body.TCaplusPbFieldUpdateReq.Condition = ""
 	req := &pbFieldUpdateRequest{
 		appId:     appId,
 		zoneId:    zoneId,
@@ -118,6 +118,7 @@ func (req *pbFieldUpdateRequest) Pack() ([]byte, error) {
 
 	if logger.GetLogLevel() == "DEBUG" {
 		logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+		logger.DEBUG("%s", common.CovertToJson(req.pkg.Body.TCaplusPbFieldUpdateReq))
 	}
 	data, err := req.pkg.Pack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion)
 	if err != nil {

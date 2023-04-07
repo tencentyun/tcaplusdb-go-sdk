@@ -57,11 +57,11 @@ func (c *PBClient) initTableMeta(zoneTables map[uint32][]string) error {
 				defer wg.Done()
 				req, err := c.NewRequest(zone, table, cmd.TcaplusApiMetadataGetReq)
 				if err != nil {
-					logger.ERR("NewRequest error:%s", err.Error())
+					logger.ERR("zone %d table %s NewRequest error:%s", zone, table, err.Error())
 					atomic.StoreInt32(&initResult, 1)
 					return
 				}
-				resp, err := c.Do(req, c.defTimeout*time.Second)
+				resp, err := c.Do(req, c.defTimeout)
 				if err != nil {
 					logger.ERR("Do request error:%s", err)
 					atomic.StoreInt32(&initResult, 1)

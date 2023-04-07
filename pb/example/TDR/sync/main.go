@@ -6,11 +6,12 @@ import (
 )
 
 const (
-	AppId     = uint64(2)
-	ZoneId    = uint32(3)
-	DirUrl    = "tcp://x.x.x.x:xxxx"
-	Signature = "xxxxxxxxxxxxx"
-	TableName = "service_info"
+	AppId                = uint64(2)
+	ZoneId               = uint32(3)
+	DirUrl               = "tcp://x.x.x.x:9999"
+	Signature            = "xxxxxxxxx"
+	TableName            = "service_info"
+	TABLE_TRAVERSER_LIST = "table_traverser_list"
 )
 
 var client *tcaplus.Client

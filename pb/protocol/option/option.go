@@ -187,10 +187,17 @@ type TDROpt struct {
 			当记录不存在时，将按字段默认值创建新记录再自增；若无默认值则返回错误
 	*/
 	AddableIncreaseFlag byte
+
+	/**
+	  @brief  当设置了 TCAPLUS_FLAG_FETCH_ONLY_IF_EXPIRED 标志位时，用于指定记录过期时间，目前仅仅TCAPLUS_API_BATCH_GET_REQ操作支持指定记录过期时间。
+	  expire_time. 过期时间，单位为秒
+	*/
+	ExpireTime uint32
 	/**
 	@brief  条件更新
 	*/
 	Condition string
+	Operation string
 
 	//同步请求意义不大，设置用户缓存，响应消息将携带返回
 	UserBuff []byte
@@ -325,6 +332,7 @@ type PBOpt struct {
 	@brief  条件更新
 	*/
 	Condition string
+	Operation string
 
 	/**
 	@brief  PB FieldGet和FieldSet使用，获取或更新部分字段

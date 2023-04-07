@@ -14,13 +14,12 @@ func deleteExample() {
 		fmt.Printf("NewRequest TcaplusApiDeleteReq failed %v\n", err.Error())
 		return
 	}
-	fmt.Printf("deleteExample NewRequest TcaplusApiDeleteReq finish\n")
+
 	//设置结果标记位，删除成功后，返回tcaplus端的旧数据，默认为0
 	if err := req.SetResultFlag(3); err != nil {
 		fmt.Printf("SetResultFlag failed %v\n", err.Error())
 		return
 	}
-	fmt.Printf("deleteExample SetResultFlag finish\n")
 
 	//为request添加一条记录，（index只有在list表中支持，generic不校验）
 	rec, err := req.AddRecord(0)
@@ -28,7 +27,7 @@ func deleteExample() {
 		fmt.Printf("AddRecord failed %v\n", err.Error())
 		return
 	}
-	fmt.Printf("deleteExample AddRecord finish\n")
+
 	//申请tdr结构体并赋值key，最好调用tdr pkg的NewXXX函数，会将成员初始化为tdr定义的tdr默认值，
 	// 不要自己new，自己new，某些结构体未初始化，存在panic的风险
 	data := service_info.NewService_Info()
@@ -49,10 +48,6 @@ func deleteExample() {
 			fmt.Printf("response ret errCode: %d, errMsg: %s", tcapluserr, terror.GetErrMsg(tcapluserr))
 			return
 		}
-		//获取同步请求Seq
-		fmt.Printf("request Seq %d\n", req.GetSeq())
-		//获取回应消息的序列号
-		fmt.Printf("respond seq: %d \n", resp.GetSeq())
 		//response中带有获取的旧记录
 		fmt.Printf("deleteExample response success record count %d\n", resp.GetRecordCount())
 		for i := 0; i < resp.GetRecordCount(); i++ {

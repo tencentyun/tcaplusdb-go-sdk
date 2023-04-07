@@ -3,16 +3,10 @@ package main
 import (
 	"fmt"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/example/PB/table/tcaplusservice"
-	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/example/PB/tools"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/option"
 )
 
-func main() {
-	// 创建 client，配置日志，连接数据库
-	client := tools.InitPBSyncClient()
-	defer client.Close()
-	client.SetDefaultZoneId(tools.ZoneId)
-
+func ListGetBatchExample() {
 	var indexs []int32
 	for i := 0; i < 10; i++ {
 		indexs = append(indexs, int32(i))
@@ -22,7 +16,9 @@ func main() {
 		Tconndid: 2,
 		Timekey:  "key",
 	}
-	opt := &option.PBOpt{}
+	opt := &option.PBOpt{
+		MultiFlag: 1,
+	}
 	resMsgs, err := client.DoListGetBatch(msg, indexs, opt)
 	if err != nil {
 		fmt.Printf("DoListGetBatch fail, %s", err.Error())

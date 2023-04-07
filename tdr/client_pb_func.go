@@ -1,6 +1,7 @@
 package tcaplus
 
 import (
+	"bytes"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/common"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/logger"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/cmd"
@@ -31,6 +32,12 @@ func (c *PBClient) DoListSimple(msg proto.Message, index int32, apiCmd int, opt 
 		if ret := rec.SetCondition(opt.Condition); ret != 0 {
 			logger.ERR("SetCondition error:%d", ret)
 			return index, &terror.ErrorCode{Code: ret, Message: "SetCondition maybe not support or len too long"}
+		}
+	}
+	if opt != nil && len(opt.Operation) > 0 {
+		if ret := rec.SetOperation(opt.Operation, 0); ret != 0 {
+			logger.ERR("SetOperation error:%d", ret)
+			return index, &terror.ErrorCode{Code: ret, Message: "SetOperation failed, maybe not support or len too long"}
 		}
 	}
 
@@ -64,7 +71,7 @@ func (c *PBClient) DoListSimple(msg proto.Message, index int32, apiCmd int, opt 
 
 	ret := res.GetResult()
 	if ret != 0 {
-		return index, &terror.ErrorCode{Code: ret}
+		err = &terror.ErrorCode{Code: ret}
 	}
 
 	if res.GetRecordCount() > 0 {
@@ -89,7 +96,7 @@ func (c *PBClient) DoListSimple(msg proto.Message, index int32, apiCmd int, opt 
 			return index, err
 		}
 	}
-	return index, nil
+	return index, err
 }
 
 func (c *PBClient) doSimple(msg proto.Message, apiCmd int, opt *option.PBOpt, zoneId uint32) error {
@@ -123,6 +130,12 @@ func (c *PBClient) doSimple(msg proto.Message, apiCmd int, opt *option.PBOpt, zo
 			return &terror.ErrorCode{Code: ret, Message: "SetCondition failed, maybe not support or len too long"}
 		}
 	}
+	if opt != nil && len(opt.Operation) > 0 {
+		if ret := rec.SetOperation(opt.Operation, 0); ret != 0 {
+			logger.ERR("SetOperation error:%d", ret)
+			return &terror.ErrorCode{Code: ret, Message: "SetOperation failed, maybe not support or len too long"}
+		}
+	}
 
 	_, err = rec.SetPBData(msg)
 	if err != nil {
@@ -143,7 +156,7 @@ func (c *PBClient) doSimple(msg proto.Message, apiCmd int, opt *option.PBOpt, zo
 
 	ret := res.GetResult()
 	if ret != 0 {
-		return &terror.ErrorCode{Code: ret}
+		err = &terror.ErrorCode{Code: ret}
 	}
 
 	if res.GetRecordCount() > 0 {
@@ -167,7 +180,7 @@ func (c *PBClient) doSimple(msg proto.Message, apiCmd int, opt *option.PBOpt, zo
 			return err
 		}
 	}
-	return nil
+	return err
 }
 
 //调用前保证opt中field不为空
@@ -199,6 +212,12 @@ func (c *PBClient) doField(msg proto.Message, apiCmd int, opt *option.PBOpt, zon
 		if ret := rec.SetCondition(opt.Condition); ret != 0 {
 			logger.ERR("SetCondition error:%d", ret)
 			return &terror.ErrorCode{Code: ret, Message: "SetCondition failed, maybe not support or len too long"}
+		}
+	}
+	if len(opt.Operation) > 0 {
+		if ret := rec.SetOperation(opt.Operation, 0); ret != 0 {
+			logger.ERR("SetOperation error:%d", ret)
+			return &terror.ErrorCode{Code: ret, Message: "SetOperation failed, maybe not support or len too long"}
 		}
 	}
 
@@ -385,6 +404,12 @@ func (c *PBClient) doListBatch(msg proto.Message, indexs []int32,
 			return nil, &terror.ErrorCode{Code: ret, Message: "SetCondition failed, maybe not support or len too long"}
 		}
 	}
+	if opt != nil && len(opt.Operation) > 0 {
+		if ret := rec.SetOperation(opt.Operation, 0); ret != 0 {
+			logger.ERR("SetOperation error:%d", ret)
+			return nil, &terror.ErrorCode{Code: ret, Message: "SetOperation failed, maybe not support or len too long"}
+		}
+	}
 
 	_, err = rec.SetPBData(msg)
 	if err != nil {
@@ -409,7 +434,7 @@ func (c *PBClient) doListBatch(msg proto.Message, indexs []int32,
 
 	tmpIdxMap := map[int32]struct{}{}
 	for _, index := range indexs {
-		if _, exist := tmpIdxMap[index]; exist{
+		if _, exist := tmpIdxMap[index]; exist {
 			logger.ERR("batch record exist duplicate index")
 			return nil, &terror.ErrorCode{Code: terror.ParameterInvalid, Message: "batch record exist duplicate index"}
 		}
@@ -499,6 +524,7 @@ func (c *PBClient) doListBatchRecord(msgs []proto.Message, indexs []int32,
 		}
 	}
 
+	var keyBuf []byte
 	for i, data := range msgs {
 		rec, err := req.AddRecord(indexs[i])
 		if err != nil {
@@ -512,12 +538,25 @@ func (c *PBClient) doListBatchRecord(msgs []proto.Message, indexs []int32,
 				return &terror.ErrorCode{Code: ret, Message: "SetCondition failed, maybe not support or len too long"}
 			}
 		}
+		if opt != nil && len(opt.Operation) > 0 {
+			if ret := rec.SetOperation(opt.Operation, 0); ret != 0 {
+				logger.ERR("SetOperation error:%d", ret)
+				return &terror.ErrorCode{Code: ret, Message: "SetOperation failed, maybe not support or len too long"}
+			}
+		}
 
-		_, err = rec.SetPBData(data)
+		pbKey, err := rec.SetPBData(data)
 		if err != nil {
 			logger.ERR("SetData error:%s", err)
 			return err
 		}
+		if keyBuf == nil {
+			keyBuf = pbKey
+		} else if !bytes.Equal(keyBuf, pbKey) {
+			logger.ERR("ListBatch only support same key")
+			return &terror.ErrorCode{Code: terror.ParameterInvalid, Message: "ListBatch only support same key"}
+		}
+
 		if opt != nil && opt.Version > 0 {
 			rec.SetVersion(opt.Version)
 		}
@@ -650,6 +689,12 @@ func (c *PBClient) doBatch(msgs []proto.Message, apiCmd int, opt *option.PBOpt, 
 				return &terror.ErrorCode{Code: ret, Message: "SetCondition failed, maybe not support or len too long"}
 			}
 		}
+		if opt != nil && len(opt.Operation) > 0 {
+			if ret := rec.SetOperation(opt.Operation, 0); ret != 0 {
+				logger.ERR("SetOperation error:%d", ret)
+				return &terror.ErrorCode{Code: ret, Message: "SetOperation failed, maybe not support or len too long"}
+			}
+		}
 
 		if opt != nil && (opt.BatchVersion)[i] > 0 {
 			rec.SetVersion((opt.BatchVersion)[i])
@@ -687,6 +732,7 @@ func (c *PBClient) doBatch(msgs []proto.Message, apiCmd int, opt *option.PBOpt, 
 			if recErr != nil {
 				globalErr = recErr
 				logger.DEBUG("FetchRecord error:%s", recErr)
+				continue
 			}
 
 			if record == nil {
@@ -749,7 +795,7 @@ func (c *PBClient) doBatch(msgs []proto.Message, apiCmd int, opt *option.PBOpt, 
 	return globalErr
 }
 
-func (c *PBClient) doPartKeyGet(msg proto.Message, keys []string, apiCmd int, opt *option.PBOpt,
+func (c *PBClient) doPartKey(msg proto.Message, keys []string, apiCmd int, opt *option.PBOpt,
 	zoneId uint32) ([]proto.Message, error) {
 	table := msg.ProtoReflect().Descriptor().Name()
 	req, err := c.NewRequest(zoneId, string(table), apiCmd)
@@ -776,6 +822,12 @@ func (c *PBClient) doPartKeyGet(msg proto.Message, keys []string, apiCmd int, op
 		if ret := rec.SetCondition(opt.Condition); ret != 0 {
 			logger.ERR("SetCondition error:%d", ret)
 			return nil, &terror.ErrorCode{Code: ret, Message: "SetCondition failed, maybe not support or len too long"}
+		}
+	}
+	if opt != nil && len(opt.Operation) > 0 {
+		if ret := rec.SetOperation(opt.Operation, 0); ret != 0 {
+			logger.ERR("SetOperation error:%d", ret)
+			return nil, &terror.ErrorCode{Code: ret, Message: "SetOperation failed, maybe not support or len too long"}
 		}
 	}
 	_, err = rec.SetPBPartKeys(msg, keys)
@@ -827,7 +879,7 @@ func (c *PBClient) doPartKeyGet(msg proto.Message, keys []string, apiCmd int, op
 		}
 	}
 
-	if len(msgs) == 0 && globalErr == nil {
+	if len(msgs) == 0 && globalErr == nil && apiCmd == cmd.TcaplusApiGetByPartkeyReq {
 		return nil, &terror.ErrorCode{Code: terror.TXHDB_ERR_RECORD_NOT_EXIST}
 	}
 
@@ -999,9 +1051,29 @@ func (c *PBClient) DoGetByPartKey(msgs proto.Message, indexKeys []string, opt *o
 		return nil, &terror.ErrorCode{Code: terror.ParameterInvalid, Message: "partKeys is empty"}
 	}
 	if len(zoneId) == 1 {
-		return c.doPartKeyGet(msgs, indexKeys, cmd.TcaplusApiGetByPartkeyReq, opt, zoneId[0])
+		return c.doPartKey(msgs, indexKeys, cmd.TcaplusApiGetByPartkeyReq, opt, zoneId[0])
 	}
-	return c.doPartKeyGet(msgs, indexKeys, cmd.TcaplusApiGetByPartkeyReq, opt, uint32(c.defZone))
+	return c.doPartKey(msgs, indexKeys, cmd.TcaplusApiGetByPartkeyReq, opt, uint32(c.defZone))
+}
+
+/**
+    @brief 根据表的部分key字段删除
+	@param [IN] msgs proto.Message 由proto文件生成的记录结构体
+	@param [IN] indexKeys 使用的索引部分key字段名称
+	@param [IN/OUT] opt 可选参数
+	@param [IN] zoneId 可选参数，不设置则取默认zone，默认zone可通过client.SetDefaultZoneId设置
+    @retval error 错误码
+**/
+func (c *PBClient) DoDeleteByPartKey(msgs proto.Message, indexKeys []string, opt *option.PBOpt,
+	zoneId ...uint32) ([]proto.Message,
+	error) {
+	if len(indexKeys) == 0 {
+		return nil, &terror.ErrorCode{Code: terror.ParameterInvalid, Message: "partKeys is empty"}
+	}
+	if len(zoneId) == 1 {
+		return c.doPartKey(msgs, indexKeys, cmd.TcaplusApiDeleteByPartkeyReq, opt, zoneId[0])
+	}
+	return c.doPartKey(msgs, indexKeys, cmd.TcaplusApiDeleteByPartkeyReq, opt, uint32(c.defZone))
 }
 
 /**

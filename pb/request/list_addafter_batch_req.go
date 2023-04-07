@@ -106,6 +106,11 @@ func (req *listAddAfterBatchRequest) Pack() ([]byte, error) {
 		return nil, &terror.ErrorCode{Code: terror.RequestHasNoRecord}
 	}
 
+	if !isSameKey(req.record) {
+		logger.ERR("listAddAfterBatch only support same key")
+		return nil, &terror.ErrorCode{Code: terror.ParameterInvalid, Message: "listAddAfterBatch only support same key"}
+	}
+
 	if err := req.record[0].PackKey(); err != nil {
 		logger.ERR("record pack key failed, %s", err.Error())
 		return nil, err

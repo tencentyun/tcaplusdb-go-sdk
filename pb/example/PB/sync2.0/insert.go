@@ -8,13 +8,7 @@ import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/option"
 )
 
-func main() {
-	// 创建 client，配置日志，连接数据库
-	client := tools.InitPBSyncClient()
-	defer client.Close()
-	client.SetDefaultZoneId(tools.ZoneId)
-
-	// 向记录中填充数据
+func InsertExample() {
 	msg := &tcaplusservice.GamePlayers{
 		PlayerId:        10805514,
 		PlayerName:      "Calvin",
@@ -29,8 +23,6 @@ func main() {
 			Method: 1,
 		},
 	}
-	// （非必须）防止此条记录已存在
-	client.DoDelete(msg, nil)
 
 	opt := &option.PBOpt{
 		ResultFlag: option.TcaplusResultFlagAllNewValue,

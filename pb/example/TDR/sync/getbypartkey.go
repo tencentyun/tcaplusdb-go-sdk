@@ -16,7 +16,6 @@ func getPartKeyExample() {
 		fmt.Printf("getPartKeyExample NewRequest TcaplusApiGetReq failed %v\n", err.Error())
 		return
 	}
-	fmt.Printf("getPartKeyExample NewRequest TcaplusApiGetReq finish\n")
 
 	//为request添加一条记录
 	rec, err := req.AddRecord(0)
@@ -24,8 +23,9 @@ func getPartKeyExample() {
 		fmt.Printf("getPartKeyExample AddRecord failed %v\n", err.Error())
 		return
 	}
+	//设置查询的偏移和记录数
 	req.SetResultLimit(2000, 5000)
-	fmt.Printf("getPartKeyExample AddRecord finish\n")
+
 	//申请tdr结构体并赋值Key，最好调用tdr pkg的NewXXX函数，会将成员初始化为tdr定义的tdr默认值，
 	// 不要自己new，自己new，某些结构体未初始化，存在panic的风险
 	data := service_info.NewService_Info()
@@ -54,11 +54,19 @@ func getPartKeyExample() {
 			break
 		}
 		totalCnt += resp.GetRecordCount()
-
-		//response中带有获取的记录
-		fmt.Printf("getPartKeyExample response success record count %d, have more :%d\n",
-			resp.GetRecordCount(), resp.HaveMoreResPkgs())
+		record, err := resp.FetchRecord()
+		if err != nil {
+			fmt.Printf("FetchRecord failed %s\n", err.Error())
+			return
+		}
+		//通过GetData获取记录
+		data := service_info.NewService_Info()
+		if err := record.GetData(data); err != nil {
+			fmt.Printf("record.GetData failed %s\n", err.Error())
+			return
+		}
+		fmt.Printf("response record data %+v, route: %s\n",
+			data, string(data.Routeinfo[0:data.Routeinfo_Len]))
 	}
 	fmt.Printf("getPartKeyExample total count %d,\n", totalCnt)
-
 }

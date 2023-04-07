@@ -41,6 +41,8 @@ func newReplaceRequest(appId uint64, zoneId uint32, tableName string, cmd int,
 	pkg.Body.ReplaceReq.IncreaseValueInfo.FieldNum = 0
 	pkg.Body.ReplaceReq.IncreaseValueInfo.Fields = nil
 	pkg.Body.ReplaceReq.IncreaseValueInfo.Version = 0
+	pkg.Body.ReplaceReq.Condition = ""
+	pkg.Body.ReplaceReq.Operation = ""
 
 	req := &replaceRequest{
 		appId:        appId,
@@ -126,6 +128,7 @@ func (req *replaceRequest) Pack() ([]byte, error) {
 
 	if logger.GetLogLevel() == "DEBUG" {
 		logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+		logger.DEBUG("%s", common.CovertToJson(req.pkg.Body.ReplaceReq))
 	}
 	data, err := req.pkg.Pack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion)
 	if err != nil {
@@ -188,8 +191,9 @@ func (req *replaceRequest) SetResultFlagForSuccess(flag byte) int {
 		return terror.ParameterInvalid
 	}
 	// 0(1个bit位) | 本版本开始该位设置为1(1个bit位) | 成功时的标识(2个bit位) | 失败时的标识(2个bit位) | 本版本以前的标识(2个bit位)
-	req.pkg.Body.ReplaceReq.Flag = flag << 4
-	req.pkg.Body.ReplaceReq.Flag |= 1 << 6
+	flag = flag << 4
+	flag |= 1 << 6
+	req.pkg.Body.ReplaceReq.Flag |= flag
 	return terror.GEN_ERR_SUC
 }
 
@@ -199,8 +203,9 @@ func (req *replaceRequest) SetResultFlagForFail(flag byte) int {
 		return terror.ParameterInvalid
 	}
 	// 0(1个bit位) | 本版本开始该位设置为1(1个bit位) | 成功时的标识(2个bit位) | 失败时的标识(2个bit位) | 本版本以前的标识(2个bit位)
-	req.pkg.Body.ReplaceReq.Flag = flag << 2
-	req.pkg.Body.ReplaceReq.Flag |= 1 << 6
+	flag = flag << 2
+	flag |= 1 << 6
+	req.pkg.Body.ReplaceReq.Flag |= flag
 	return terror.GEN_ERR_SUC
 }
 

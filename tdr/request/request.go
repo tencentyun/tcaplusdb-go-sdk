@@ -1,6 +1,7 @@
 package request
 
 import (
+	"bytes"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/cs_pool"
 	"hash/crc32"
 	"sort"
@@ -62,6 +63,14 @@ type TcaplusRequest interface {
 	SetSql(query string) int
 
 	GetTcaplusPackagePtr() *tcaplus_protocol_cs.TCaplusPkg
+
+	/**
+	  @brief  当设置了 TCAPLUS_FLAG_FETCH_ONLY_IF_EXPIRED 标志位时，用于指定记录过期时间，目前仅仅TCAPLUS_API_BATCH_GET_REQ操作支持指定记录过期时间。
+	  @param  [IN]  expire_time. 过期时间，单位为秒
+	  @retval 0     设置成功
+	  @retval <0    失败，返回对应的错误码。通常因为某些操作类型(cmd)不支持这种访问方式
+	*/
+	SetExpireTime(expireTime uint32) int32
 }
 
 /*
@@ -72,7 +81,13 @@ type commonInterface interface {
 	/**
 	  @brief  向请求中添加一条记录。
 	  @param [IN] index         用于List操作,通常>=0，表示该Record在所属List中的Index；
-								对于Generic操作，index无意义，设0即可
+	            用于List表中的TCAPLUS_API_LIST_ADDAFTER_REQ，TCAPLUS_API_LIST_ADDAFTER_BATCH_REQ, index可以取值TCAPLUS_API_LIST_PRE_FIRST_INDEX或TCAPLUS_API_LIST_LAST_INDEX命令号。
+	            index是辅助key，tcaplus会自动维护其唯一性,新插入的记录index会往上自增。
+	            当cmd是TCAPLUS_API_LIST_ADDAFTER_REQ时，表示记录插入在该index所在的记录之后(隐含约束：index对应的记录必须已存在)；
+	            此时index还支持以下特殊值：
+	    	                TCAPLUS_API_LIST_PRE_FIRST_INDEX(-2)：新元素插入在第一个元素之前
+	                       TCAPLUS_API_LIST_LAST_INDEX(-1)：新元素插入在最后一个元素之后
+	            对于Generic操作，index无意义将被忽略。
 	  @retval record.Record     返回记录指针
 	  @retval error   			错误码
 	**/
@@ -500,6 +515,27 @@ func NewRequest(appId uint64, zoneId uint32, tableName string, cmd int, isPB boo
 	return req, err
 }
 
+func isSameKey(records []*record.Record) bool {
+	size := len(records)
+	if size <= 1 {
+		return true
+	}
+	keyMap := records[0].KeyMap
+	for i := 1; i < size; i++ {
+		rec := records[i]
+		if len(rec.KeyMap) != len(keyMap) {
+			return false
+		}
+		for k, v := range keyMap {
+			v2 := rec.KeyMap[k]
+			if !bytes.Equal(v, v2) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 func setUserBuffer(pkg *tcaplus_protocol_cs.TCaplusPkg, userBuffer []byte) error {
 	if pkg == nil {
 		logger.ERR("Request can not second use")
@@ -660,6 +696,15 @@ func (req *tcapRequest) SetSql(query string) int {
 		return req.commonInterface.(*indexQueryRequest).SetSql(query)
 	default:
 		return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
+	}
+}
+
+func (req *tcapRequest) SetExpireTime(expireTime uint32) int32 {
+	switch req.commonInterface.(type) {
+	case *batchGetRequest:
+		return req.commonInterface.(*batchGetRequest).SetExpireTime(expireTime)
+	default:
+		return int32(terror.API_ERR_OPERATION_TYPE_NOT_MATCH)
 	}
 }
 

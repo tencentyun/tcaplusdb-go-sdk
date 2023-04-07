@@ -10,13 +10,9 @@ import (
 	"time"
 )
 
-func main() {
-	// 创建 client，配置日志，连接数据库
-	client := tools.InitPBSyncClient()
-	defer client.Close()
-
+func DeleteExample() {
 	// 生成 delete 请求
-	req, err := client.NewRequest(tools.ZoneId, "game_players", cmd.TcaplusApiDeleteReq)
+	req, err := client.NewRequest(tools.Zone, "game_players", cmd.TcaplusApiDeleteReq)
 	if err != nil {
 		logger.ERR("NewRequest error:%s", err)
 		return
@@ -44,28 +40,8 @@ func main() {
 		return
 	}
 
-	// （非必须，默认为 0）delete 请求设置 2 3 时将返回此次更新的记录，0 1 不返回记录
+	// 请求标志。0标志只需返回成功与否,1标志返回同请求一致的值,2标志返回操作后所有字段的值,3标志返回操作前所有字段的值
 	req.SetResultFlagForSuccess(2)
-
-	// （非必须）设置userbuf，在响应中带回。这个是个开放功能，比如某些临时字段不想保存在全局变量中，
-	// 可以通过设置userbuf在发送端接收短传递，也可以起异步id的作用
-	req.SetUserBuff([]byte("user buffer test"))
-
-	// （非必须） 防止记录不存在
-	client.Insert(&tcaplusservice.GamePlayers{
-		PlayerId:        10805514,
-		PlayerName:      "Calvin",
-		PlayerEmail:     "calvin@test.com",
-		GameServerId:    10,
-		LoginTimestamp:  []string{"2019-12-12 15:00:00"},
-		LogoutTimestamp: []string{"2019-12-12 16:00:00"},
-		IsOnline:        false,
-		Pay: &tcaplusservice.Payment{
-			PayId:  10101,
-			Amount: 1000,
-			Method: 2,
-		},
-	})
 
 	// 发送请求,接收响应
 	resp, err := client.Do(req, 5*time.Second)
@@ -80,9 +56,6 @@ func main() {
 		logger.ERR("insert error:%s", terror.GetErrMsg(errCode))
 		return
 	}
-
-	// 获取userbuf
-	fmt.Println(string(resp.GetUserBuffer()))
 
 	// 如果有返回记录则用以下接口进行获取
 	for i := 0; i < resp.GetRecordCount(); i++ {

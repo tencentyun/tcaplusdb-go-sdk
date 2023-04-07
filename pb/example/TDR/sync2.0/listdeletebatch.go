@@ -6,7 +6,7 @@ import (
 )
 
 func listDeleteBatchExample() {
-	//list batch get 10 条记录
+	//list batch delete 10 条记录
 	data := tcaplus_tb.NewTable_Traverser_List()
 	data.Key = 1
 	data.Name = 255

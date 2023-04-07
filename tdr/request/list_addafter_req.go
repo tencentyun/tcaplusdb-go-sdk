@@ -123,7 +123,11 @@ func (req *listAddAfterRequest) Pack() ([]byte, error) {
 		return nil, err
 	}
 
-	logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+	if logger.GetLogLevel() == "DEBUG" {
+		logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+		logger.DEBUG("%s", common.CovertToJson(req.pkg.Body.ListAddAfterReq))
+	}
+
 	data, err := req.pkg.Pack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion)
 	if err != nil {
 		logger.ERR("listAddAfterRequest pack failed, %s", err.Error())
@@ -188,8 +192,9 @@ func (req *listAddAfterRequest) SetResultFlagForSuccess(flag byte) int {
 		return terror.ParameterInvalid
 	}
 	// 0(1个bit位) | 本版本开始该位设置为1(1个bit位) | 成功时的标识(2个bit位) | 失败时的标识(2个bit位) | 本版本以前的标识(2个bit位)
-	req.pkg.Body.ListAddAfterReq.Flag = flag << 4
-	req.pkg.Body.ListAddAfterReq.Flag |= 1 << 6
+	flag = flag << 4
+	flag |= 1 << 6
+	req.pkg.Body.ListAddAfterReq.Flag |= flag
 	return terror.GEN_ERR_SUC
 }
 
@@ -199,8 +204,9 @@ func (req *listAddAfterRequest) SetResultFlagForFail(flag byte) int {
 		return terror.ParameterInvalid
 	}
 	// 0(1个bit位) | 本版本开始该位设置为1(1个bit位) | 成功时的标识(2个bit位) | 失败时的标识(2个bit位) | 本版本以前的标识(2个bit位)
-	req.pkg.Body.ListAddAfterReq.Flag = flag << 2
-	req.pkg.Body.ListAddAfterReq.Flag |= 1 << 6
+	flag = flag << 2
+	flag |= 1 << 6
+	req.pkg.Body.ListAddAfterReq.Flag |= flag
 	return terror.GEN_ERR_SUC
 }
 

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/autotest/unittest/table/tcaplus_tb"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/option"
 )
 
 func listGetBatchExample() {
@@ -14,7 +15,10 @@ func listGetBatchExample() {
 	for i := 0; i < 10; i++ {
 		indexs = append(indexs, int32(i))
 	}
-	recs, err := client.DoListGetBatch(TABLE_TRAVERSER_LIST, data, indexs, nil)
+	opt := &option.TDROpt{
+		MultiFlag: 1,
+	}
+	recs, err := client.DoListGetBatch(TABLE_TRAVERSER_LIST, data, indexs, opt)
 	if err != nil {
 		fmt.Println("DoListGetBatch failed,", err.Error())
 		return

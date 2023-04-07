@@ -6,19 +6,17 @@ import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/example/PB/tools"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/logger"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/cmd"
-	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/response"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/terror"
+	"sync"
 	"time"
 )
 
-func main() {
-	// 创建 client，配置日志，连接数据库
-	client := tools.InitPBSyncClient()
-	defer client.Close()
-
-	// 创建异步协程接收请求
-	respChan := make(chan response.TcaplusResponse)
+func ListGetExample() {
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	// 在另一协程处理响应消息
 	go func() {
+		defer wg.Done()
 		for {
 			// resp err 均为 nil 说明响应池中没有任何响应
 			resp, err := client.RecvResponse()
@@ -29,14 +27,34 @@ func main() {
 				time.Sleep(time.Microsecond * 5)
 				continue
 			}
-			// 同步异步 id 找到对应的响应
-			if resp.GetAsyncId() == 12345 {
-				respChan <- resp
+
+			// 获取响应结果
+			errCode := resp.GetResult()
+			if errCode != terror.GEN_ERR_SUC {
+				logger.ERR("insert error:%s", terror.GetErrMsg(errCode))
+				return
+			}
+
+			// 如果有返回记录则用以下接口进行获取
+			for i := 0; i < resp.GetRecordCount(); i++ {
+				record, err := resp.FetchRecord()
+				if err != nil {
+					logger.ERR("FetchRecord failed %s", err.Error())
+					return
+				}
+
+				newMsg := &tcaplusservice.TbOnlineList{}
+				err = record.GetPBData(newMsg)
+				if err != nil {
+					logger.ERR("GetPBData failed %s", err.Error())
+					return
+				}
+				fmt.Println(tools.ConvertToJson(newMsg))
 			}
 		}
 	}()
 
-	// 生成 get 请求
+	// 生成 listGet 请求
 	req, err := client.NewRequest(tools.ZoneId, "tb_online_list", cmd.TcaplusApiListGetReq)
 	if err != nil {
 		logger.ERR("NewRequest error:%s", err)
@@ -56,8 +74,7 @@ func main() {
 		Timekey:   "test",
 		Gamesvrid: "lol",
 	}
-	// 清除key
-	client.ListDeleteAll(msg)
+
 	// 第一个返回值为记录的keybuf，用来唯一确定一条记录，多用于请求与响应记录相对应，此处无用
 	// key 字段必填，通过 proto 文件设置 key
 	// 本例中为 option(tcaplusservice.tcaplus_primary_key) = "openid,tconndid,timekey";
@@ -66,18 +83,6 @@ func main() {
 		logger.ERR("SetPBData error:%s", err)
 		return
 	}
-
-	// （非必须）设置userbuf，在响应中带回。这个是个开放功能，比如某些临时字段不想保存在全局变量中，
-	// 可以通过设置userbuf在发送端接收短传递，也可以起异步id的作用
-	req.SetUserBuff([]byte("user buffer test"))
-
-	// （非必须） 防止记录不存在
-	client.ListAddAfter(&tcaplusservice.TbOnlineList{
-		Openid:    1,
-		Tconndid:  2,
-		Timekey:   "test",
-		Gamesvrid: "lol",
-	}, -1)
 
 	// （非必须）设置 异步 id
 	req.SetAsyncId(12345)
@@ -88,37 +93,7 @@ func main() {
 		return
 	}
 
-	// 等待收取响应
-	resp := <-respChan
-
-	// 获取响应结果
-	errCode := resp.GetResult()
-	if errCode != terror.GEN_ERR_SUC {
-		logger.ERR("insert error:%s", terror.GetErrMsg(errCode))
-		return
-	}
-
-	// 获取userbuf
-	fmt.Println(string(resp.GetUserBuffer()))
-
-	// 如果有返回记录则用以下接口进行获取
-	for i := 0; i < resp.GetRecordCount(); i++ {
-		record, err := resp.FetchRecord()
-		if err != nil {
-			logger.ERR("FetchRecord failed %s", err.Error())
-			return
-		}
-
-		newMsg := &tcaplusservice.TbOnlineList{}
-		err = record.GetPBData(newMsg)
-		if err != nil {
-			logger.ERR("GetPBData failed %s", err.Error())
-			return
-		}
-
-		fmt.Println(tools.ConvertToJson(newMsg))
-	}
-
+	wg.Wait()
 	logger.INFO("listget success")
 	fmt.Println("listget success")
 }

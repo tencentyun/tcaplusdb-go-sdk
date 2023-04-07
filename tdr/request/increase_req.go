@@ -1,6 +1,7 @@
 package request
 
 import (
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/common"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/logger"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/cs_pool"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/policy"
@@ -111,6 +112,11 @@ func (req *increaseRequest) Pack() ([]byte, error) {
 		return nil, err
 	}
 
+	if logger.GetLogLevel() == "DEBUG" {
+		logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+		logger.DEBUG("%s", common.CovertToJson(req.pkg.Body.IncreaseReq))
+	}
+
 	data, err := req.pkg.Pack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion)
 	if err != nil {
 		logger.ERR("increaseRequest pack failed, %s", err.Error())
@@ -177,8 +183,9 @@ func (req *increaseRequest) SetResultFlagForSuccess(flag byte) int {
 		return terror.ParameterInvalid
 	}
 	// 0(1个bit位) | 本版本开始该位设置为1(1个bit位) | 成功时的标识(2个bit位) | 失败时的标识(2个bit位) | 本版本以前的标识(2个bit位)
-	req.pkg.Body.IncreaseReq.Flag = flag << 4
-	req.pkg.Body.IncreaseReq.Flag |= 1 << 6
+	flag = flag << 4
+	flag |= 1 << 6
+	req.pkg.Body.IncreaseReq.Flag |= flag
 	return terror.GEN_ERR_SUC
 }
 
@@ -188,8 +195,9 @@ func (req *increaseRequest) SetResultFlagForFail(flag byte) int {
 		return terror.ParameterInvalid
 	}
 	// 0(1个bit位) | 本版本开始该位设置为1(1个bit位) | 成功时的标识(2个bit位) | 失败时的标识(2个bit位) | 本版本以前的标识(2个bit位)
-	req.pkg.Body.IncreaseReq.Flag = flag << 2
-	req.pkg.Body.IncreaseReq.Flag |= 1 << 6
+	flag = flag << 2
+	flag |= 1 << 6
+	req.pkg.Body.IncreaseReq.Flag |= flag
 	return terror.GEN_ERR_SUC
 }
 

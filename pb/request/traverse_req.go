@@ -88,10 +88,6 @@ func (req *traverseRequest) Pack() ([]byte, error) {
 		return nil, &terror.ErrorCode{Code: terror.RequestHasHasNoPkg, Message: "Request can not second use"}
 	}
 
-	if logger.GetLogLevel() == "DEBUG" {
-		logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
-	}
-
 	if req.isPB {
 		req.pkg.Body.TableTraverseReq.ValueInfo.FieldNum = 3
 		req.pkg.Body.TableTraverseReq.ValueInfo.FieldName = []string{"klen", "vlen", "value"}
@@ -103,6 +99,11 @@ func (req *traverseRequest) Pack() ([]byte, error) {
 		//	nameSet.FieldName[nameSet.FieldNum] = key
 		//	nameSet.FieldNum++
 		//}
+	}
+
+	if logger.GetLogLevel() == "DEBUG" {
+		logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+		logger.DEBUG("%s", common.CovertToJson(req.pkg.Body.TableTraverseReq))
 	}
 
 	data, err := req.pkg.Pack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion)
