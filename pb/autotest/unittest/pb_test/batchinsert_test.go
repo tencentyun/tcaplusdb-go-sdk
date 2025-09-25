@@ -58,6 +58,7 @@ func TestBatchInsertSuccess(t *testing.T) {
 		}
 	}
 }
+
 //case1 insert success
 func TestBatchInsertSuccess_1(t *testing.T) {
 	client := tools.InitPBSyncClient()
@@ -105,6 +106,7 @@ func TestBatchInsertSuccess_1(t *testing.T) {
 		}
 	}
 }
+
 //case1 insert success
 func TestBatchInsertSuccess_1024(t *testing.T) {
 	client := tools.InitPBSyncClient()
@@ -170,7 +172,7 @@ func TestBatchInsertSuccess_1025(t *testing.T) {
 	}
 
 	err := client.DoBatchInsert(msgs, nil)
-	if !strings.Contains(err.Error(),"-4126") {
+	if !strings.Contains(err.Error(), "-4126") {
 		t.Errorf("DoBatchInsert fail, %s", err.Error())
 		return
 	}
@@ -186,7 +188,7 @@ func TestBatchInsertSuccess_1025(t *testing.T) {
 	}
 
 	err = client.DoBatchGet(msgs2, opt)
-	if !strings.Contains(err.Error(),"-4126") {
+	if !strings.Contains(err.Error(), "-4126") {
 		t.Errorf("DoBatchGet fail, %s", err.Error())
 		return
 	}
@@ -210,7 +212,7 @@ func TestBatchInsertSuccess_03(t *testing.T) {
 	}
 
 	err := client.DoBatchInsert(msgs, nil)
-	if !strings.Contains(err.Error(),"-30") {
+	if !strings.Contains(err.Error(), "-30") {
 		t.Errorf("DoBatchInsert fail, %s", err.Error())
 		return
 	}

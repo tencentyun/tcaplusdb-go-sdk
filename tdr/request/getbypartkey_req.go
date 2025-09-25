@@ -101,8 +101,19 @@ func (req *getByPartKeyRequest) Pack() ([]byte, error) {
 	}
 
 	if req.isPB {
-		req.pkg.Body.GetByPartKeyReq.ValueInfo.FieldNum = 3
-		req.pkg.Body.GetByPartKeyReq.ValueInfo.FieldName = []string{"klen", "vlen", "value"}
+		if len(req.valueNameMap) <= 0 {
+			req.pkg.Body.GetByPartKeyReq.ValueInfo.FieldNum = 3
+			req.pkg.Body.GetByPartKeyReq.ValueInfo.FieldName = []string{"klen", "vlen", "value"}
+		} else {
+			nameSet := req.pkg.Body.GetByPartKeyReq.ValueInfo
+			nameSet.FieldName = make([]string, len(req.record.ValueMap)+1)
+			nameSet.FieldName[0] = "$"
+			nameSet.FieldNum = 1
+			for name, _ := range req.valueNameMap {
+				nameSet.FieldName[nameSet.FieldNum] = name
+				nameSet.FieldNum++
+			}
+		}
 	} else {
 		if len(req.valueNameMap) > 0 {
 			req.record.ValueMap = make(map[string][]byte)

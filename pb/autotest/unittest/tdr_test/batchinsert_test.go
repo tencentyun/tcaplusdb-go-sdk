@@ -60,6 +60,7 @@ func TestBatchInsertSuccess(t *testing.T) {
 		}
 	}
 }
+
 //case1 BatchInsert success
 func TestBatchInsertSuccess_1024(t *testing.T) {
 	client, err := tools.InitClient()
@@ -110,6 +111,7 @@ func TestBatchInsertSuccess_1024(t *testing.T) {
 		}
 	}
 }
+
 //case1 BatchInsert success
 func TestBatchInsertSuccess_1025(t *testing.T) {
 	client, err := tools.InitClient()
@@ -131,7 +133,7 @@ func TestBatchInsertSuccess_1025(t *testing.T) {
 	}
 
 	err = client.DoBatchInsert(TestTableName, dataSlice, nil)
-	if !strings.Contains(err.Error(),"-4126") {
+	if !strings.Contains(err.Error(), "-4126") {
 		t.Errorf("DoBatchInsert fail, %s", err.Error())
 		return
 	}
@@ -148,7 +150,7 @@ func TestBatchInsertSuccess_1025(t *testing.T) {
 	}
 
 	err = client.DoBatchGet(TestTableName, dataSlice2, nil)
-	if !strings.Contains(err.Error(),"-4126") {
+	if !strings.Contains(err.Error(), "-4126") {
 		t.Errorf("DoBatchInsert fail, %s", err.Error())
 		return
 	}

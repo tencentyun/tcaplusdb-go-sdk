@@ -7,7 +7,6 @@ import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/logger"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/response"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/terror"
-	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/traverser"
 	"time"
 )
 
@@ -57,19 +56,14 @@ func TraverseExample() {
 		return
 	}
 
+	timeOutChan := time.NewTimer(30 * time.Second)
 	for {
-		timeOutChan := time.After(5 * time.Second)
+		timeOutChan.Reset(30 * time.Second)
 		select {
-		case <-timeOutChan:
-			if tra.State() == traverser.TraverseStateNormal {
-				fmt.Println("continue ......")
-			} else if tra.State() == traverser.TraverseStateIdle {
-				fmt.Println("traverse finish")
-				return
-			} else {
-				fmt.Println("traverse stat err ", tra.State())
-				return
-			}
+		case <-timeOutChan.C:
+			// 防止一直卡主
+			fmt.Println("30 秒没有响应包了 stat ", tra.State())
+			return
 		// 等待收取响应
 		case resp := <-respChan:
 			// 获取响应结果
@@ -95,6 +89,12 @@ func TraverseExample() {
 				}
 
 				fmt.Println(tools.ConvertToJson(newMsg))
+			}
+
+			if resp.HaveMoreResPkgs() == 0 {
+				//finished
+				fmt.Println("traverse finish")
+				return
 			}
 		}
 	}

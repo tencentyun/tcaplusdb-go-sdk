@@ -113,22 +113,18 @@ func (req *updateByPartKeyRequest) Pack() ([]byte, error) {
 		return nil, err
 	}
 
-	//req.pkg.Body.UpdateByPartkeyReq.OffSet = 0
-	//req.pkg.Body.UpdateByPartkeyReq.Limit = -1
-	//req.pkg.Body.UpdateByPartkeyReq.ValueInfo.FieldNum = 0
-
-	//for key, _ := range req.record.ValueMap {
-	//	req.pkg.Body.UpdateByPartkeyReq.ValueInfo.FieldNum += 1
-	//	req.pkg.Body.UpdateByPartkeyReq.ValueInfo.FieldName =
-	//	append(req.pkg.Body.UpdateByPartkeyReq.ValueInfo.FieldName, key)
-	//}
+	if err := req.record.PackValue(req.valueNameMap); err != nil {
+		logger.ERR("record pack value failed, %s", err.Error())
+		return nil, err
+	}
 
 	if logger.GetLogLevel() == "DEBUG" {
 		logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+		logger.DEBUG("%s", common.CovertToJson(req.pkg.Body.UpdateByPartkeyReq))
 	}
 	data, err := req.pkg.Pack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion)
 	if err != nil {
-		logger.ERR("getRequest pack failed, %s", err.Error())
+		logger.ERR("updateRequest pack failed, %s", err.Error())
 		return nil, err
 	}
 	logger.DEBUG("record pack success, app %d zone %d table %s", req.appId, req.zoneId, req.tableName)

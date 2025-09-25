@@ -5,9 +5,12 @@ import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/common"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/logger"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/tcapdir_protocol_cs"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/statistics"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/terror"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/tnet"
+	"math/rand"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -26,19 +29,24 @@ type proxy struct {
 	hashList  []*server
 
 	//只有网络协程操作
-	usingServerList   map[string]*server
-	prepareServerList map[string]*server
-	removeServerList  map[string]*server
+	prepareServerList map[string]bool
+	connectStep       int32 // 连接步长
+	deleteStep        int32 // 删除步长
+
+	usingServerList  map[string]*server
+	removeServerList map[string]*server
+
+	statMgr         statistics.StatMgr
+	perfPercent     int32
+	lastIsolateTime time.Time
+
+	// 300ms隔离proxy的比例
+	isolateProxyRate int32
 }
 
 func (p *proxy) GetErrorStr() string {
 	var errStr string
 	for _, v := range p.usingServerList {
-		if v.error != nil {
-			errStr = errStr + v.error.Error() + ","
-		}
-	}
-	for _, v := range p.prepareServerList {
 		if v.error != nil {
 			errStr = errStr + v.error.Error() + ","
 		}
@@ -92,68 +100,112 @@ func (p *proxy) updateServerList() {
 	for _, v := range p.usingServerList {
 		v.update(false)
 	}
-	for _, v := range p.prepareServerList {
-		v.update(false)
-	}
 	for _, v := range p.removeServerList {
 		v.update(true)
 	}
 }
 
-func (p *proxy) switchServerList() {
-	//为空不用切换
-	if len(p.prepareServerList) == 0 {
+func (p *proxy) DeletePartProxyServer() {
+	delTotal := int(0)
+	availableTotal := int(0)
+	// 不可用且带删除标记的全部挪到remove队列
+	for url, server := range p.usingServerList {
+		if server.hasDeleteFlag && !server.isAvailable() {
+			p.removeServerList[url] = server
+			delete(p.usingServerList, url)
+			logger.INFO("move not available proxy %s to remove list", url)
+			continue
+		}
+		if server.hasDeleteFlag {
+			delTotal++
+		}
+		if server.isAvailable() {
+			availableTotal++
+		}
+	}
+
+	// 不用删除
+	if delTotal <= 0 {
 		return
 	}
 
-	//prepare中的server必须有鉴权通过的
-	isAvailable := false
-	for _, v := range p.prepareServerList {
-		if v.isAvailable() {
-			isAvailable = true
-			break
-		}
+	// 计算可删除的数量
+	needDeleteCnt := int(p.deleteStep)
+	if needDeleteCnt < 1 {
+		needDeleteCnt = 1
 	}
-	if !isAvailable {
-		return
+	if availableTotal >= delTotal+10 {
+		// 有足够多的可用proxy
+		needDeleteCnt = delTotal
 	}
 
-	//和usingList相同，不用切换
-	if len(p.prepareServerList) == len(p.usingServerList) {
-		needSwitch := false
-		for k, _ := range p.prepareServerList {
-			if _, exist := p.usingServerList[k]; !exist {
-				logger.INFO("prepare proxy %s not in using list", k)
-				needSwitch = true
-				break
-			}
-		}
-		if !needSwitch {
-			//清空prepare
-			p.prepareServerList = make(map[string]*server)
-			logger.INFO("proxy list not changed")
+	// 挪动10%的delete到remove队列
+	for url, server := range p.usingServerList {
+		if availableTotal <= 1 {
 			return
 		}
-	}
+		if needDeleteCnt <= 0 {
+			return
+		}
 
-	//切换
-	logger.INFO("start switch proxy list!!!")
-	//using中存在，prepare中不存在的需要挪到remove队列
-	for k, v := range p.usingServerList {
-		if _, exist := p.prepareServerList[k]; !exist {
-			p.removeServerList[k] = v
-			logger.INFO("move proxy %s to remove list", k)
+		if server.hasDeleteFlag {
+			p.removeServerList[url] = server
+			delete(p.usingServerList, url)
+			needDeleteCnt--
+			availableTotal--
+			logger.INFO("move available proxy %s to remove list, needDeleteCnt %d", url, needDeleteCnt)
 		}
 	}
+}
 
-	//using=prepare
-	p.usingServerList = make(map[string]*server)
-	for k, v := range p.prepareServerList {
-		p.usingServerList[k] = v
+func (p *proxy) switchServerList() {
+	//remove队列不清空不用切换
+	if len(p.removeServerList) != 0 {
+		return
 	}
 
-	//清空prepare
-	p.prepareServerList = make(map[string]*server)
+	// 挪动10%的delete到remove队列
+	p.DeletePartProxyServer()
+	hasDelete := len(p.removeServerList) > 0
+
+	// 添加10%的prepare到using队列
+	hasAdd := false
+	needConnectCnt := int32(len(p.removeServerList))
+	if needConnectCnt < p.connectStep {
+		needConnectCnt = p.connectStep
+	}
+	if needConnectCnt < 1 {
+		needConnectCnt = 1
+	}
+	for url, _ := range p.prepareServerList {
+		if needConnectCnt <= 0 {
+			break
+		}
+		needConnectCnt--
+		hasAdd = true
+		// new proxy
+		svr := &server{
+			appId:     p.appId,
+			zoneId:    p.zoneId,
+			signature: p.signature,
+			proxyUrl:  url, signUpFlag: NotSignUp,
+			conn:         nil,
+			router:       p.router,
+			prepareStop:  0,
+			isolated:     false,
+			isolatedTime: time.Now(),
+			connStat:     p.statMgr.NewConnStat(url),
+		}
+		svr.connect()
+		p.usingServerList[url] = svr
+		delete(p.prepareServerList, url)
+		logger.INFO("add proxy %s to using, needConnectCnt %d", url, needConnectCnt)
+	}
+
+	// 路由无变化
+	if !hasDelete && !hasAdd {
+		return
+	}
 
 	//设置选路hash表
 	p.hashMutex.Lock()
@@ -179,18 +231,85 @@ func (p *proxy) updateHashList() {
 	p.hashMutex.Unlock()
 }
 
-func (p *proxy) update() {
+func (p *proxy) update(curTime time.Time) {
 	p.updateServerList()
 	p.switchServerList()
-	//remove 队列中1min没有回包的server进行删除操作
+	//remove 队列中一个超时时间没有回包的server进行删除操作
 	p.clearRemoveServerList()
+	p.IsolateProblemSvr(curTime)
+}
+
+func (p *proxy) SetIsolateProxyRate(rate int32) {
+	if rate == 0 || rate > 100 {
+		// 非法值使用 默认值比例10%
+		p.isolateProxyRate = 10
+	} else {
+		// rate 可能小于0表示关闭
+		p.isolateProxyRate = rate
+	}
+	logger.INFO("config rate %d, real SetIsolateProxyRate %d", rate, p.isolateProxyRate)
+}
+
+func (p *proxy) GetCanIsolateProxyCnt() int32 {
+	if p.isolateProxyRate <= 0 {
+		return 0
+	}
+	// 总数和可用数
+	total := int32(len(p.usingServerList))
+	availableNum := int32(0)
+	for _, v := range p.usingServerList {
+		if v.isAvailable() {
+			availableNum++
+		}
+	}
+	if availableNum <= 2 {
+		return 0
+	}
+
+	// 按比例计算，可隔离上限，至少1个
+	thresholdCnt := total * p.isolateProxyRate / 100
+	if thresholdCnt < 1 {
+		thresholdCnt = 1
+	}
+
+	// 至少保留2个
+	if thresholdCnt > availableNum-2 {
+		thresholdCnt = availableNum - 2
+	}
+
+	// 已经隔离的数量超过上限
+	unavailableNum := total - availableNum
+	if unavailableNum >= thresholdCnt {
+		return 0
+	}
+	// 剩余可隔离的数量
+	return thresholdCnt - unavailableNum
+}
+
+func (p *proxy) IsolateProblemSvr(curTime time.Time) {
+	diff := curTime.Sub(p.lastIsolateTime)
+	if diff < 300*time.Millisecond {
+		return
+	}
+	p.lastIsolateTime = curTime
+
+	canIsolatedNum := p.GetCanIsolateProxyCnt()
+	for _, v := range p.usingServerList {
+		v.checkIsolateStat(curTime, &canIsolatedNum)
+	}
 }
 
 func (p *proxy) clearRemoveServerList() {
-	curTime := time.Now()
+	curMs := time.Now().UnixMilli()
+	timeoutMs := p.router.ctrl.Option.ProxyConnOption.ConTimeout.Milliseconds()
+	if timeoutMs < 1000 {
+		timeoutMs = 1000
+	}
 	for k, v := range p.removeServerList {
-		if curTime.Sub(v.lastRspTime) > time.Minute {
-			logger.INFO("remove list remove svr %s lastRspTime %v", v.proxyUrl, v.lastRspTime)
+		lastRspTimeMs := atomic.LoadInt64(&v.lastRspTime)
+		if !v.isConnected() || curMs > lastRspTimeMs+timeoutMs {
+			logger.INFO("remove list remove svr %s lastRspTime %v isConnected %v",
+				v.proxyUrl, lastRspTimeMs, v.isConnected())
 			v.disConnect()
 			delete(p.removeServerList, k)
 		}
@@ -199,9 +318,27 @@ func (p *proxy) clearRemoveServerList() {
 
 func (p *proxy) sendHeartbeat() {
 	for _, v := range p.usingServerList {
-		if v.isAvailable() {
-			v.sendHeartbeat()
-		}
+		v.sendHeartbeat()
+	}
+}
+
+func (p *proxy) statReset() {
+	p.statMgr.Reset()
+	for _, v := range p.usingServerList {
+		v.connStat.Reset()
+	}
+}
+
+func (p *proxy) shuffleProxyList(msg *tcapdir_protocol_cs.ResGetTablesAndAccess) {
+	// 洗牌
+	rand.Seed(time.Now().UnixNano())
+	n := int(msg.AccessCount)
+	if n > len(msg.AccessUrlList) {
+		n = len(msg.AccessUrlList)
+	}
+	for i := n - 1; i > 0; i-- {
+		j := rand.Intn(i + 1) // 从 [0, i] 中随机取一个
+		msg.AccessUrlList[i], msg.AccessUrlList[j] = msg.AccessUrlList[j], msg.AccessUrlList[i]
 	}
 }
 
@@ -216,6 +353,9 @@ func (p *proxy) processTablesAndAccessMsg(msg *tcapdir_protocol_cs.ResGetTablesA
 	if msg.AccessCount <= 0 {
 		return
 	}
+	p.SetIsolateProxyRate(msg.ConfData.MetalibID)
+
+	p.shuffleProxyList(msg)
 
 	//唯一化,校验proxy地址
 	maxProxyNumPerZone := p.router.ctrl.Option.ProxyConnOption.ProxyMaxCount
@@ -239,8 +379,17 @@ func (p *proxy) processTablesAndAccessMsg(msg *tcapdir_protocol_cs.ResGetTablesA
 	if len(p.usingServerList) == 0 {
 		for url, _ := range accessUrlMap {
 			svr := &server{
-				appId: p.appId, zoneId: p.zoneId, signature: p.signature, proxyUrl: url, signUpFlag: NotSignUp,
-				conn: nil, router: p.router, prepareStop: false,
+				appId:        p.appId,
+				zoneId:       p.zoneId,
+				signature:    p.signature,
+				proxyUrl:     url,
+				signUpFlag:   NotSignUp,
+				conn:         nil,
+				router:       p.router,
+				prepareStop:  0,
+				isolated:     false,
+				isolatedTime: time.Now(),
+				connStat:     p.statMgr.NewConnStat(url),
 			}
 			svr.connect()
 			p.usingServerList[url] = svr
@@ -256,66 +405,75 @@ func (p *proxy) processTablesAndAccessMsg(msg *tcapdir_protocol_cs.ResGetTablesA
 		logger.INFO("hashList %v", p.usingServerList)
 		return
 	}
-	//prepare不为空，则先将AccessUrlList中不存在但prepare存在的移动到remove队列
-	if len(p.prepareServerList) > 0 {
-		for url, svr := range p.prepareServerList {
-			if _, exist := accessUrlMap[url]; !exist {
-				p.removeServerList[url] = svr
-				delete(p.prepareServerList, url)
-				logger.INFO("proxy %s move from prepare to remove list", url)
-			}
-		}
+
+	// 清空prepare
+	p.prepareServerList = make(map[string]bool)
+
+	// using中的所有打上删除标记
+	for _, server := range p.usingServerList {
+		server.hasDeleteFlag = true
 	}
+
+	deleteTotal := len(p.usingServerList)
+	// accessUrlMap中，在using中存在的剔除删除标记，否则加入prepare等待链接
 	for url, _ := range accessUrlMap {
-		//在prepare队列
-		if _, exist := p.prepareServerList[url]; exist {
-			logger.INFO("proxy %s in prepare list", url)
-			continue
-		}
+		//在using队列
 		if server, exist := p.usingServerList[url]; exist {
-			p.prepareServerList[url] = server
+			server.hasDeleteFlag = false
+			deleteTotal--
 			logger.INFO("proxy %s in using list", url)
 			continue
 		}
-		if server, exist := p.removeServerList[url]; exist {
-			p.prepareServerList[url] = server
-			delete(p.removeServerList, url)
-			logger.INFO("proxy %s in remove list", url)
-			continue
-		}
-		//新的节点
-		svr := &server{
-			appId: p.appId, zoneId: p.zoneId, signature: p.signature, proxyUrl: url, signUpFlag: NotSignUp,
-			conn: nil, router: p.router, prepareStop: false,
-		}
-		svr.connect()
-		p.prepareServerList[url] = svr
-		logger.INFO("new proxy server %s to prepare", url)
+		p.prepareServerList[url] = true
+		logger.INFO("add proxy server %s to prepare", url)
+	}
+	logger.INFO("delete cnt %d add cnt %d", deleteTotal, len(p.prepareServerList))
+	percent := p.router.ctrl.Option.SwitchProxyPercent
+	if percent <= 0 {
+		percent = 10
+	}
+
+	p.deleteStep = int32(deleteTotal * percent / 100)
+	if p.deleteStep < 1 {
+		p.deleteStep = 1
+	}
+
+	p.connectStep = int32(len(p.prepareServerList) * percent / 100)
+	if p.connectStep < 1 {
+		p.connectStep = 1
 	}
 }
 
-func (p *proxy) send(hashCode uint32, data []byte) error {
+func (p *proxy) send(cmd uint32, hashCode uint32, data []byte) (error, *server) {
 	p.hashMutex.RLock()
 	defer p.hashMutex.RUnlock()
 
 	if len(p.hashList) == 0 {
-		return &terror.ErrorCode{Code: terror.ProxyNotAvailable}
+		p.statMgr.IncRouteFail()
+		return &terror.ErrorCode{Code: terror.ProxyNotAvailable}, nil
 	}
-	preId := hashCode % uint32(len(p.hashList))
-	id := preId
+	id := hashCode % uint32(len(p.hashList))
+	svr := p.hashList[id]
+	if svr.isAvailable() {
+		return svr.send(cmd, data), svr
+	}
 
+	// 不可用则随机一个
+	rand.Seed(time.Now().UnixNano())
+	preId := uint32(rand.Int() % len(p.hashList))
+	id = preId
 	for {
 		svr := p.hashList[id]
 		if svr.isAvailable() {
-			return svr.send(data)
+			return svr.send(cmd, data), svr
 		}
-
 		//选择下个节点
-		hashCode++
-		id = hashCode % uint32(len(p.hashList))
+		id++
+		id = id % uint32(len(p.hashList))
 		//一轮之后
 		if id == preId {
-			return &terror.ErrorCode{Code: terror.ProxyNotAvailable}
+			p.statMgr.IncRouteFail()
+			return &terror.ErrorCode{Code: terror.ProxyNotAvailable}, nil
 		}
 	}
 }

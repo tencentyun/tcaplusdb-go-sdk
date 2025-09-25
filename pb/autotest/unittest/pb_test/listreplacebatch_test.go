@@ -191,6 +191,7 @@ func TestListReplaceBatchVersionFail(t *testing.T) {
 	fmt.Println(opt.BatchResult)
 	fmt.Println(indexs)
 }
+
 // 全部索引存在
 func TestListReplaceBatchSuccess_1023(t *testing.T) {
 	client := tools.InitPBSyncClient()
@@ -335,7 +336,6 @@ func TestListReplaceBatchSuccess_10(t *testing.T) {
 		return
 	}
 
-
 	//BatchGet 10条记录
 	indexs = nil
 	for i := 0; i < 10; i++ {
@@ -348,7 +348,7 @@ func TestListReplaceBatchSuccess_10(t *testing.T) {
 	}
 	opt = &option.PBOpt{}
 	resMsgs, err := client.DoListGetBatch(msg, indexs, opt)
-	if err.Error() != "errCode: 261, errMsg: txhdb_record_not_exist"  {
+	if err.Error() != "errCode: 261, errMsg: txhdb_record_not_exist" {
 		t.Errorf("DoListGetBatch fail, %s", err.Error())
 		return
 	}

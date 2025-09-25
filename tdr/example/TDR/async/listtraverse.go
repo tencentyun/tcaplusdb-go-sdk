@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/response"
-	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/traverser"
 	"time"
 
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/example/TDR/async/service_info"
@@ -14,7 +13,7 @@ import (
 //数据量小可以使用同步遍历，否则记录堆积会占较多内存
 func ListTraverseExample() {
 	// 创建异步协程接收遍历响应
-	respChan := make(chan response.TcaplusResponse)
+	respChan := make(chan response.TcaplusResponse, 1024)
 	go func() {
 		for {
 			// resp err 均为 nil 说明响应池中没有任何响应
@@ -48,20 +47,14 @@ func ListTraverseExample() {
 		return
 	}
 
-	timeOutChan := time.NewTimer(1 * time.Second)
+	timeOutChan := time.NewTimer(30 * time.Second)
 	for {
-		timeOutChan.Reset(1 * time.Second)
+		timeOutChan.Reset(30 * time.Second)
 		select {
 		case <-timeOutChan.C:
-			if tra.State() == traverser.TraverseStateNormal {
-				fmt.Println("continue ......")
-			} else if tra.State() == traverser.TraverseStateIdle {
-				fmt.Println("traverse finish")
-				return
-			} else {
-				fmt.Println("traverse stat err ", tra.State())
-				return
-			}
+			// 防止一直卡主
+			fmt.Println("30 秒没有响应包了 stat ", tra.State())
+			return
 
 		// 等待收取响应
 		case resp := <-respChan:
@@ -86,6 +79,11 @@ func ListTraverseExample() {
 					return
 				}
 				fmt.Println("record service_info : ", data)
+			}
+			if resp.HaveMoreResPkgs() == 0 {
+				//finished
+				fmt.Println("traverse finish")
+				return
 			}
 		}
 	}

@@ -135,6 +135,7 @@ func TestBatchUpdateVersionFail(t *testing.T) {
 		}
 	}
 }
+
 //case1 replace result + version success
 func TestBatchUpdateSuccess_1024(t *testing.T) {
 	client := tools.InitPBSyncClient()
@@ -212,7 +213,6 @@ func TestBatchUpdateSuccess_1024(t *testing.T) {
 	}
 }
 
-
 //case1 replace result + version success
 func TestBatchUpdateSuccess_1025(t *testing.T) {
 	client := tools.InitPBSyncClient()
@@ -230,7 +230,7 @@ func TestBatchUpdateSuccess_1025(t *testing.T) {
 	}
 
 	err := client.DoBatchInsert(msgs, nil)
-	if !strings.Contains(err.Error(),"-4126") {
+	if !strings.Contains(err.Error(), "-4126") {
 		t.Errorf("DoBatchInsert fail, %s", err.Error())
 		return
 	}
@@ -247,11 +247,12 @@ func TestBatchUpdateSuccess_1025(t *testing.T) {
 	}
 
 	err = client.DoBatchUpdate(msgs, opt)
-	if !strings.Contains(err.Error(),"-4126") {
+	if !strings.Contains(err.Error(), "-4126") {
 		t.Errorf("DoBatchUpdate fail, %s", err.Error())
 		return
 	}
 }
+
 //记录不存在的时候batch update
 //case1 update result + version success
 func TestBatchUpdateFail(t *testing.T) {
@@ -288,9 +289,8 @@ func TestBatchUpdateFail(t *testing.T) {
 		opt.BatchVersion = append(opt.BatchVersion, 1)
 	}
 
-
 	err = client.DoBatchUpdate(msgs, opt)
-	if err.Error() != "errCode: 261, errMsg: txhdb_record_not_exist"{
+	if err.Error() != "errCode: 261, errMsg: txhdb_record_not_exist" {
 		t.Errorf("DoBatchUpdate fail, %s", err.Error())
 		return
 	}

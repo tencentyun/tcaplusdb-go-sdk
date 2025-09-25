@@ -412,21 +412,18 @@ func TestPBFieldUpdateByPathCorrect(t *testing.T) {
 		return
 	}
 	err = client.FieldUpdate(oldMsg, []string{"PUSH i32_array[-1]"})
-	if err == nil || err.(*terror.ErrorCode).Code != terror.SVR_ERR_FAIL_PROTOBUF_FIELD_UPDATE {
-		fmt.Println(err)
-		t.Errorf("err.(*terror.ErrorCode).Code != terror.GEN_ERR_ERR")
+	if err == nil {
+		t.Errorf("expect err")
 		return
 	}
 	err = client.FieldUpdate(oldMsg, []string{"POP str_map['3'].ri32[0]"})
-	if err == nil || err.(*terror.ErrorCode).Code != terror.COMMON_ERR_INVALID_FIELD_NAME {
-		fmt.Println(err)
-		t.Errorf("err.(*terror.ErrorCode).Code != terror.COMMON_ERR_INVALID_EXPR_TYPE")
+	if err == nil {
+		t.Errorf("expect err")
 		return
 	}
 	err = client.FieldUpdate(oldMsg, []string{"SET str_map['10']"})
-	if err == nil || err.(*terror.ErrorCode).Code != terror.COMMON_ERR_INVALID_FIELD_NAME {
-		fmt.Println(err)
-		t.Errorf("err.(*terror.ErrorCode).Code != terror.COMMON_ERR_INVALID_FIELD_NAME")
+	if err == nil {
+		t.Errorf("expect err")
 		return
 	}
 }

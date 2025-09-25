@@ -62,6 +62,12 @@ type TcaplusResponse interface {
 
 	// 获取表的记录总数，只适用于TCAPLUS_API_GET_TABLE_RECORD_COUNT_REQ请求获取返回结果
 	GetTableRecordCount() int
+
+	// GetSingleRecordVersion
+	// 对于Generic表单记录更返回的命令字可以直接获取记录的version，而不用设置resultflag
+	//     支持的命令字: insert/replace/update/increase/PbFieldIncrease/PbFieldUpdate
+	// 对于list表所有命令字：返回list的当前的最新version
+	GetSingleRecordVersion() int32
 }
 
 /*
@@ -238,6 +244,8 @@ func NewResponse(pkg *tcaplus_protocol_cs.TCaplusPkg) (TcaplusResponse, error) {
 		resp.commonInterface, err = newListGetBatchResponse(pkg)
 	case cmd.TcaplusApiListReplaceBatchRes:
 		resp.commonInterface, err = newListReplaceBatchResponse(pkg)
+	case cmd.TcaplusApiPBBatchFieldGetRes:
+		resp.commonInterface, err = newPbBatchFieldGetResponse(pkg)
 	default:
 		logger.ERR("invalid cmd %d", pkg.Head.Cmd)
 		return nil, &terror.ErrorCode{Code: terror.InvalidCmd}
@@ -373,6 +381,8 @@ func (res *tcapResponse) GetTcaplusPackagePtr() *tcaplus_protocol_cs.TCaplusPkg 
 		return res.commonInterface.(*getShardListResponse).GetTcaplusPackagePtr()
 	case *traverseResponse:
 		return res.commonInterface.(*traverseResponse).GetTcaplusPackagePtr()
+	case *listGetAllResponse:
+		return res.commonInterface.(*listGetAllResponse).GetTcaplusPackagePtr()
 	default:
 		return nil
 	}
@@ -394,4 +404,55 @@ func (res *tcapResponse) GetTableRecordCount() int {
 	default:
 		return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
 	}
+}
+
+// GetSingleRecordVersion
+// 对于Generic表单记录更返回的命令字可以直接获取记录的version，而不用设置resultflag
+//     支持的命令字: insert/replace/update/increase/PbFieldIncrease/PbFieldUpdate
+// 对于list表所有命令字：返回list的当前的最新version
+func (res *tcapResponse) GetSingleRecordVersion() int32 {
+	if res.GetResult() != 0 {
+		return -1
+	}
+	var pkg *tcaplus_protocol_cs.TCaplusPkg
+	switch res.commonInterface.(type) {
+	case *insertResponse:
+		pkg = res.commonInterface.(*insertResponse).pkg
+	case *replaceResponse:
+		pkg = res.commonInterface.(*replaceResponse).pkg
+	case *updateResponse:
+		pkg = res.commonInterface.(*updateResponse).pkg
+	case *increaseResponse:
+		pkg = res.commonInterface.(*increaseResponse).pkg
+	case *pbFieldUpdateResponse:
+		pkg = res.commonInterface.(*pbFieldUpdateResponse).pkg
+	case *pbFieldIncreaseResponse:
+		pkg = res.commonInterface.(*pbFieldIncreaseResponse).pkg
+	case *listGetResponse:
+		pkg = res.commonInterface.(*listGetResponse).pkg
+	case *listAddAfterResponse:
+		pkg = res.commonInterface.(*listAddAfterResponse).pkg
+	case *listDeleteResponse:
+		pkg = res.commonInterface.(*listDeleteResponse).pkg
+	case *listReplaceResponse:
+		pkg = res.commonInterface.(*listReplaceResponse).pkg
+	case *listGetAllResponse:
+		pkg = res.commonInterface.(*listGetAllResponse).pkg
+	case *listDeleteAllResponse:
+		pkg = res.commonInterface.(*listDeleteAllResponse).pkg
+	case *listGetBatchResponse:
+		pkg = res.commonInterface.(*listGetBatchResponse).pkg
+	case *listAddAfterBatchResponse:
+		pkg = res.commonInterface.(*listAddAfterBatchResponse).pkg
+	case *listReplaceBatchResponse:
+		pkg = res.commonInterface.(*listReplaceBatchResponse).pkg
+	case *listDeleteBatchResponse:
+		pkg = res.commonInterface.(*listDeleteBatchResponse).pkg
+	default:
+		return -1
+	}
+	if pkg == nil || pkg.Head.KeyInfo == nil {
+		return -1
+	}
+	return pkg.Head.KeyInfo.Version
 }

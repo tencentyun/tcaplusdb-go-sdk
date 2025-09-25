@@ -2,6 +2,7 @@ package api_test
 
 import (
 	"fmt"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/autotest/unittest/cfg"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/autotest/unittest/table/tcaplus_tb"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/autotest/unittest/tools"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/option"
@@ -9,6 +10,7 @@ import (
 	"time"
 	"unsafe"
 )
+
 //case1 BatchInsert success
 func TestTdrDo(t *testing.T) {
 	client, err := tools.InitClient()
@@ -31,13 +33,13 @@ func TestTdrDo(t *testing.T) {
 		t.Errorf("DoBatchInsert fail, %s", err.Error())
 		return
 	}
-	data.Level=10
+	data.Level = 10
 	err = client.DoUpdate(TestTableName, data, nil)
 	if err != nil {
 		t.Errorf("DoBatchInsert fail, %s", err.Error())
 		return
 	}
-	data.Level=11
+	data.Level = 11
 	err = client.DoReplace(TestTableName, data, nil)
 	if err != nil {
 		t.Errorf("DoBatchInsert fail, %s", err.Error())
@@ -69,7 +71,7 @@ func TestTdrListDo(t *testing.T) {
 	data.Value1 = "value1"
 	data.Value2 = "value2"
 	opt := &option.TDROpt{
-		ResultFlagForSuccess:option.TcaplusResultFlagAllNewValue,
+		ResultFlagForSuccess: option.TcaplusResultFlagAllNewValue,
 	}
 	idx, err := client.DoListAddAfter(TABLE_TRAVERSER_LIST, data, -1, opt)
 	if err != nil {
@@ -91,7 +93,7 @@ func TestTdrListDo(t *testing.T) {
 		return
 	}
 
-	data.Level =12
+	data.Level = 12
 	err = client.DoListReplace(TABLE_TRAVERSER_LIST, data, idx, nil)
 	if err != nil {
 		t.Errorf("DoListGet failed %s", err.Error())
@@ -108,6 +110,36 @@ func TestTdrListDo(t *testing.T) {
 	fmt.Println(err.Error())
 	if err == nil {
 		t.Errorf("DoListGet must not exist")
+		return
+	}
+}
+
+// tdr表版本号检查
+func TestTdrVersionCheck(t *testing.T) {
+	client, err := tools.InitClient()
+	if err != nil {
+		t.Errorf("InitClient failed %s", err.Error())
+		return
+	}
+
+	// table not exist
+	err = client.CheckTdrMetaVersion(cfg.ApiConfig.ZoneId, "notExistTable", 0)
+	if err == nil {
+		t.Errorf("CheckTdrMetaVersion expect err table not exist")
+		return
+	}
+
+	// version ok
+	err = client.CheckTdrMetaVersion(cfg.ApiConfig.ZoneId, TABLE_TRAVERSER_LIST, 0)
+	if err != nil {
+		t.Errorf("CheckTdrMetaVersion failed %s", err.Error())
+		return
+	}
+
+	// version fail
+	err = client.CheckTdrMetaVersion(cfg.ApiConfig.ZoneId, TABLE_TRAVERSER_LIST, 10000)
+	if err == nil {
+		t.Errorf("CheckTdrMetaVersion expect err table not exist")
 		return
 	}
 }

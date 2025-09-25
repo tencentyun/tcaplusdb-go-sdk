@@ -27,6 +27,8 @@ const (
 	TdrReferTag      = "tdr_refer"
 	TdrSelectTag     = "tdr_select"
 	TdrSliceMaxCount = "tdr_count"
+	SDKSystemTTLName = "$.TTL"
+	SDKSystemTTLType = "$.TTL_TYPE"
 )
 
 // 设置字段值函数定义
@@ -1152,7 +1154,9 @@ func (r *Record) setPBDataCommon(message proto.Message, keys, values []string) (
 			logger.ERR(errMsg)
 			return nil, &terror.ErrorCode{Code: terror.API_ERR_PARAMETER_INVALID, Message: errMsg}
 		}
-		if r.Cmd == cmd.TcaplusApiPBFieldGetReq || r.Cmd == cmd.TcaplusApiPBFieldUpdateReq {
+		if r.Cmd == cmd.TcaplusApiPBFieldGetReq ||
+			r.Cmd == cmd.TcaplusApiPBFieldUpdateReq ||
+			r.Cmd == cmd.TcaplusApiPBBatchFieldGetReq {
 			for _, v := range values {
 				r.ValueMap[v] = nil
 				r.PBFieldMap[v] = true
@@ -1193,7 +1197,9 @@ func (r *Record) GetTableShardingKey(message proto.Message) []byte {
     @retval error      错误码
 **/
 func (r *Record) GetPBData(message proto.Message) error {
-	if r.Cmd == cmd.TcaplusApiGetTtlRes || r.Cmd == cmd.TcaplusApiSetTtlRes {
+	_, exist := r.ValueMap["value"]
+	if !exist || r.Cmd == cmd.TcaplusApiGetTtlRes || r.Cmd == cmd.TcaplusApiSetTtlRes ||
+		r.Cmd == cmd.TcaplusApiUpdateByPartkeyRes || r.Cmd == cmd.TcaplusApiDeleteByPartkeyRes {
 		buf, err := r.getKeyBlob("key")
 		if err != nil {
 			return err
@@ -1215,11 +1221,11 @@ func (r *Record) GetPBData(message proto.Message) error {
     @retval error 错误码
 **/
 func (r *Record) GetPBFieldValues(message proto.Message) error {
-	if r.PBValueSet == nil {
-		errMsg := fmt.Sprintf("PBValueSet is nil")
-		logger.ERR(errMsg)
-		return &terror.ErrorCode{Code: terror.API_ERR_PARAMETER_INVALID, Message: errMsg}
-	}
+	//if r.PBValueSet == nil {
+	//	errMsg := fmt.Sprintf("PBValueSet is nil")
+	//	logger.ERR(errMsg)
+	//	return &terror.ErrorCode{Code: terror.API_ERR_PARAMETER_INVALID, Message: errMsg}
+	//}
 
 	zoneTable := fmt.Sprintf("%d|%d|%s", r.AppId, r.ZoneId, r.TableName)
 	msgDesGrp := metadata.GetMetaManager().GetTableDesGrp(zoneTable)
@@ -1239,7 +1245,9 @@ func (r *Record) GetPBFieldValues(message proto.Message) error {
 		return &terror.ErrorCode{Code: terror.API_ERR_UNPACK_MESSAGE}
 	}
 
-	if r.Cmd == cmd.TcaplusApiPBFieldGetRes || r.Cmd == cmd.TcaplusApiPBFieldUpdateRes {
+	if r.Cmd == cmd.TcaplusApiPBFieldGetRes ||
+		r.Cmd == cmd.TcaplusApiPBFieldUpdateRes ||
+		r.Cmd == cmd.TcaplusApiPBBatchFieldGetRes {
 		err = proto.UnmarshalOptions{Merge: true}.Unmarshal(r.ValueMap["$"], message)
 		if err != nil {
 			logger.ERR(err.Error())
@@ -1393,6 +1401,41 @@ func (r *Record) GetPBKey(msg proto.Message) ([]byte, error) {
 	return buf[2:], nil
 }
 
+// setTTLWithUpsert 更新的同时设置ttl
+func (r *Record) setTTLWithUpsert(ttl uint64, isAbsoluteTime bool) int {
+	if r.ValueSet == nil {
+		logger.ERR("Record ValueSet is nil")
+		return terror.GEN_ERR_ERR
+	}
+	r.ValueSet.Fields_ = make([]*tcaplus_protocol_cs.TCaplusValueField_, 2)
+	r.ValueSet.FieldNum_ = 2
+
+	// ttl
+	TtlField := &tcaplus_protocol_cs.TCaplusValueField_{
+		FieldName_: SDKSystemTTLName,
+		FieldLen_:  8,
+		Flag_:      byte(tcaplus_protocol_cs.SYSTEM_USING_FLAG),
+		FieldBuff_: make([]byte, 8, 8),
+	}
+	binary.LittleEndian.PutUint64(TtlField.FieldBuff_, ttl)
+	r.ValueSet.Fields_[0] = TtlField
+
+	// ttl type
+	TtlFieldType := &tcaplus_protocol_cs.TCaplusValueField_{
+		FieldName_: SDKSystemTTLType,
+		FieldLen_:  1,
+		Flag_:      byte(tcaplus_protocol_cs.SYSTEM_USING_FLAG),
+		FieldBuff_: make([]byte, 1, 1),
+	}
+	if isAbsoluteTime {
+		TtlFieldType.FieldBuff_[0] = byte(tcaplus_protocol_cs.TYPE_ABSOLUTE_TIME)
+	} else {
+		TtlFieldType.FieldBuff_[0] = byte(tcaplus_protocol_cs.TYPE_RELATIVE_TIME)
+	}
+	r.ValueSet.Fields_[1] = TtlFieldType
+	return 0
+}
+
 /**
 @brief  设置记录的生存时间，或者说过期时间，即记录多久之后过期，过期的记录将不会被访问到
 @param [IN] ttl 生存时间（过期时间），时间单位为毫秒，如果是相对时间，比如该参数值为10，则表示记录写入10ms之后过期，该参数值为0，则表示记录永不过期
@@ -1400,7 +1443,7 @@ func (r *Record) GetPBKey(msg proto.Message) ([]byte, error) {
 @param [IN] is_absolute_time 时间类型是否为绝对时间，true表示绝对时间，false表示相对时间，默认是false，即相对时间
 @retval 0                       设置成功
 @retval 非0                     设置失败，具体错误参见 \link ErrorCode \endlink
-@note   该函数当前只支持 TCAPLUS_API_SET_TTL_REQ 响应
+@note   该函数当前只支持 TCAPLUS_API_SET_TTL_REQ TcaplusApiInsertReq TcaplusApiReplaceReq TcaplusApiUpdateReq
 @note   设置的ttl值最大不能超过uint64_t最大值的一半，即ttl最大值为 ULONG_MAX/2，超过该值接口会强制设置为该值
 @note   设置ttl的请求，在服务端不会增加对应记录的版本号
 @note   对于list表，当某个key下面所有记录因为过期删除后，会直接将索引记录也删除
@@ -1408,9 +1451,19 @@ func (r *Record) GetPBKey(msg proto.Message) ([]byte, error) {
 @note   对于删除操作(generic表和list表的删除)，均不会检验记录是否过期
 */
 func (r *Record) SetTTL(ttl uint64, isAbsoluteTime bool) int {
+	if r.Cmd != cmd.TcaplusApiSetTtlReq && r.Cmd != cmd.TcaplusApiInsertReq &&
+		r.Cmd != cmd.TcaplusApiUpdateReq && r.Cmd != cmd.TcaplusApiReplaceReq {
+		logger.ERR("cmd (%d) not support ttl", r.Cmd)
+		return terror.OperationNotSupport
+	}
+
+	//如果ttl的值大于最大值的一半时，将强制设置为最大值的一半
+	if ttl > math.MaxUint64/2 {
+		ttl = math.MaxUint64 / 2
+	}
+
 	if r.Cmd != cmd.TcaplusApiSetTtlReq {
-		logger.ERR("expect cmd is TCAPLUS_API_SET_TTL_REQ(%d)", cmd.TcaplusApiSetTtlReq)
-		return terror.GEN_ERR_ERR
+		return r.setTTLWithUpsert(ttl, isAbsoluteTime)
 	}
 
 	if r.Ttl == nil {
@@ -1421,11 +1474,6 @@ func (r *Record) SetTTL(ttl uint64, isAbsoluteTime bool) int {
 	if r.TtlType == nil {
 		logger.ERR("Record ttl type is nil")
 		return terror.GEN_ERR_ERR
-	}
-
-	//如果ttl的值大于最大值的一半时，将强制设置为最大值的一半
-	if ttl > math.MaxUint64/2 {
-		ttl = math.MaxUint64 / 2
 	}
 
 	*r.Ttl = ttl

@@ -6,8 +6,8 @@ import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/cmd"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/tcaplus_protocol_cs"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/request"
-	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/terror"
 	"sync"
+	"sync/atomic"
 )
 
 const (
@@ -38,13 +38,22 @@ func NewTraverserManager(client ClientInf) *TraverserManager {
 	return tm
 }
 
-func (m *TraverserManager) GetTraverser(zoneId uint32, table string) *Traverser {
+func (m *TraverserManager) CheckTraverserFinish(t *Traverser) bool {
+	if t != nil && atomic.LoadInt32(&t.isFinished) == 1 {
+		atomic.StoreInt32(&t.state, TraverseStateIdle)
+		return true
+	}
+	return false
+}
+
+func (m *TraverserManager) GetTraverser(zoneId uint32, table string, isPb bool) *Traverser {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	zoneTable := fmt.Sprintf("%d|%s", zoneId, table)
 	t, exist := m.traverseMap[zoneTable]
 	if exist {
 		t.tableType = 0
+		t.isPb = isPb
 		return t
 	}
 	if len(m.traverseMap) >= 8 {
@@ -56,21 +65,24 @@ func (m *TraverserManager) GetTraverser(zoneId uint32, table string) *Traverser 
 	t.client = m.client
 	t.tm = m
 	m.traverseMap[zoneTable] = t
+	t.isPb = isPb
 	return t
 }
 
-func (m *TraverserManager) GetListTraverser(zoneId uint32, table string) *Traverser {
-	t := m.GetTraverser(zoneId, table)
+func (m *TraverserManager) GetListTraverser(zoneId uint32, table string, isPb bool) *Traverser {
+	t := m.GetTraverser(zoneId, table, isPb)
 	if t != nil {
 		t.tableType = 1
+		t.isPb = isPb
 	}
 	return t
 }
 
-func (m *TraverserManager) OnRecvResponse(zoneId uint32, msg *tcaplus_protocol_cs.TCaplusPkg, drop *bool) error {
+func (m *TraverserManager) OnRecvResponse(zoneId uint32, msg *tcaplus_protocol_cs.TCaplusPkg, drop *bool) *Traverser {
 	if msg == nil || msg.Head == nil {
 		logger.ERR("msg invalid")
-		return &terror.ErrorCode{Code: terror.API_ERR_PARAMETER_INVALID}
+		*drop = true
+		return nil
 	}
 	table := string(msg.Head.RouterInfo.TableName[:msg.Head.RouterInfo.TableNameLen-1])
 	zoneTable := fmt.Sprintf("%d|%s", zoneId, table)
@@ -79,12 +91,14 @@ func (m *TraverserManager) OnRecvResponse(zoneId uint32, msg *tcaplus_protocol_c
 	t, exist := m.traverseMap[zoneTable]
 	if !exist {
 		logger.ERR("traverse %s not find", zoneTable)
-		return &terror.ErrorCode{Code: terror.API_ERR_TRAVERSER_IS_NOT_EXIST}
+		*drop = true
+		return nil
 	}
 
-	if TraverseStateNormal != t.state {
-		logger.ERR("Traverser %s state %d not normal", zoneTable, t.state)
-		return &terror.ErrorCode{Code: terror.API_ERR_INVALID_OBJ_STATUE}
+	if TraverseStateNormal != atomic.LoadInt32(&t.state) {
+		*drop = true
+		logger.ERR("Traverser %s state %d not normal", zoneTable, atomic.LoadInt32(&t.state))
+		return nil
 	}
 
 	if cmd.TcaplusApiTableTraverseRes == msg.Head.Cmd || cmd.TcaplusApiListTableTraverseRes == msg.Head.Cmd {
@@ -94,24 +108,24 @@ func (m *TraverserManager) OnRecvResponse(zoneId uint32, msg *tcaplus_protocol_c
 		}
 
 		if asyncId != msg.Head.AsynID {
+			*drop = true
 			logger.WARN("zone %d, tableName %s traverse recvived expire response cmd:%d.asyncId %d msg.Head.AsynID %d",
 				t.zoneId, t.tableName, msg.Head.Cmd, asyncId, msg.Head.AsynID)
 			return nil
 		}
 	}
-
-	return t.onRecvResponse(msg, drop)
+	t.onRecvResponse(msg, drop)
+	return t
 }
 
 func (m *TraverserManager) ContinueTraverse() {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
 	if len(m.traverseMap) == 0 {
 		return
 	}
-
-	m.lock.RLock()
-	defer m.lock.RUnlock()
 	for k, v := range m.traverseMap {
-		if v.busy && TraverseStateNormal == v.state {
+		if v.busy.Load().(bool) && TraverseStateNormal == atomic.LoadInt32(&v.state) {
 			err := v.continueTraverse()
 			if err != nil {
 				logger.ERR("continueTraverse %s error %s", k, err)

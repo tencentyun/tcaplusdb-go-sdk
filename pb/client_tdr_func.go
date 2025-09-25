@@ -7,6 +7,7 @@ import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/record"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/request"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/response"
+	"github.com/tencentyun/tcaplusdb-go-sdk/pb/subscribe"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/terror"
 )
 
@@ -56,7 +57,9 @@ func (c *Client) DoListSimple(table string, data record.TdrTableSt, index int32,
 	}
 
 	var res response.TcaplusResponse
-	if opt != nil && opt.Timeout > 0 {
+	if opt != nil && opt.Ctx != nil {
+		res, err = c.DoWithContext(req, opt.Ctx)
+	} else if opt != nil && opt.Timeout > 0 {
 		res, err = c.Do(req, opt.Timeout)
 	} else {
 		res, err = c.Do(req, c.defTimeout)
@@ -64,6 +67,9 @@ func (c *Client) DoListSimple(table string, data record.TdrTableSt, index int32,
 	if err != nil {
 		logger.ERR("Do request error:%s", err)
 		return index, err
+	}
+	if opt != nil {
+		opt.Version = res.GetSingleRecordVersion()
 	}
 
 	ret := res.GetResult()
@@ -74,7 +80,7 @@ func (c *Client) DoListSimple(table string, data record.TdrTableSt, index int32,
 	if res.GetRecordCount() > 0 {
 		resRec, err := res.FetchRecord()
 		if err != nil {
-			logger.ERR("FetchRecord error:%s", err)
+			logger.DEBUG("FetchRecord error:%s", err)
 			return index, err
 		}
 
@@ -84,7 +90,7 @@ func (c *Client) DoListSimple(table string, data record.TdrTableSt, index int32,
 		index = resRec.GetIndex()
 
 		if apiCmd != cmd.TcaplusApiListGetReq && !c.needGetData(opt) {
-			return index, nil
+			return index, err
 		}
 
 		err = resRec.GetData(data)
@@ -139,6 +145,13 @@ func (c *Client) setRecOpt(rec *record.Record, opt *option.TDROpt) error {
 			}
 		}
 	}
+
+	if opt.TTL != nil {
+		if ret := rec.SetTTL(opt.TTL.TTL, opt.TTL.IsAbsolute); ret != 0 {
+			logger.ERR("SetTTL error:%d", ret)
+			return &terror.ErrorCode{Code: ret, Message: "SetTTL failed, maybe cmd not support"}
+		}
+	}
 	return nil
 }
 
@@ -177,7 +190,9 @@ func (c *Client) doSimple(table string, data record.TdrTableSt, apiCmd int, opt 
 	}
 
 	var res response.TcaplusResponse
-	if opt != nil && opt.Timeout > 0 {
+	if opt != nil && opt.Ctx != nil {
+		res, err = c.DoWithContext(req, opt.Ctx)
+	} else if opt != nil && opt.Timeout > 0 {
 		res, err = c.Do(req, opt.Timeout)
 	} else {
 		res, err = c.Do(req, c.defTimeout)
@@ -191,11 +206,14 @@ func (c *Client) doSimple(table string, data record.TdrTableSt, apiCmd int, opt 
 	if ret != 0 {
 		err = &terror.ErrorCode{Code: ret}
 	}
+	if opt != nil {
+		opt.Version = res.GetSingleRecordVersion()
+	}
 
 	if res.GetRecordCount() > 0 {
 		resRec, err := res.FetchRecord()
 		if err != nil {
-			logger.ERR("FetchRecord error:%s", err)
+			logger.DEBUG("FetchRecord error:%s", err)
 			return err
 		}
 
@@ -204,7 +222,7 @@ func (c *Client) doSimple(table string, data record.TdrTableSt, apiCmd int, opt 
 		}
 
 		if apiCmd != cmd.TcaplusApiGetReq && !c.needGetData(opt) {
-			return nil
+			return err
 		}
 
 		err = resRec.GetData(data)
@@ -253,14 +271,7 @@ func (c *Client) setReqOpt(req request.TcaplusRequest, opt *option.TDROpt) error
 		}
 	}
 
-	if opt.ListShiftFlag != 0 {
-		ret := req.SetListShiftFlag(opt.ListShiftFlag)
-		if ret != 0 {
-			err = &terror.ErrorCode{Code: int(ret)}
-			logger.ERR("SetListShiftFlag error:%s", err)
-			return err
-		}
-	}
+	req.SetListShiftFlag(opt.ListShiftFlag)
 
 	if opt.Flags != 0 {
 		ret := req.SetFlags(opt.Flags)
@@ -317,14 +328,7 @@ func (c *Client) setBatchReqOpt(req request.TcaplusRequest, opt *option.TDROpt) 
 		}
 	}
 
-	if opt.ListShiftFlag != 0 {
-		ret := req.SetListShiftFlag(opt.ListShiftFlag)
-		if ret != 0 {
-			err = &terror.ErrorCode{Code: int(ret)}
-			logger.ERR("SetListShiftFlag error:%s", err)
-			return err
-		}
-	}
+	req.SetListShiftFlag(opt.ListShiftFlag)
 
 	if opt.Flags != 0 {
 		ret := req.SetFlags(opt.Flags)
@@ -399,6 +403,9 @@ func (c *Client) doListBatch(table string, data record.TdrTableSt, indexs []int3
 			logger.ERR("setReqOpt error:%s", err)
 			return nil, err
 		}
+		if opt.Version > 0 {
+			rec.SetVersion(opt.Version)
+		}
 	}
 
 	tmpIdxMap := map[int32]struct{}{}
@@ -412,7 +419,9 @@ func (c *Client) doListBatch(table string, data record.TdrTableSt, indexs []int3
 	}
 
 	var resps []response.TcaplusResponse
-	if opt != nil && opt.Timeout > 0 {
+	if opt != nil && opt.Ctx != nil {
+		resps, err = c.DoMoreWithContext(req, opt.Ctx)
+	} else if opt != nil && opt.Timeout > 0 {
 		resps, err = c.DoMore(req, opt.Timeout)
 	} else {
 		resps, err = c.DoMore(req, c.defTimeout)
@@ -426,11 +435,17 @@ func (c *Client) doListBatch(table string, data record.TdrTableSt, indexs []int3
 	offset := 0
 	var globalErr error
 	for _, res := range resps {
+		if opt != nil {
+			opt.Version = res.GetSingleRecordVersion()
+		}
 		ret := res.GetResult()
 		if ret != 0 {
 			globalErr = &terror.ErrorCode{Code: ret}
-			logger.ERR("result is %d, error:%s", ret, terror.GetErrMsg(ret))
+			logger.DEBUG("result is %d, error:%s", ret, terror.GetErrMsg(ret))
 			continue
+		}
+		if opt != nil {
+			opt.RecordMatchCount = int32(res.GetRecordMatchCount())
 		}
 
 		for i := 0; i < res.GetRecordCount(); i++ {
@@ -440,7 +455,7 @@ func (c *Client) doListBatch(table string, data record.TdrTableSt, indexs []int3
 			}
 			if err != nil {
 				globalErr = err
-				logger.ERR("FetchRecord error:%s", err)
+				logger.DEBUG("FetchRecord error:%s", err)
 				offset++
 				continue
 			}
@@ -515,7 +530,9 @@ func (c *Client) doListBatchRecord(table string, dataSlice []record.TdrTableSt, 
 	}
 
 	var resps []response.TcaplusResponse
-	if opt != nil && opt.Timeout > 0 {
+	if opt != nil && opt.Ctx != nil {
+		resps, err = c.DoMoreWithContext(req, opt.Ctx)
+	} else if opt != nil && opt.Timeout > 0 {
 		resps, err = c.DoMore(req, opt.Timeout)
 	} else {
 		resps, err = c.DoMore(req, c.defTimeout)
@@ -528,10 +545,13 @@ func (c *Client) doListBatchRecord(table string, dataSlice []record.TdrTableSt, 
 	var globalErr error
 	offset := 0
 	for _, res := range resps {
+		if opt != nil {
+			opt.Version = res.GetSingleRecordVersion()
+		}
 		ret := res.GetResult()
 		if ret != 0 {
 			globalErr = &terror.ErrorCode{Code: ret}
-			logger.ERR("result is %d, error:%s", ret, terror.GetErrMsg(ret))
+			logger.DEBUG("result is %d, error:%s", ret, terror.GetErrMsg(ret))
 			continue
 		}
 
@@ -542,7 +562,7 @@ func (c *Client) doListBatchRecord(table string, dataSlice []record.TdrTableSt, 
 			}
 			if err != nil {
 				globalErr = err
-				logger.ERR("FetchRecord error:%s", err)
+				logger.DEBUG("FetchRecord error:%s", err)
 				offset++
 				continue
 			}
@@ -651,7 +671,9 @@ func (c *Client) doBatch(table string, dataSlice []record.TdrTableSt, apiCmd int
 		msgMap[key] = i
 	}
 	var resps []response.TcaplusResponse
-	if opt != nil && opt.Timeout > 0 {
+	if opt != nil && opt.Ctx != nil {
+		resps, err = c.DoMoreWithContext(req, opt.Ctx)
+	} else if opt != nil && opt.Timeout > 0 {
 		resps, err = c.DoMore(req, opt.Timeout)
 	} else {
 		resps, err = c.DoMore(req, c.defTimeout)
@@ -666,7 +688,7 @@ func (c *Client) doBatch(table string, dataSlice []record.TdrTableSt, apiCmd int
 		ret := res.GetResult()
 		if ret != 0 {
 			globalErr = &terror.ErrorCode{Code: ret}
-			logger.ERR("result is %d, error:%s", ret, terror.GetErrMsg(ret))
+			logger.DEBUG("result is %d, error:%s", ret, terror.GetErrMsg(ret))
 			continue
 		}
 
@@ -675,7 +697,6 @@ func (c *Client) doBatch(table string, dataSlice []record.TdrTableSt, apiCmd int
 			if recErr != nil {
 				globalErr = recErr
 				logger.DEBUG("FetchRecord error:%s", recErr)
-				continue
 			}
 
 			if resRec == nil {
@@ -783,7 +804,9 @@ func (c *Client) doPartKey(table string, data record.TdrTableSt, indexName strin
 	}
 
 	var resps []response.TcaplusResponse
-	if opt != nil && opt.Timeout > 0 {
+	if opt != nil && opt.Ctx != nil {
+		resps, err = c.DoMoreWithContext(req, opt.Ctx)
+	} else if opt != nil && opt.Timeout > 0 {
 		resps, err = c.DoMore(req, opt.Timeout)
 	} else {
 		resps, err = c.DoMore(req, c.defTimeout)
@@ -799,15 +822,18 @@ func (c *Client) doPartKey(table string, data record.TdrTableSt, indexName strin
 		ret := res.GetResult()
 		if ret != 0 {
 			globalErr = &terror.ErrorCode{Code: ret}
-			logger.ERR("result is %d, error:%s", ret, terror.GetErrMsg(ret))
+			logger.DEBUG("result is %d, error:%s", ret, terror.GetErrMsg(ret))
 			continue
+		}
+		if opt != nil {
+			opt.RecordMatchCount = int32(res.GetRecordMatchCount())
 		}
 
 		for i := 0; i < res.GetRecordCount(); i++ {
 			resRec, err := res.FetchRecord()
 			if err != nil {
 				globalErr = err
-				logger.ERR("FetchRecord error:%s", err)
+				logger.DEBUG("FetchRecord error:%s", err)
 				continue
 			}
 
@@ -956,6 +982,25 @@ func (c *Client) DoGetByPartKey(table string, data record.TdrTableSt, indexName 
 		return c.doPartKey(table, data, indexName, cmd.TcaplusApiGetByPartkeyReq, opt, zoneId[0])
 	}
 	return c.doPartKey(table, data, indexName, cmd.TcaplusApiGetByPartkeyReq, opt, uint32(c.defZone))
+}
+
+/**
+    @brief 根据表的部分key字段更新,
+	@param [IN]  table 表名
+	@param [IN/OUT] data  tdr结构体由TdrCodeGen生成的记录结构体, 若有记录返回会更新为返回的记录
+	@param [IN/OUT] opt 可选参数, 分包返回等, 记录的version存放在opt.BatchVersion
+	@param [IN] zoneId 可选参数，不设置则取默认zone，默认zone可通过client.SetDefaultZoneId设置
+    @retval error 错误码
+**/
+func (c *Client) DoUpdateByPartKey(table string, data record.TdrTableSt, indexName string, opt *option.TDROpt,
+	zoneId ...uint32) ([]*record.Record, error) {
+	if len(indexName) == 0 {
+		return nil, &terror.ErrorCode{Code: terror.ParameterInvalid, Message: "indexName is empty"}
+	}
+	if len(zoneId) == 1 {
+		return c.doPartKey(table, data, indexName, cmd.TcaplusApiUpdateByPartkeyReq, opt, zoneId[0])
+	}
+	return c.doPartKey(table, data, indexName, cmd.TcaplusApiUpdateByPartkeyReq, opt, uint32(c.defZone))
 }
 
 /**
@@ -1198,7 +1243,9 @@ func (c *Client) DoSetTTLBatch(table string, dataSlice []record.TdrTableSt, inde
 		msgMap[key] = i
 	}
 	var resps []response.TcaplusResponse
-	if opt.Timeout > 0 {
+	if opt.Ctx != nil {
+		resps, err = c.DoMoreWithContext(req, opt.Ctx)
+	} else if opt.Timeout > 0 {
 		resps, err = c.DoMore(req, opt.Timeout)
 	} else {
 		resps, err = c.DoMore(req, c.defTimeout)
@@ -1213,7 +1260,7 @@ func (c *Client) DoSetTTLBatch(table string, dataSlice []record.TdrTableSt, inde
 		ret := res.GetResult()
 		if ret != 0 {
 			globalErr = &terror.ErrorCode{Code: ret}
-			logger.ERR("result is %d, error:%s", ret, terror.GetErrMsg(ret))
+			logger.DEBUG("result is %d, error:%s", ret, terror.GetErrMsg(ret))
 			continue
 		}
 
@@ -1339,7 +1386,9 @@ func (c *Client) DoGetTTLBatch(table string, dataSlice []record.TdrTableSt, inde
 		msgMap[key] = i
 	}
 	var resps []response.TcaplusResponse
-	if opt.Timeout > 0 {
+	if opt.Ctx != nil {
+		resps, err = c.DoMoreWithContext(req, opt.Ctx)
+	} else if opt.Timeout > 0 {
 		resps, err = c.DoMore(req, opt.Timeout)
 	} else {
 		resps, err = c.DoMore(req, c.defTimeout)
@@ -1354,7 +1403,7 @@ func (c *Client) DoGetTTLBatch(table string, dataSlice []record.TdrTableSt, inde
 		ret := res.GetResult()
 		if ret != 0 {
 			globalErr = &terror.ErrorCode{Code: ret}
-			logger.ERR("result is %d, error:%s", ret, terror.GetErrMsg(ret))
+			logger.DEBUG("result is %d, error:%s", ret, terror.GetErrMsg(ret))
 			continue
 		}
 
@@ -1530,4 +1579,50 @@ func (c *Client) DoListReplaceBatch(table string, dataSlice []record.TdrTableSt,
 		return c.doListBatchRecord(table, dataSlice, indexs, cmd.TcaplusApiListReplaceBatchReq, opt, zoneId[0])
 	}
 	return c.doListBatchRecord(table, dataSlice, indexs, cmd.TcaplusApiListReplaceBatchReq, opt, uint32(c.defZone))
+}
+
+// NewSubscribeTopic 创建订阅topic; 只支持list表; 以list的key为订阅topic，当往这个list中插入数据时会收到订阅响应
+// 注意: list要尾部插入，淘汰头部，保持list的index是连续的，这样基于index, sdk会做丢包重试
+//  index: 订阅的起始index
+//         < 0 表示只订阅不拉取数据，
+//         >=0 订阅并返回该index之后的所有元素（包括该index）; 如果index不存在，则返回错误，并取消订阅
+//         用户不确定从哪个index开始订阅；可以先通过listgetall拉取，再选择index开始订阅
+//  expireSecond: 订阅过期时间，秒
+//          sdk会自动取该值的三分之一为续订阅时间，sdk定时续订，维持订阅链路；这样sdk异常退出时，svr可以删除超时链路
+//  rspPipeSize: topic响应队列channel大小，最小为1
+//          如果channel满，则会丢掉订阅包;等到不满时，会拉取后续订阅包，填充队列，会保证收到的订阅包仍然是连续的
+//  异常场景：
+//    长时间无订阅包：
+//          如果一个expireSecond时间，没有收到过订阅响应，sdk也会尝试拉取当前index之后的包，检查是否有遗漏
+//    丢包：
+//          sdk根据list返回的index是否连续自增判断是否丢包；识别丢包后会自动携带该index去svr拉取；
+//          故对于订阅的list，请不要删除中间的元素导致index不连续，不连续会导致订阅中断
+//    订阅中断：
+//          订阅的index不存在会中断，或者index不连续
+//          中断时，topic的ResponsePipe channel会先收到一个带错误码的响应包，然后会收到channel close
+func (c *Client) NewSubscribeTopic(table string, data record.TdrTableSt, index int32, expireSecond int32, rspPipeSize int, flag int,
+	zoneId ...uint32) (*subscribe.Topic, error) {
+	if len(table) == 0 || data == nil || expireSecond <= 0 {
+		return nil, &terror.ErrorCode{Code: terror.ParameterInvalid, Message: "table is empty or data is nil or expireSecond <=0"}
+	}
+
+	realZone := uint32(c.defZone)
+	if len(zoneId) == 1 {
+		realZone = zoneId[0]
+	}
+
+	rec := &record.Record{
+		KeyMap: make(map[string][]byte),
+	}
+	//将tdr的数据设置到请求的记录中
+	if err := rec.SetData(data); err != nil {
+		return nil, err
+	}
+	logger.DEBUG("record %+v", rec.KeyMap)
+	return c.netServer.router.NewSubscribeTopic(realZone, table, rec.KeyMap, index, expireSecond, rspPipeSize, flag, c.isPB)
+}
+
+// DelSubscribeTopic 取消订阅
+func (c *Client) DelSubscribeTopic(topic *subscribe.Topic) {
+	c.netServer.router.DelSubscribe(topic)
 }

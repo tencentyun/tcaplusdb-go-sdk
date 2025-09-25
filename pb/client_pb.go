@@ -43,58 +43,73 @@ func (c *PBClient) initTableMeta(zoneTables map[uint32][]string) error {
 			zoneTables[zone] = c.netServer.router.GetZoneTables(zone)
 		}
 	}
+	if len(zoneTables) == 0 {
+		return &terror.ErrorCode{Code: terror.ParameterInvalid, Message: "input zoneTables empty"}
+	}
 
-	initResult := int32(0)
+	routineCnt := c.ctrl.Option.PbMetaInitRoutineCount
+	if routineCnt <= 0 {
+		routineCnt = 10
+	}
+	sema := make(chan struct{}, routineCnt) // 限制最多routineCnt个并发
+
+	var initResult atomic.Value
 	wg := sync.WaitGroup{}
 	for zone, tables := range zoneTables {
-		if c.defZone == -1 {
-			c.defZone = int32(zone)
-			logger.DEBUG("init default zone %d", c.defZone)
-		}
 		for _, table := range tables {
 			wg.Add(1)
+			sema <- struct{}{} // 获取令牌（满了就阻塞）
 			go func(zone uint32, table string) {
 				defer wg.Done()
+				defer func() { <-sema }() // 释放令牌
 				req, err := c.NewRequest(zone, table, cmd.TcaplusApiMetadataGetReq)
 				if err != nil {
-					logger.ERR("zone %d table %s NewRequest error:%s", zone, table, err.Error())
-					atomic.StoreInt32(&initResult, 1)
+					terr := terror.MakeError(terror.ParameterInvalid,
+						fmt.Sprintf("zone %d table %s NewRequest error:%s", zone, table, err.Error()))
+					logger.ERR(terr.Error())
+					initResult.Store(terr)
 					return
 				}
 				resp, err := c.Do(req, c.defTimeout)
 				if err != nil {
-					logger.ERR("Do request error:%s", err)
-					atomic.StoreInt32(&initResult, 1)
+					terr := terror.MakeError(terror.ParameterInvalid,
+						fmt.Sprintf("zone %d table %s get pb meta Do request error:%s", zone, table, err))
+					logger.ERR(terr.Error())
+					initResult.Store(terr)
 					return
 				}
 				if r := resp.GetResult(); r != 0 {
-					errMsg := fmt.Sprintf("get zone %d table %s metadata error:%s", zone, table,
-						terror.GetErrMsg(r))
-					logger.ERR(errMsg)
-					atomic.StoreInt32(&initResult, 1)
+					terr := terror.MakeError(terror.ParameterInvalid,
+						fmt.Sprintf("get zone %d table %s metadata error:%s", zone, table, terror.GetErrMsg(r)))
+					logger.ERR(terr.Error())
+					initResult.Store(terr)
 					return
 				}
 				if resp.GetTcaplusPackagePtr() == nil {
-					errMsg := fmt.Sprintf("get zone %d table %s metadata error:response pkg is nil", zone, table)
-					logger.ERR(errMsg)
-					atomic.StoreInt32(&initResult, 1)
+					terr := terror.MakeError(terror.ParameterInvalid,
+						fmt.Sprintf("get zone %d table %s metadata error:response pkg is nil", zone, table))
+					logger.ERR(terr.Error())
+					initResult.Store(terr)
 					return
 				}
+
 				metares := resp.GetTcaplusPackagePtr().Body.MetadataGetRes
 				if metares.IdlType != 2 {
-					errMsg := fmt.Sprintf("get zone %d table %s metadata error:table type %d not proto",
-						zone, table, metares.IdlType)
-					logger.ERR(errMsg)
-					atomic.StoreInt32(&initResult, 1)
+					terr := terror.MakeError(terror.ParameterInvalid,
+						fmt.Sprintf("get zone %d table %s metadata error:table type %d not proto",
+							zone, table, metares.IdlType))
+					logger.ERR(terr.Error())
+					initResult.Store(terr)
 					return
 				}
+
 				err = metadata.GetMetaManager().AddTableDesGrp(c.appId, zone, table,
 					metares.IdlContent[:metares.IdlConLen])
 				if err != nil {
-					errMsg := fmt.Sprintf("add app %d zone %d table %s metadata error:%s",
-						c.appId, zone, table, err)
-					logger.ERR(errMsg)
-					atomic.StoreInt32(&initResult, 1)
+					terr := terror.MakeError(terror.ParameterInvalid,
+						fmt.Sprintf("add app %d zone %d table %s metadata error:%s", c.appId, zone, table, err))
+					logger.ERR(terr.Error())
+					initResult.Store(terr)
 					return
 				}
 			}(zone, table)
@@ -102,8 +117,8 @@ func (c *PBClient) initTableMeta(zoneTables map[uint32][]string) error {
 	}
 
 	wg.Wait()
-	if atomic.LoadInt32(&initResult) != 0 {
-		return &terror.ErrorCode{Code: terror.ParameterInvalid, Message: "PB meta Init Failed, please check table exist"}
+	if v := initResult.Load(); v != nil {
+		return v.(error)
 	}
 	return nil
 }
@@ -524,7 +539,7 @@ func (c *PBClient) traverseOperate(msg proto.Message, zoneId uint32) ([]proto.Me
 	table := string(msg.ProtoReflect().Descriptor().Name())
 
 	// 获取遍历器，遍历器最多同时8个工作，如果超过会返回nil
-	tra := c.tm.GetTraverser(zoneId, table)
+	tra := c.tm.GetTraverser(zoneId, table, c.isPB)
 	if tra == nil {
 		logger.ERR("GetTraverser fail")
 		return nil, &terror.ErrorCode{Code: terror.GetTraverserError}

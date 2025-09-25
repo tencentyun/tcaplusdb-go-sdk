@@ -1729,3 +1729,68 @@ select sum(a) as sum_a from table where a > 1000;
 
 ### v0.6.7:
 - pb表支持deletebypartkey
+
+### v0.6.8:
+- pb表支持list表部分字段遍历
+
+### v0.6.9:
+- 修复list表遍历概率core问题
+
+### v0.6.12:
+- 同步接口支持go context
+
+### v0.6.13:
+- 支持用户名密码认证
+
+### v0.6.14:
+- 遍历丢包重试
+
+### v0.6.15:
+- pbfieldInc flag字段初始化
+- pbgetbypartkey 支持获取部分字段
+
+### v0.6.16:
+- 修复proxy关机，established链接踢出时间过长的问题
+- 支持updatebypartkey
+
+### v0.6.18:
+- 适配pbbatchReplace只返回key，value为空的场景
+
+### v0.6.19:
+- 修复sync2.0接口listaddafter设置shiftflag为TcaplusListShiftNone不生效的bug
+
+### v0.6.20:
+- 修改listgetall日志级别,可不升级
+
+### v0.6.21:
+- 修改日志级别,可不升级
+
+### v0.6.22:
+- 支持perf统计
+
+### v0.6.23:
+- 修复协程卡顿，网络close时panic的问题
+
+### v0.6.24:
+- 修复统计不准确的问题
+- 适配getbypartkey订阅
+
+### v0.6.25:
+- listbatchReplace 设置fieldname panic问题
+
+### v0.6.26:
+- option添加MatchRecordCount
+
+### v0.6.27:
+- PbBatchFieldGet支持map嵌套字段，无需求可不升级
+
+### v0.6.29:
+- TTL支持在Insert/Update/Replace同时设置TTL，参考sync2.0 example
+- 支持校验TDR表的版本号，保证本地小于等于服务端的，以防忘记控制台改表，使用client的CheckTdrMetaVersion
+- 统计上报增强
+- 对于单条记录更新操作，支持不用设置ResultFlag，直接通过Respone的GetSingleRecordVersion方法获取记录的版本号
+- 路由算法优化，优化部分proxy算法下的内存
+- 基于list表，支持类似redis的订阅发布功能，参考example/TDR/async/subscribe.go
+
+### v0.6.30:
+- 修复：pb条件更新，operation未清空的问题，未使用pb条件更新可忽略

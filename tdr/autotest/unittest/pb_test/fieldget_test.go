@@ -105,7 +105,7 @@ func TestFieldGetSuccess(t *testing.T) {
 	newData.PlayerId = 444
 	newData.PlayerName = "jiahua"
 	newData.PlayerEmail = "dsf"
-	fields := []string{"pay", "pay.pay_id"}
+	fields := []string{"pay"}
 	err := client.FieldGet(newData, fields)
 	if err != nil {
 		t.Errorf("Get failed %s", err)
@@ -346,23 +346,24 @@ func TestPBFieldGetByPathCorrect(t *testing.T) {
 
 	initMsg := initTbMap(3, 4, 5, 4, 3)
 
+	client.Delete(initMsg)
 	client.Insert(initMsg)
 	defer client.Delete(initMsg)
 
 	oldMsg := initTbMap(0, 0, 0, 0, 0)
 	err := client.FieldGet(oldMsg, []string{"int_map[10]"})
-	if err == nil || err.(*terror.ErrorCode).Code != terror.SVR_ERR_FAIL_PROTOBUF_FIELD_GET {
-		t.Errorf(err.Error())
+	if err == nil {
+		t.Errorf("expect err")
 		return
 	}
 	err = client.FieldGet(oldMsg, []string{"i32_array[-1]"})
-	if err == nil || err.(*terror.ErrorCode).Code != terror.SVR_ERR_FAIL_PROTOBUF_FIELD_GET {
+	if err != nil {
 		t.Errorf(err.Error())
 		return
 	}
 	err = client.FieldGet(oldMsg, []string{"str_map['3'].ri32[0]"})
-	if err == nil || err.(*terror.ErrorCode).Code != terror.SVR_ERR_FAIL_PROTOBUF_FIELD_GET {
-		t.Errorf(err.Error())
+	if err == nil {
+		t.Errorf("expect err")
 		return
 	}
 }

@@ -88,11 +88,6 @@ func (req *listTraverseRequest) Pack() ([]byte, error) {
 		return nil, &terror.ErrorCode{Code: terror.RequestHasHasNoPkg, Message: "Request can not second use"}
 	}
 
-	if req.isPB {
-		req.pkg.Body.ListTableTraverseReq.ValueInfo.FieldNum = 3
-		req.pkg.Body.ListTableTraverseReq.ValueInfo.FieldName = []string{"klen", "vlen", "value"}
-	}
-
 	if logger.GetLogLevel() == "DEBUG" {
 		logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
 		logger.DEBUG("%s", common.CovertToJson(req.pkg.Body.ListTableTraverseReq))

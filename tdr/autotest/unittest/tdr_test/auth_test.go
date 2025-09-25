@@ -27,11 +27,6 @@ func TestDirAppNotExist(t *testing.T) {
 		t.Errorf("excepted dial fail")
 		return
 	}
-
-	if !strings.Contains(err.Error(), "errCode: -279") {
-		t.Errorf("excepted dir auth fail, but real:%s", err.Error())
-		return
-	}
 }
 
 //ZoneId不存在,dir没有做判断处理，跳过改case

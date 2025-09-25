@@ -39,6 +39,7 @@ func newListReplaceRequest(appId uint64, zoneId uint32, tableName string, cmd in
 	pkg.Body.ListReplaceReq.ElementIndex = 0
 	pkg.Body.ListReplaceReq.Flag = 0
 	pkg.Body.ListReplaceReq.Condition = ""
+	pkg.Body.ListReplaceReq.Operation = ""
 	req := &listReplaceRequest{
 		appId:        appId,
 		zoneId:       zoneId,

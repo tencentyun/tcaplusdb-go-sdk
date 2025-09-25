@@ -63,6 +63,7 @@ func (req *getMetaRequest) Pack() ([]byte, error) {
 
 	if logger.GetLogLevel() == "DEBUG" {
 		logger.DEBUG("pack request %s", common.CsHeadVisualize(req.pkg.Head))
+		logger.DEBUG("%s", common.CovertToJson(req.pkg.Body.MetadataGetReq))
 	}
 	data, err := req.pkg.Pack(tcaplus_protocol_cs.TCaplusPkgCurrentVersion)
 	if err != nil {
@@ -152,4 +153,8 @@ func (req *getMetaRequest) ClearFlags(flag int32) int {
 
 func (req *getMetaRequest) GetFlags() int32 {
 	return req.pkg.Head.Flags
+}
+
+func (req *getMetaRequest) GetTcaplusPackagePtr() *tcaplus_protocol_cs.TCaplusPkg {
+	return req.pkg
 }

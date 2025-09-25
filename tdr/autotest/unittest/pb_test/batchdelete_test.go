@@ -127,6 +127,7 @@ func TestBatchDeleteVersionFail(t *testing.T) {
 		}
 	}
 }
+
 //case1 replace result + version success
 func TestBatchDeleteSuccess_1024(t *testing.T) {
 	client := tools.InitPBSyncClient()

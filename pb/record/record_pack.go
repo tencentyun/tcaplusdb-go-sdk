@@ -68,13 +68,15 @@ func (r *Record) packCompactValueSet(compactValueSet *tcaplus_protocol_cs.Compac
 		buffLen += totalLen
 	}
 
-	valueBuf := new(bytes.Buffer)
-	valueBuf.Grow(buffLen)
+	if r.compactBuffer == nil || r.compactBuffer.Cap() < buffLen {
+		r.compactBuffer = bytes.NewBuffer(make([]byte, buffLen))
+	}
+	valueBuf := r.compactBuffer
 	valueBuf.Reset()
-
 	compactValueSet.ValueBufLen = 8 //field_num(4B) + version(4B)
 
-	tmpBuff := make([]byte, 4, 4)
+	tmpArray := [4]byte{0, 0, 0, 0}
+	tmpBuff := tmpArray[:]
 	//set fieldNum
 	binary.LittleEndian.PutUint32(tmpBuff, 0)
 	valueBuf.Write(tmpBuff)

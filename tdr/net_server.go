@@ -60,6 +60,7 @@ func (n *netServer) init(appId uint64, zoneList []uint32, dirUrl string, signatu
 		logger.ERR("router init failed %s", err.Error())
 		return err
 	}
+	n.router.SetDirReportStat(n.dirServer.GetReportStat())
 
 	go n.netPkgProcess()
 	return nil
@@ -83,7 +84,7 @@ func (n *netServer) netPkgProcess() {
 	for {
 		select {
 		case <-n.stopNetWork:
-			logger.ERR("client net routine exit, close client")
+			logger.INFO("client net routine exit, close client")
 			n.dirServer.DisConnect()
 			n.router.Close()
 			return
@@ -110,7 +111,7 @@ func (n *netServer) netPkgProcess() {
 			}
 			dirListTimer.Reset(n.dirListDuration * time.Second)
 
-		//update定时器 100ms - 1s
+		//update定时器 10ms - 100ms
 		case <-updateTimer.C:
 			n.dirServer.Update()
 			n.router.Update()
@@ -125,9 +126,9 @@ func (n *netServer) netPkgProcess() {
 					n.initFlag = InitFail
 					n.initResult <- err
 				}
-				updateTimer.Reset(100 * time.Millisecond)
+				updateTimer.Reset(10 * time.Millisecond)
 			} else {
-				updateTimer.Reset(1 * time.Second)
+				updateTimer.Reset(100 * time.Millisecond)
 			}
 		case <-updateTraverse.C:
 			n.router.TM.ContinueTraverse()
@@ -174,15 +175,15 @@ func (n *netServer) processDirMsg(msg *tcapdir_protocol_cs.TCapdirCSPkg) {
 		logger.INFO("GET_TABLES_AND_ACCESS_RES SetID:%d AppID:%d ZoneID:%d "+
 			"TableCount:%d TableNameList:%v AccessCount:%d AccessUrlList:%v AccessIdList:%v"+
 			"DirAvailableCheckPeriod:%d DirUpdateListInterval:%d DirUpdateTablesAndAcessInterval:%d"+
-			" ApiFromProxyHeartBeatTime:%d ApiFromDirHeartBeatTime:%d",
+			" ApiFromProxyHeartBeatTime:%d ApiFromDirHeartBeatTime:%d DynamicErrorCode:%d",
 			res.SetID, res.AppID, res.ZoneID,
 			res.TableCount, res.TableNameList[0:res.TableCount],
 			res.AccessCount, res.AccessUrlList[0:res.AccessCount],
 			res.AccessIdList[0:res.AccessCount],
 			res.ConfData.DirAvailableCheckPeriod, res.ConfData.DirUpdateListInterval,
 			res.ConfData.DirUpdateTablesAndAcessInterval,
-			res.ConfData.ApiFromProxyHeartBeatTime, res.ConfData.ApiFromDirHeartBeatTime)
-
+			res.ConfData.ApiFromProxyHeartBeatTime, res.ConfData.ApiFromDirHeartBeatTime, res.ConfData.DynamicErrorCode)
+		n.router.ProcessTablesAndAccessMsg(res)
 		//更新周期
 		n.dirServer.SetHeartbeatInterval(time.Duration(res.ConfData.ApiFromDirHeartBeatTime))
 		if res.ConfData.DirAvailableCheckPeriod <= res.ConfData.DirUpdateListInterval &&
@@ -199,7 +200,9 @@ func (n *netServer) processDirMsg(msg *tcapdir_protocol_cs.TCapdirCSPkg) {
 			n.router.SetHeartbeatInterval(time.Duration(res.ConfData.ApiFromProxyHeartBeatTime))
 		}
 
-		n.router.ProcessTablesAndAccessMsg(res)
+		if res.ConfData.DynamicErrorCode >= 0 && res.ConfData.DynamicErrorCode <= 100 {
+			n.router.SetPerfPercent(res.ZoneID, res.ConfData.DynamicErrorCode)
+		}
 		return
 	}
 }
@@ -218,19 +221,6 @@ func (n *netServer) recvResponse() (response.TcaplusResponse, error) {
 }
 
 func (n *netServer) sendRequest(req request.TcaplusRequest) error {
-	//打包
-	data, err := req.Pack()
-	if err != nil {
-		logger.ERR("req pack failed %s", err.Error())
-		return err
-	}
-
-	//获取keyHash
-	code, err := req.GetKeyHash()
-	if err != nil {
-		logger.ERR("get key hash failed %s", err.Error())
-		return err
-	}
-
-	return n.router.Send(code, req.GetZoneId(), data)
+	err, _ := n.router.SendRequest(req)
+	return err
 }

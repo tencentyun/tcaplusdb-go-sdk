@@ -1,6 +1,7 @@
 package tcaplus
 
 import (
+	"context"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/common"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/config"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/logger"
@@ -9,6 +10,7 @@ import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/request"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/response"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/router"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/statistics"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/terror"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/traverser"
 	"hash/crc32"
@@ -72,6 +74,23 @@ func (c *client) SetOpt(opt *config.ClientOption) {
 }
 
 /**
+  @brief 设置用户名和密码
+  @param [IN] user_name 用户名
+  @param [IN] password 密码
+  @note 当调用者知道signature签名时，无需调用该函数；
+        当调用者不知道signature签名时，但是却有一个用户名以及该用户名对应的密码时，client.Dial之前调用该函数
+        区别：
+          signature密码意味着可以对tcaplus中的数据执行任意操作；
+          使用用户名的方式，则意味着可能会对该用户访问tcaplus中的数据进行权限控制，比如只允许读等
+  @note 请在client.Dial之前调用
+*/
+func (c *client) SetUserNameAndPassword(userName string, password string) {
+	encodePasswd := common.EncodePasswd(password)
+	c.netServer.dirServer.SetUserNameAndPassword(userName, encodePasswd)
+	c.netServer.router.SetUserNameAndPassword(userName, encodePasswd)
+}
+
+/**
    @brief                   设置API日志配置文件全路径log.conf(json格式，example下有示例)，请在client.Dial之前调用
    @param [IN] cfgPath      日志配置文件全路径log.conf
    @retval 					错误码
@@ -88,6 +107,15 @@ func (c *client) SetLogCfg(cfgPath string) error {
 **/
 func (c *client) SetLogger(handle logger.LogInterface) {
 	logger.SetLogger(handle)
+}
+
+/**
+   @brief                   自定义统计接口，每分钟调用该接口输出统计信息
+   @param [IN] handle       logger.LogInterface类型的日志接口
+   @retval                  错误码
+**/
+func (c *client) SetStatisticsOutInterface(statInterface statistics.StatInterface) {
+	c.netServer.router.SetStatisticsOutInterface(statInterface)
 }
 
 /**
@@ -180,6 +208,10 @@ func (c *client) SetDefaultZoneId(zoneId uint32) error {
 	return nil
 }
 
+func (c *client) GetDefaultZoneId() uint32 {
+	return uint32(c.defZone)
+}
+
 /**
     @brief 设置请求默认超时时间
 **/
@@ -253,6 +285,51 @@ func (c *client) RecvResponse() (response.TcaplusResponse, error) {
 /**
     @brief 发送tcaplus同步请求并接受响应
 	@param [IN] req tcaplus请求
+	@param [IN] ctx go协程的context
+    @retval response.TcaplusResponse tcaplus响应
+    @retval error 错误码
+            error nil，response nil 成功但当前无响应消息
+            error nil, response 非nil，成功获取响应消息
+            error 非nil，接收响应出错
+**/
+func (c *client) DoWithContext(req request.TcaplusRequest, ctx context.Context) (response.TcaplusResponse, error) {
+	if c.initFlag != InitSuccess {
+		return nil, &terror.ErrorCode{Code: terror.ClientNotInit}
+	}
+
+	requestSeq := int32(atomic.AddUint32(&c.reqSeq, 1))
+	if requestSeq == 0 {
+		requestSeq = int32(atomic.AddUint32(&c.reqSeq, 1))
+	}
+	req.SetSeq(requestSeq)
+
+	var synrequestPkg router.SyncRequest
+	synrequestPkg.Init(req)
+	if c.netServer.router.RequestChanMapAdd(&synrequestPkg) == -1 {
+		return nil, &terror.ErrorCode{Code: terror.RouterIsClosed}
+	}
+	startTime := time.Now()
+	for {
+		select {
+		case <-ctx.Done():
+			synrequestPkg.IncTimeoutStatistic()
+			logger.ERR("requestSeq %d :%s, wait %s proxy:%s",
+				requestSeq, ctx.Err().Error(), time.Now().Sub(startTime).String(), synrequestPkg.GetProxyUrl())
+			c.netServer.router.RequestChanMapClean(&synrequestPkg)
+			return nil, &terror.ErrorCode{Code: terror.TimeOut,
+				Message: ctx.Err().Error() + " proxy:" + synrequestPkg.GetProxyUrl()}
+		case routerPkg, ok := <-synrequestPkg.GetSyncChan():
+			if !ok {
+				return nil, synrequestPkg.GetErr()
+			}
+			return response.NewResponse(routerPkg)
+		}
+	}
+}
+
+/**
+    @brief 发送tcaplus同步请求并接受响应
+	@param [IN] req tcaplus请求
 	@param [IN] timeout 超时时间
     @retval response.TcaplusResponse tcaplus响应
     @retval error 错误码
@@ -282,11 +359,74 @@ func (c *client) Do(req request.TcaplusRequest, timeout time.Duration) (response
 	for {
 		select {
 		case <-timer.C:
-			logger.ERR("requestSeq %d :%s, timeout", requestSeq, timeout.String())
+			synrequestPkg.IncTimeoutStatistic()
+			logger.ERR("requestSeq %d :%s, timeout, proxy:%s",
+				requestSeq, timeout.String(), synrequestPkg.GetProxyUrl())
 			c.netServer.router.RequestChanMapClean(&synrequestPkg)
-			return nil, &terror.ErrorCode{Code: terror.TimeOut, Message: timeout.String() + ", timeout"}
-		case routerPkg := <-synrequestPkg.GetSyncChan():
+			return nil, &terror.ErrorCode{Code: terror.TimeOut,
+				Message: timeout.String() + ", timeout, proxy:" + synrequestPkg.GetProxyUrl()}
+		case routerPkg, ok := <-synrequestPkg.GetSyncChan():
+			if !ok {
+				return nil, synrequestPkg.GetErr()
+			}
 			return response.NewResponse(routerPkg)
+		}
+	}
+}
+
+/**
+    @brief 发送tcaplus同步请求并接受响应
+	@param [IN] req tcaplus请求
+	@param [IN] ctx go协程的context
+    @retval []response.TcaplusResponse tcaplus响应
+    @retval error 错误码
+            error nil，response nil 成功但当前无响应消息
+            error nil, response 非nil，成功获取响应消息
+            error 非nil，response 非nil 接收部分回包正确，但是收到了错误包或者超时退出
+**/
+func (c *client) DoMoreWithContext(req request.TcaplusRequest, ctx context.Context) ([]response.TcaplusResponse, error) {
+	requestSeq := int32(atomic.AddUint32(&c.reqSeq, 1))
+	if requestSeq == 0 {
+		requestSeq = int32(atomic.AddUint32(&c.reqSeq, 1))
+	}
+	req.SetSeq(requestSeq)
+
+	var synrequestPkg router.SyncRequest
+	synrequestPkg.InitMoreChan(req, 1024)
+
+	if c.netServer.router.RequestChanMapAdd(&synrequestPkg) == -1 {
+		return nil, &terror.ErrorCode{Code: terror.RouterIsClosed}
+	}
+	defer c.netServer.router.RequestChanMapClean(&synrequestPkg)
+
+	var resp_list []response.TcaplusResponse
+	var idx int = 0
+	startTime := time.Now()
+	for {
+		select {
+		case <-ctx.Done():
+			synrequestPkg.IncTimeoutStatistic()
+			logger.ERR("requestSeq %d :%s, current pkg num %d, wait %s proxy:%s",
+				requestSeq, ctx.Err().Error(), idx, time.Now().Sub(startTime).String(), synrequestPkg.GetProxyUrl())
+			return resp_list, &terror.ErrorCode{Code: terror.TimeOut,
+				Message: ctx.Err().Error() + " proxy:" + synrequestPkg.GetProxyUrl()}
+		case routerPkg, ok := <-synrequestPkg.GetSyncChan():
+			if !ok {
+				return nil, synrequestPkg.GetErr()
+			}
+			resp, err := response.NewResponse(routerPkg)
+			idx += 1
+			if err == nil {
+				resp_list = append(resp_list, resp)
+				if 1 == resp.HaveMoreResPkgs() {
+					continue
+				} else {
+					return resp_list, nil
+				}
+			} else {
+				logger.ERR("requestSeq %d, current pkg num: %d,  %s", requestSeq, idx, err.Error())
+				return resp_list, err
+			}
 		}
 	}
 }
@@ -323,9 +463,15 @@ func (c *client) DoMore(req request.TcaplusRequest, timeout time.Duration) ([]re
 	for {
 		select {
 		case <-timer.C:
-			logger.ERR("requestSeq %d :%s, timeout, current pkg num %d", requestSeq, timeout.String(), idx)
-			return resp_list, &terror.ErrorCode{Code: terror.TimeOut, Message: timeout.String() + ", timeout"}
-		case routerPkg := <-synrequestPkg.GetSyncChan():
+			synrequestPkg.IncTimeoutStatistic()
+			logger.ERR("requestSeq %d :%s, timeout, current pkg num %d, proxy:%s",
+				requestSeq, timeout.String(), idx, synrequestPkg.GetProxyUrl())
+			return resp_list, &terror.ErrorCode{Code: terror.TimeOut,
+				Message: timeout.String() + ", timeout, proxy:" + synrequestPkg.GetProxyUrl()}
+		case routerPkg, ok := <-synrequestPkg.GetSyncChan():
+			if !ok {
+				return nil, synrequestPkg.GetErr()
+			}
 			resp, err := response.NewResponse(routerPkg)
 			idx += 1
 			if err == nil {
@@ -333,6 +479,69 @@ func (c *client) DoMore(req request.TcaplusRequest, timeout time.Duration) ([]re
 				if 1 == resp.HaveMoreResPkgs() {
 					continue
 				} else {
+					return resp_list, nil
+				}
+			} else {
+				logger.ERR("requestSeq %d, current pkg num: %d,  %s", requestSeq, idx, err.Error())
+				return resp_list, err
+			}
+		}
+	}
+}
+
+/**
+    @brief 发送tcaplus同步请求并接受响应
+	@param [IN] tra 遍历器
+	@param [IN] ctx go协程的context
+    @retval []response.TcaplusResponse tcaplus响应
+    @retval error 错误码
+            error nil，response nil 成功但当前无响应消息
+            error nil, response 非nil，成功获取响应消息
+            error 非nil，response 非nil 接收部分回包正确，但是收到了错误包或者超时退出
+**/
+func (c *client) DoTraverseWithContext(tra *traverser.Traverser, ctx context.Context) ([]response.TcaplusResponse, error) {
+	requestSeq := int32(atomic.AddUint32(&c.reqSeq, 1))
+	if requestSeq == 0 {
+		requestSeq = int32(atomic.AddUint32(&c.reqSeq, 1))
+	}
+	err := tra.SetSeq(requestSeq)
+	if err != nil {
+		return nil, err
+	}
+
+	var synrequestPkg router.SyncRequest
+	synrequestPkg.InitTraverseChan(requestSeq, 1024)
+	if c.netServer.router.RequestChanMapAdd(&synrequestPkg) == -1 {
+		return nil, &terror.ErrorCode{Code: terror.RouterIsClosed}
+	}
+	defer c.netServer.router.RequestChanMapClean(&synrequestPkg)
+
+	err = tra.Start()
+	if err != nil {
+		return nil, err
+	}
+
+	var resp_list []response.TcaplusResponse
+	var idx int = 0
+	startTime := time.Now()
+	for {
+		select {
+		case <-ctx.Done():
+			logger.ERR("requestSeq %d :%s, wait %s, current pkg num %d",
+				requestSeq, ctx.Err().Error(), time.Now().Sub(startTime).String(), idx)
+			return resp_list, &terror.ErrorCode{Code: terror.TimeOut, Message: ctx.Err().Error()}
+		case routerPkg, ok := <-synrequestPkg.GetSyncChan():
+			if !ok {
+				return nil, synrequestPkg.GetErr()
+			}
+			resp, err := response.NewResponse(routerPkg)
+			idx += 1
+			if err == nil {
+				resp_list = append(resp_list, resp)
+				if traverser.TraverseStateNormal == tra.State() {
+					continue
+				} else {
+					logger.INFO("traverse state is %d", tra.State())
 					return resp_list, nil
 				}
 			} else {
@@ -385,20 +594,19 @@ func (c *client) DoTraverse(tra *traverser.Traverser, timeout time.Duration) ([]
 		case <-timer.C:
 			logger.ERR("requestSeq %d :%s, timeout, current pkg num %d", requestSeq, timeout.String(), idx)
 			return resp_list, &terror.ErrorCode{Code: terror.TimeOut, Message: timeout.String() + ", timeout"}
-		case routerPkg := <-synrequestPkg.GetSyncChan():
+		case routerPkg, ok := <-synrequestPkg.GetSyncChan():
+			if !ok {
+				return nil, synrequestPkg.GetErr()
+			}
 			resp, err := response.NewResponse(routerPkg)
 			idx += 1
-			if err == nil {
-				resp_list = append(resp_list, resp)
-				if traverser.TraverseStateNormal == tra.State() {
-					continue
-				} else {
-					logger.INFO("traverse state is %d", tra.State())
-					return resp_list, nil
-				}
-			} else {
-				logger.ERR("requestSeq %d, current pkg num: %d,  %s", requestSeq, idx, err.Error())
+			if err != nil {
+				logger.ERR("requestSeq %d, current pkg num: %d, NewResponse err %s", requestSeq, idx, err.Error())
 				return resp_list, err
+			}
+			resp_list = append(resp_list, resp)
+			if resp.HaveMoreResPkgs() == 0 {
+				return resp_list, nil
 			}
 		}
 	}
@@ -411,7 +619,7 @@ func (c *client) DoTraverse(tra *traverser.Traverser, timeout time.Duration) ([]
     @retval *traverser.Traverser 遍历器，一个client最多分配8个遍历器，超过将会返回 nil
 **/
 func (c *client) GetTraverser(zoneId uint32, table string) *traverser.Traverser {
-	return c.tm.GetTraverser(zoneId, table)
+	return c.tm.GetTraverser(zoneId, table, c.isPB)
 }
 
 /**
@@ -421,7 +629,7 @@ func (c *client) GetTraverser(zoneId uint32, table string) *traverser.Traverser 
     @retval *traverser.Traverser 遍历器，一个client最多分配8个遍历器，超过将会返回 nil
 **/
 func (c *client) GetListTraverser(zoneId uint32, table string) *traverser.Traverser {
-	return c.tm.GetListTraverser(zoneId, table)
+	return c.tm.GetListTraverser(zoneId, table, c.isPB)
 }
 
 /*

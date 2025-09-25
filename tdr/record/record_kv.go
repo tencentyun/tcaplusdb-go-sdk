@@ -261,7 +261,7 @@ func (r *Record) setValue(name string, data interface{}) error {
 	case []byte:
 		if b, ok := data.([]byte); !ok {
 			logger.ERR("value type not []byte")
-			return &terror.ErrorCode{Code: terror.RecordKeyTypeInvalid}
+			return &terror.ErrorCode{Code: terror.RecordValueTypeInvalid}
 		} else {
 			value = b
 		}
@@ -270,14 +270,14 @@ func (r *Record) setValue(name string, data interface{}) error {
 		//+ "\0"
 		if str, ok := data.(string); !ok {
 			logger.ERR("value type not string")
-			return &terror.ErrorCode{Code: terror.RecordKeyTypeInvalid}
+			return &terror.ErrorCode{Code: terror.RecordValueTypeInvalid}
 		} else {
 			value = common.StringToCByte(str)
 		}
 		break
 	default:
 		logger.ERR("value type not support %v", t)
-		return &terror.ErrorCode{Code: terror.RecordKeyTypeInvalid}
+		return &terror.ErrorCode{Code: terror.RecordValueTypeInvalid}
 	}
 
 	if len(value) > int(tcaplus_protocol_cs.TCAPLUS_MAX_VALUE_ALL_FIELDS_LEN) {

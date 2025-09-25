@@ -41,6 +41,7 @@ type Record struct {
 	Condition         *string
 	Operation         *string
 	OperateOption     *int32
+	compactBuffer     *bytes.Buffer
 }
 
 //record缓存池

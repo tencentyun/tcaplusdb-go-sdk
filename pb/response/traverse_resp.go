@@ -107,7 +107,13 @@ func (res *traverseResponse) GetSeq() int32 {
 }
 
 func (res *traverseResponse) HaveMoreResPkgs() int {
-	return terror.API_ERR_OPERATION_TYPE_NOT_MATCH
+	if res.pkg == nil {
+		return 0
+	}
+	if res.pkg.Head.Flags == 0 {
+		return 0
+	}
+	return 1
 }
 
 func (res *traverseResponse) GetTotalNum() int {

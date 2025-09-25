@@ -6,6 +6,7 @@ import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/logger"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/cmd"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/option"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/record"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/request"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/response"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/terror"
@@ -59,7 +60,9 @@ func (c *PBClient) DoListSimple(msg proto.Message, index int32, apiCmd int, opt 
 	}
 
 	var res response.TcaplusResponse
-	if opt != nil && opt.Timeout > 0 {
+	if opt != nil && opt.Ctx != nil {
+		res, err = c.DoWithContext(req, opt.Ctx)
+	} else if opt != nil && opt.Timeout > 0 {
 		res, err = c.Do(req, opt.Timeout)
 	} else {
 		res, err = c.Do(req, c.defTimeout)
@@ -67,6 +70,10 @@ func (c *PBClient) DoListSimple(msg proto.Message, index int32, apiCmd int, opt 
 	if err != nil {
 		logger.ERR("Do request error:%s", err)
 		return index, err
+	}
+
+	if opt != nil {
+		opt.Version = res.GetSingleRecordVersion()
 	}
 
 	ret := res.GetResult()
@@ -77,7 +84,7 @@ func (c *PBClient) DoListSimple(msg proto.Message, index int32, apiCmd int, opt 
 	if res.GetRecordCount() > 0 {
 		record, err := res.FetchRecord()
 		if err != nil {
-			logger.ERR("FetchRecord error:%s", err)
+			logger.DEBUG("FetchRecord error:%s", err)
 			return index, err
 		}
 
@@ -87,7 +94,7 @@ func (c *PBClient) DoListSimple(msg proto.Message, index int32, apiCmd int, opt 
 		index = record.GetIndex()
 
 		if apiCmd != cmd.TcaplusApiListGetReq && !c.needGetData(opt) {
-			return index, nil
+			return index, err
 		}
 
 		err = record.GetPBData(msg)
@@ -97,6 +104,33 @@ func (c *PBClient) DoListSimple(msg proto.Message, index int32, apiCmd int, opt 
 		}
 	}
 	return index, err
+}
+func (c *PBClient) setRecOpt(rec *record.Record, opt *option.PBOpt) error {
+	if opt.Version > 0 {
+		rec.SetVersion(opt.Version)
+	}
+
+	if len(opt.Condition) > 0 {
+		if ret := rec.SetCondition(opt.Condition); ret != 0 {
+			logger.ERR("SetCondition error:%d", ret)
+			return &terror.ErrorCode{Code: ret, Message: "SetCondition failed, maybe not support or len too long"}
+		}
+	}
+
+	if len(opt.Operation) > 0 {
+		if ret := rec.SetOperation(opt.Operation, 0); ret != 0 {
+			logger.ERR("SetOperation error:%d", ret)
+			return &terror.ErrorCode{Code: ret, Message: "SetOperation failed, maybe not support or len too long"}
+		}
+	}
+
+	if opt.TTL != nil {
+		if ret := rec.SetTTL(opt.TTL.TTL, opt.TTL.IsAbsolute); ret != 0 {
+			logger.ERR("SetTTL error:%d", ret)
+			return &terror.ErrorCode{Code: ret, Message: "SetTTL failed, maybe cmd not support"}
+		}
+	}
+	return nil
 }
 
 func (c *PBClient) doSimple(msg proto.Message, apiCmd int, opt *option.PBOpt, zoneId uint32) error {
@@ -120,20 +154,10 @@ func (c *PBClient) doSimple(msg proto.Message, apiCmd int, opt *option.PBOpt, zo
 		return err
 	}
 
-	if opt != nil && opt.Version > 0 {
-		rec.SetVersion(opt.Version)
-	}
-
-	if opt != nil && len(opt.Condition) > 0 {
-		if ret := rec.SetCondition(opt.Condition); ret != 0 {
-			logger.ERR("SetCondition error:%d", ret)
-			return &terror.ErrorCode{Code: ret, Message: "SetCondition failed, maybe not support or len too long"}
-		}
-	}
-	if opt != nil && len(opt.Operation) > 0 {
-		if ret := rec.SetOperation(opt.Operation, 0); ret != 0 {
-			logger.ERR("SetOperation error:%d", ret)
-			return &terror.ErrorCode{Code: ret, Message: "SetOperation failed, maybe not support or len too long"}
+	if opt != nil {
+		if err = c.setRecOpt(rec, opt); err != nil {
+			logger.ERR("setReqOpt error:%s", err)
+			return err
 		}
 	}
 
@@ -144,7 +168,9 @@ func (c *PBClient) doSimple(msg proto.Message, apiCmd int, opt *option.PBOpt, zo
 	}
 
 	var res response.TcaplusResponse
-	if opt != nil && opt.Timeout > 0 {
+	if opt != nil && opt.Ctx != nil {
+		res, err = c.DoWithContext(req, opt.Ctx)
+	} else if opt != nil && opt.Timeout > 0 {
 		res, err = c.Do(req, opt.Timeout)
 	} else {
 		res, err = c.Do(req, c.defTimeout)
@@ -158,11 +184,14 @@ func (c *PBClient) doSimple(msg proto.Message, apiCmd int, opt *option.PBOpt, zo
 	if ret != 0 {
 		err = &terror.ErrorCode{Code: ret}
 	}
+	if opt != nil {
+		opt.Version = res.GetSingleRecordVersion()
+	}
 
 	if res.GetRecordCount() > 0 {
 		record, err := res.FetchRecord()
 		if err != nil {
-			logger.ERR("FetchRecord error:%s", err)
+			logger.DEBUG("FetchRecord error:%s", err)
 			return err
 		}
 
@@ -171,7 +200,7 @@ func (c *PBClient) doSimple(msg proto.Message, apiCmd int, opt *option.PBOpt, zo
 		}
 
 		if apiCmd != cmd.TcaplusApiGetReq && !c.needGetData(opt) {
-			return nil
+			return err
 		}
 
 		err = record.GetPBData(msg)
@@ -228,7 +257,9 @@ func (c *PBClient) doField(msg proto.Message, apiCmd int, opt *option.PBOpt, zon
 	}
 
 	var res response.TcaplusResponse
-	if opt.Timeout > 0 {
+	if opt.Ctx != nil {
+		res, err = c.DoWithContext(req, opt.Ctx)
+	} else if opt.Timeout > 0 {
 		res, err = c.Do(req, opt.Timeout)
 	} else {
 		res, err = c.Do(req, c.defTimeout)
@@ -242,11 +273,14 @@ func (c *PBClient) doField(msg proto.Message, apiCmd int, opt *option.PBOpt, zon
 	if ret != 0 {
 		return &terror.ErrorCode{Code: ret}
 	}
+	if opt != nil {
+		opt.Version = res.GetSingleRecordVersion()
+	}
 
 	if res.GetRecordCount() > 0 {
 		record, err := res.FetchRecord()
 		if err != nil {
-			logger.ERR("FetchRecord error:%s", err)
+			logger.DEBUG("FetchRecord error:%s", err)
 			return err
 		}
 		err = record.GetPBFieldValues(msg)
@@ -295,14 +329,7 @@ func (c *PBClient) setReqOpt(req request.TcaplusRequest, opt *option.PBOpt) erro
 		}
 	}
 
-	if opt.ListShiftFlag != 0 {
-		ret := req.SetListShiftFlag(opt.ListShiftFlag)
-		if ret != 0 {
-			err = &terror.ErrorCode{Code: int(ret)}
-			logger.ERR("SetListShiftFlag error:%s", err)
-			return err
-		}
-	}
+	req.SetListShiftFlag(opt.ListShiftFlag)
 
 	if opt.Flags != 0 {
 		ret := req.SetFlags(opt.Flags)
@@ -355,14 +382,7 @@ func (c *PBClient) setBatchReqOpt(req request.TcaplusRequest, opt *option.PBOpt)
 		}
 	}
 
-	if opt.ListShiftFlag != 0 {
-		ret := req.SetListShiftFlag(opt.ListShiftFlag)
-		if ret != 0 {
-			err = &terror.ErrorCode{Code: int(ret)}
-			logger.ERR("SetListShiftFlag error:%s", err)
-			return err
-		}
-	}
+	req.SetListShiftFlag(opt.ListShiftFlag)
 
 	if opt.Flags != 0 {
 		ret := req.SetFlags(opt.Flags)
@@ -379,6 +399,10 @@ func (c *PBClient) setBatchReqOpt(req request.TcaplusRequest, opt *option.PBOpt)
 
 	if opt.Limit != 0 || opt.Offset != 0 {
 		req.SetResultLimit(opt.Limit, opt.Offset)
+	}
+
+	if len(opt.FieldNames) > 0 {
+		req.SetFieldNames(opt.FieldNames)
 	}
 	return nil
 }
@@ -430,6 +454,9 @@ func (c *PBClient) doListBatch(msg proto.Message, indexs []int32,
 			logger.ERR("setReqOpt error:%s", err)
 			return nil, err
 		}
+		if opt.Version > 0 {
+			rec.SetVersion(opt.Version)
+		}
 	}
 
 	tmpIdxMap := map[int32]struct{}{}
@@ -443,7 +470,9 @@ func (c *PBClient) doListBatch(msg proto.Message, indexs []int32,
 	}
 
 	var resps []response.TcaplusResponse
-	if opt != nil && opt.Timeout > 0 {
+	if opt != nil && opt.Ctx != nil {
+		resps, err = c.DoMoreWithContext(req, opt.Ctx)
+	} else if opt != nil && opt.Timeout > 0 {
 		resps, err = c.DoMore(req, opt.Timeout)
 	} else {
 		resps, err = c.DoMore(req, c.defTimeout)
@@ -457,10 +486,13 @@ func (c *PBClient) doListBatch(msg proto.Message, indexs []int32,
 	var globalErr error
 	offset := 0
 	for _, res := range resps {
+		if opt != nil {
+			opt.Version = res.GetSingleRecordVersion()
+		}
 		ret := res.GetResult()
 		if ret != 0 {
 			globalErr = &terror.ErrorCode{Code: ret}
-			logger.ERR("result is %d, error:%s", ret, terror.GetErrMsg(ret))
+			logger.DEBUG("result is %d, error:%s", ret, terror.GetErrMsg(ret))
 			continue
 		}
 
@@ -471,7 +503,7 @@ func (c *PBClient) doListBatch(msg proto.Message, indexs []int32,
 			}
 			if err != nil {
 				globalErr = err
-				logger.ERR("FetchRecord error:%s", err)
+				logger.DEBUG("FetchRecord error:%s", err)
 				offset++
 				continue
 			}
@@ -493,6 +525,103 @@ func (c *PBClient) doListBatch(msg proto.Message, indexs []int32,
 	}
 
 	return msgs, globalErr
+}
+
+func (c *PBClient) doListGetAll(msg proto.Message,
+	apiCmd int, opt *option.PBOpt, zoneId uint32) ([]int32, []proto.Message, error) {
+
+	table := msg.ProtoReflect().Descriptor().Name()
+	req, err := c.NewRequest(zoneId, string(table), apiCmd)
+	if err != nil {
+		logger.ERR("NewRequest error:%s", err)
+		return nil, nil, err
+	}
+
+	rec, err := req.AddRecord(0)
+	if err != nil {
+		logger.ERR("AddRecord error:%s", err)
+		return nil, nil, err
+	}
+
+	if opt != nil && len(opt.Condition) > 0 {
+		if ret := rec.SetCondition(opt.Condition); ret != 0 {
+			logger.ERR("SetCondition error:%d", ret)
+			return nil, nil, &terror.ErrorCode{Code: ret, Message: "SetCondition failed, maybe not support or len too long"}
+		}
+	}
+	if opt != nil && len(opt.Operation) > 0 {
+		if ret := rec.SetOperation(opt.Operation, 0); ret != 0 {
+			logger.ERR("SetOperation error:%d", ret)
+			return nil, nil, &terror.ErrorCode{Code: ret, Message: "SetOperation failed, maybe not support or len too long"}
+		}
+	}
+
+	_, err = rec.SetPBData(msg)
+	if err != nil {
+		logger.ERR("SetPBData error:%s", err)
+		return nil, nil, err
+	}
+
+	if opt != nil {
+		err = c.setBatchReqOpt(req, opt)
+		if err != nil {
+			logger.ERR("setReqOpt error:%s", err)
+			return nil, nil, err
+		}
+	}
+
+	var resps []response.TcaplusResponse
+	if opt != nil && opt.Ctx != nil {
+		resps, err = c.DoMoreWithContext(req, opt.Ctx)
+	} else if opt != nil && opt.Timeout > 0 {
+		resps, err = c.DoMore(req, opt.Timeout)
+	} else {
+		resps, err = c.DoMore(req, c.defTimeout)
+	}
+	if err != nil {
+		logger.ERR("Do request error:%s", err)
+		return nil, nil, err
+	}
+
+	var msgs []proto.Message
+	var indexs []int32
+	var globalErr error
+	for _, res := range resps {
+		if opt != nil {
+			opt.Version = res.GetSingleRecordVersion()
+		}
+		ret := res.GetResult()
+		if ret != 0 {
+			globalErr = &terror.ErrorCode{Code: ret}
+			logger.DEBUG("result is %d, error:%s", ret, terror.GetErrMsg(ret))
+			continue
+		}
+		if opt != nil {
+			opt.RecordMatchCount = int32(res.GetRecordMatchCount())
+		}
+
+		for i := 0; i < res.GetRecordCount(); i++ {
+			record, err := res.FetchRecord()
+			if err != nil {
+				globalErr = err
+				logger.DEBUG("FetchRecord error:%s", err)
+				continue
+			}
+			err = record.GetPBData(msg)
+			if err != nil {
+				globalErr = err
+				logger.ERR("GetPBData error:%s", err)
+				continue
+			}
+			indexs = append(indexs, record.GetIndex())
+			msgs = append(msgs, proto.Clone(msg))
+			if opt != nil {
+				opt.Version = record.GetVersion()
+			}
+		}
+	}
+
+	return indexs, msgs, globalErr
 }
 
 func (c *PBClient) doListBatchRecord(msgs []proto.Message, indexs []int32,
@@ -563,7 +692,9 @@ func (c *PBClient) doListBatchRecord(msgs []proto.Message, indexs []int32,
 	}
 
 	var resps []response.TcaplusResponse
-	if opt != nil && opt.Timeout > 0 {
+	if opt != nil && opt.Ctx != nil {
+		resps, err = c.DoMoreWithContext(req, opt.Ctx)
+	} else if opt != nil && opt.Timeout > 0 {
 		resps, err = c.DoMore(req, opt.Timeout)
 	} else {
 		resps, err = c.DoMore(req, c.defTimeout)
@@ -576,10 +707,13 @@ func (c *PBClient) doListBatchRecord(msgs []proto.Message, indexs []int32,
 	var globalErr error
 	offset := 0
 	for _, res := range resps {
+		if opt != nil {
+			opt.Version = res.GetSingleRecordVersion()
+		}
 		ret := res.GetResult()
 		if ret != 0 {
 			globalErr = &terror.ErrorCode{Code: ret}
-			logger.ERR("result is %d, error:%s", ret, terror.GetErrMsg(ret))
+			logger.DEBUG("result is %d, error:%s", ret, terror.GetErrMsg(ret))
 			continue
 		}
 
@@ -590,7 +724,7 @@ func (c *PBClient) doListBatchRecord(msgs []proto.Message, indexs []int32,
 			}
 			if err != nil {
 				globalErr = err
-				logger.ERR("FetchRecord error:%s", err)
+				logger.DEBUG("FetchRecord error:%s", err)
 				offset++
 				continue
 			}
@@ -708,7 +842,9 @@ func (c *PBClient) doBatch(msgs []proto.Message, apiCmd int, opt *option.PBOpt, 
 		msgMap[string(key)] = i
 	}
 	var resps []response.TcaplusResponse
-	if opt != nil && opt.Timeout > 0 {
+	if opt != nil && opt.Ctx != nil {
+		resps, err = c.DoMoreWithContext(req, opt.Ctx)
+	} else if opt != nil && opt.Timeout > 0 {
 		resps, err = c.DoMore(req, opt.Timeout)
 	} else {
 		resps, err = c.DoMore(req, c.defTimeout)
@@ -723,7 +859,7 @@ func (c *PBClient) doBatch(msgs []proto.Message, apiCmd int, opt *option.PBOpt, 
 		ret := res.GetResult()
 		if ret != 0 {
 			globalErr = &terror.ErrorCode{Code: ret}
-			logger.ERR("result is %d, error:%s", ret, terror.GetErrMsg(ret))
+			logger.DEBUG("result is %d, error:%s", ret, terror.GetErrMsg(ret))
 			continue
 		}
 
@@ -732,7 +868,6 @@ func (c *PBClient) doBatch(msgs []proto.Message, apiCmd int, opt *option.PBOpt, 
 			if recErr != nil {
 				globalErr = recErr
 				logger.DEBUG("FetchRecord error:%s", recErr)
-				continue
 			}
 
 			if record == nil {
@@ -837,7 +972,9 @@ func (c *PBClient) doPartKey(msg proto.Message, keys []string, apiCmd int, opt *
 	}
 
 	var resps []response.TcaplusResponse
-	if opt != nil && opt.Timeout > 0 {
+	if opt != nil && opt.Ctx != nil {
+		resps, err = c.DoMoreWithContext(req, opt.Ctx)
+	} else if opt != nil && opt.Timeout > 0 {
 		resps, err = c.DoMore(req, opt.Timeout)
 	} else {
 		resps, err = c.DoMore(req, c.defTimeout)
@@ -853,15 +990,18 @@ func (c *PBClient) doPartKey(msg proto.Message, keys []string, apiCmd int, opt *
 		ret := res.GetResult()
 		if ret != 0 {
 			globalErr = &terror.ErrorCode{Code: ret}
-			logger.ERR("result is %d, error:%s", ret, terror.GetErrMsg(ret))
+			logger.DEBUG("result is %d, error:%s", ret, terror.GetErrMsg(ret))
 			continue
+		}
+		if opt != nil {
+			opt.RecordMatchCount = int32(res.GetRecordMatchCount())
 		}
 
 		for i := 0; i < res.GetRecordCount(); i++ {
 			record, err := res.FetchRecord()
 			if err != nil {
 				globalErr = err
-				logger.ERR("FetchRecord error:%s", err)
+				logger.DEBUG("FetchRecord error:%s", err)
 				continue
 			}
 
@@ -1182,7 +1322,7 @@ func (c *PBClient) DoListDeleteBatch(msg proto.Message, indexs []int32, opt *opt
 }
 
 /**
-    @brief list表查询key下所有记录
+    @brief list表查询key下所有记录,由于返回的元素用了map导致元素是无序的，可以使用DoListGetAllV2按顺序返回
     @param [IN] msg proto.Message 由proto文件生成的记录结构体
 	@param [IN/OUT] opt 可选参数，乐观锁，flag等，若有记录返回，会更新opt中的version为记录的version
 	@param [IN] zoneId 可选参数，不设置则取默认zone，默认zone可通过client.SetDefaultZoneId设置
@@ -1194,6 +1334,21 @@ func (c *PBClient) DoListGetAll(msg proto.Message, opt *option.PBOpt, zoneId ...
 		return c.doListBatch(msg, nil, cmd.TcaplusApiListGetAllReq, opt, zoneId[0])
 	}
 	return c.doListBatch(msg, nil, cmd.TcaplusApiListGetAllReq, opt, uint32(c.defZone))
+}
+
+/**
+    @brief list表查询key下所有记录, 按list顺序返回
+    @param [IN] msg proto.Message 由proto文件生成的记录结构体
+	@param [IN/OUT] opt 可选参数，乐观锁，flag等，若有记录返回，会更新opt中的version为记录的version
+	@param [IN] zoneId 可选参数，不设置则取默认zone，默认zone可通过client.SetDefaultZoneId设置
+    @retval error 错误码
+**/
+func (c *PBClient) DoListGetAllV2(msg proto.Message, opt *option.PBOpt, zoneId ...uint32) ([]int32, []proto.Message,
+	error) {
+	if len(zoneId) == 1 {
+		return c.doListGetAll(msg, cmd.TcaplusApiListGetAllReq, opt, zoneId[0])
+	}
+	return c.doListGetAll(msg, cmd.TcaplusApiListGetAllReq, opt, uint32(c.defZone))
 }
 
 /**
@@ -1282,7 +1437,9 @@ func (c *PBClient) DoSetTTLBatch(msgs []proto.Message, indexs []int32, opt *opti
 		msgMap[keyStr] = i
 	}
 	var resps []response.TcaplusResponse
-	if opt.Timeout > 0 {
+	if opt.Ctx != nil {
+		resps, err = c.DoMoreWithContext(req, opt.Ctx)
+	} else if opt.Timeout > 0 {
 		resps, err = c.DoMore(req, opt.Timeout)
 	} else {
 		resps, err = c.DoMore(req, c.defTimeout)
@@ -1297,7 +1454,7 @@ func (c *PBClient) DoSetTTLBatch(msgs []proto.Message, indexs []int32, opt *opti
 		ret := res.GetResult()
 		if ret != 0 {
 			globalErr = &terror.ErrorCode{Code: ret}
-			logger.ERR("result is %d, error:%s", ret, terror.GetErrMsg(ret))
+			logger.DEBUG("result is %d, error:%s", ret, terror.GetErrMsg(ret))
 			continue
 		}
 
@@ -1417,7 +1574,9 @@ func (c *PBClient) DoGetTTLBatch(msgs []proto.Message, indexs []int32, opt *opti
 		msgMap[keyStr] = i
 	}
 	var resps []response.TcaplusResponse
-	if opt.Timeout > 0 {
+	if opt.Ctx != nil {
+		resps, err = c.DoMoreWithContext(req, opt.Ctx)
+	} else if opt.Timeout > 0 {
 		resps, err = c.DoMore(req, opt.Timeout)
 	} else {
 		resps, err = c.DoMore(req, c.defTimeout)
@@ -1432,7 +1591,7 @@ func (c *PBClient) DoGetTTLBatch(msgs []proto.Message, indexs []int32, opt *opti
 		ret := res.GetResult()
 		if ret != 0 {
 			globalErr = &terror.ErrorCode{Code: ret}
-			logger.ERR("result is %d, error:%s", ret, terror.GetErrMsg(ret))
+			logger.DEBUG("result is %d, error:%s", ret, terror.GetErrMsg(ret))
 			continue
 		}
 
@@ -1589,4 +1748,164 @@ func (c *PBClient) DoListReplaceBatch(msgs []proto.Message, indexs []int32, opt 
 		return c.doListBatchRecord(msgs, indexs, cmd.TcaplusApiListReplaceBatchReq, opt, zoneId[0])
 	}
 	return c.doListBatchRecord(msgs, indexs, cmd.TcaplusApiListReplaceBatchReq, opt, uint32(c.defZone))
+}
+
+/**
+    @brief 批量获取部分value,字段通过opt.FieldNames设置
+	@param [IN/OUT] msg proto.Message 由proto文件生成的记录结构体, 若有记录返回会更新为返回的记录
+	@param [IN/OUT] opt 可选参数，乐观锁，flag等，若有记录返回，会更新opt中的version为记录的version
+	@param [IN] zoneId 可选参数，不设置则取默认zone，默认zone可通过client.SetDefaultZoneId设置
+    @retval error 错误码
+**/
+func (c *PBClient) DoBatchFieldGet(msgs []proto.Message, opt *option.PBOpt,
+	zoneId ...uint32) error {
+	if opt == nil {
+		return &terror.ErrorCode{Code: terror.ParameterInvalid, Message: "opt is nil"}
+	}
+
+	if len(opt.FieldNames) == 0 {
+		return &terror.ErrorCode{Code: terror.ParameterInvalid, Message: "opt.FieldNames is empty"}
+	}
+
+	zone := uint32(c.defZone)
+	if len(zoneId) == 1 {
+		zone = zoneId[0]
+	}
+
+	if len(msgs) == 0 {
+		logger.ERR("messages is nil")
+		return &terror.ErrorCode{Code: terror.ParameterInvalid, Message: "messages is nil"}
+	}
+
+	table := msgs[0].ProtoReflect().Descriptor().Name()
+	req, err := c.NewRequest(zone, string(table), cmd.TcaplusApiPBBatchFieldGetReq)
+	if err != nil {
+		logger.ERR("NewRequest error:%s", err)
+		return err
+	}
+
+	opt.BatchVersion = make([]int32, len(msgs), len(msgs))
+	opt.BatchResult = make([]error, len(msgs), len(msgs))
+	err = c.setBatchReqOpt(req, opt)
+	if err != nil {
+		logger.ERR("setReqOpt error:%s", err)
+		return err
+	}
+
+	msgMap := make(map[string]int, len(msgs))
+	for i, msg := range msgs {
+		rec, err := req.AddRecord(0)
+		if err != nil {
+			logger.ERR("AddRecord error:%s", err)
+			return err
+		}
+
+		key, err := rec.SetPBFieldValues(msg, opt.FieldNames)
+		if err != nil {
+			logger.ERR("SetPBFieldValues error:%s", err)
+			return err
+		}
+
+		if opt != nil && len(opt.Condition) > 0 {
+			if ret := rec.SetCondition(opt.Condition); ret != 0 {
+				logger.ERR("SetCondition error:%d", ret)
+				return &terror.ErrorCode{Code: ret, Message: "SetCondition failed, maybe not support or len too long"}
+			}
+		}
+		if opt != nil && len(opt.Operation) > 0 {
+			if ret := rec.SetOperation(opt.Operation, 0); ret != 0 {
+				logger.ERR("SetOperation error:%d", ret)
+				return &terror.ErrorCode{Code: ret, Message: "SetOperation failed, maybe not support or len too long"}
+			}
+		}
+
+		if _, exist := msgMap[string(key)]; exist {
+			logger.ERR("batch record exist duplicate key")
+			return &terror.ErrorCode{Code: terror.ParameterInvalid, Message: "batch record exist duplicate key"}
+		}
+		msgMap[string(key)] = i
+	}
+	var resps []response.TcaplusResponse
+	if opt != nil && opt.Ctx != nil {
+		resps, err = c.DoMoreWithContext(req, opt.Ctx)
+	} else if opt != nil && opt.Timeout > 0 {
+		resps, err = c.DoMore(req, opt.Timeout)
+	} else {
+		resps, err = c.DoMore(req, c.defTimeout)
+	}
+	if err != nil {
+		logger.ERR("DoMore request error:%s", err)
+		return err
+	}
+
+	var globalErr error
+	for _, res := range resps {
+		ret := res.GetResult()
+		if ret != 0 {
+			globalErr = &terror.ErrorCode{Code: ret}
+			logger.DEBUG("result is %d, error:%s", ret, terror.GetErrMsg(ret))
+			continue
+		}
+
+		for i := 0; i < res.GetRecordCount(); i++ {
+			record, recErr := res.FetchRecord()
+			if recErr != nil {
+				globalErr = recErr
+				logger.DEBUG("FetchRecord error:%s", recErr)
+			}
+
+			if record == nil {
+				continue
+			}
+
+			key, err := record.GetPBKey(nil)
+			if err != nil {
+				globalErr = err
+				logger.ERR("GetPBKey error:%s", err)
+				continue
+			}
+
+			keyStr := string(key)
+			index, exist := msgMap[keyStr]
+			if !exist {
+				globalErr = &terror.ErrorCode{Code: terror.RespNotMatchReq}
+				logger.ERR("response message is diff request")
+				continue
+			}
+			if opt != nil {
+				opt.BatchResult[index] = recErr
+			}
+			delete(msgMap, keyStr)
+			if recErr != nil {
+				continue
+			}
+
+			if opt != nil {
+				opt.BatchVersion[index] = record.GetVersion()
+			}
+
+			err = record.GetPBFieldValues(msgs[index])
+			if err != nil {
+				globalErr = err
+				logger.ERR("GetPBData key %s error:%s", keyStr, err)
+				continue
+			}
+		}
+	}
+
+	//msgMap not nil
+	if len(msgMap) != 0 && globalErr == nil {
+		globalErr = &terror.ErrorCode{Code: terror.NoRspWithTheKeyReq,
+			Message: "no rsp with key"}
+	}
+
+	for key, index := range msgMap {
+		logger.ERR("key %s offset %d not rsp", key, index)
+		if opt != nil {
+			opt.BatchResult[index] = globalErr
+			opt.BatchVersion[index] = -1
+		}
+	}
+
+	return globalErr
 }

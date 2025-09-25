@@ -136,6 +136,7 @@ func TestBatchReplaceVersionFail(t *testing.T) {
 		}
 	}
 }
+
 //case1 BatchReplace success
 func TestBatchReplaceSuccess_1024(t *testing.T) {
 	client, err := tools.InitClient()
@@ -166,7 +167,7 @@ func TestBatchReplaceSuccess_1024(t *testing.T) {
 	opt := &option.TDROpt{
 		ResultFlagForSuccess: option.TcaplusResultFlagAllOldValue,
 		VersionPolicy:        option.CheckDataVersionAutoIncrease,
-		MultiFlag: 1,
+		MultiFlag:            1,
 	}
 
 	for _, data := range dataSlice {

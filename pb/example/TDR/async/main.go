@@ -23,6 +23,11 @@ func main() {
 		fmt.Println(err.Error())
 		return
 	}
+
+	// 在dial之前，设置client可选参数
+	//clientOpt := config.NewDefaultClientOption()
+	//clientOpt.SubscribeOption.ReSubscribeIntervalTime = 100 * time.Millisecond
+	//client.SetOpt(clientOpt)
 	//client连接tcaplus
 	err := client.Dial(AppId, []uint32{ZoneId}, DirUrl, Signature, 60)
 	if err != nil {

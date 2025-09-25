@@ -20,7 +20,7 @@ func ListGetAllExample() {
 	opt := &option.PBOpt{
 		MultiFlag: 1,
 	}
-	rspMsgs, err := client.DoListGetAll(msg, opt)
+	idx, rspMsgs, err := client.DoListGetAllV2(msg, opt)
 	if err != nil {
 		logger.ERR("DoListGetAll error:%s", err)
 		return
@@ -30,7 +30,7 @@ func ListGetAllExample() {
 	for i, msg := range rspMsgs {
 		fmt.Println(tools.ConvertToJson(msg))
 		//list index
-		fmt.Println(i)
+		fmt.Println(idx[i])
 	}
 	fmt.Println("listgetall success")
 }

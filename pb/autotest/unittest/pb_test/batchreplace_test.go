@@ -135,6 +135,7 @@ func TestBatchReplaceVersionFail(t *testing.T) {
 		}
 	}
 }
+
 //case1 replace result + version success
 func TestBatchReplaceSuccess_1024(t *testing.T) {
 	client := tools.InitPBSyncClient()
@@ -211,6 +212,7 @@ func TestBatchReplaceSuccess_1024(t *testing.T) {
 		}
 	}
 }
+
 //case1 replace result + version success
 func TestBatchReplaceSuccess_1025(t *testing.T) {
 	client := tools.InitPBSyncClient()
@@ -228,7 +230,7 @@ func TestBatchReplaceSuccess_1025(t *testing.T) {
 	}
 
 	err := client.DoBatchInsert(msgs, nil)
-	if !strings.Contains(err.Error(),"-4126"){
+	if !strings.Contains(err.Error(), "-4126") {
 		t.Errorf("DoBatchInsert fail, %s", err.Error())
 		return
 	}
@@ -245,12 +247,13 @@ func TestBatchReplaceSuccess_1025(t *testing.T) {
 	}
 
 	err = client.DoBatchReplace(msgs, opt)
-	if !strings.Contains(err.Error(),"-4126") {
+	if !strings.Contains(err.Error(), "-4126") {
 		t.Errorf("DoBatchReplace fail, %s", err.Error())
 		return
 	}
 
 }
+
 //记录不存在，batch replace 1条记录
 //case1 replace result + version success
 func TestBatchReplaceSuccess_1_Rocord_NonExist(t *testing.T) {
@@ -279,7 +282,7 @@ func TestBatchReplaceSuccess_1_Rocord_NonExist(t *testing.T) {
 	fmt.Println(opt.BatchResult)
 	fmt.Println(opt.BatchVersion)
 	for i, msg := range msgs {
-		if msg.(*tcaplusservice.GamePlayers).Pay.Amount != uint64(i){
+		if msg.(*tcaplusservice.GamePlayers).Pay.Amount != uint64(i) {
 			t.Errorf("DoBatchReplace fail, %+v", msg)
 			return
 		}
@@ -305,7 +308,7 @@ func TestBatchReplaceSuccess_1_Rocord_NonExist(t *testing.T) {
 	fmt.Println(opt.BatchResult)
 	fmt.Println(opt.BatchVersion)
 	for i, msg := range msgs2 {
-		if msg.(*tcaplusservice.GamePlayers).Pay.Amount != uint64(i){
+		if msg.(*tcaplusservice.GamePlayers).Pay.Amount != uint64(i) {
 			t.Errorf("DoBatchGet fail, %+v", msg)
 			return
 		}

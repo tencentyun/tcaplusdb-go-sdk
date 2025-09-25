@@ -11,8 +11,8 @@ const (
 	MINOR       = 55
 	REV         = 0
 	GitBranch   = "TcaplusGoApi3.55.0"
-	GitCommitId = "v0.6.7"                       //每次tag，必须更新
-	Version     = "3.55.0.000006.GoApi_20230407" //每次tag，必须更新版本和时间
+	GitCommitId = "v0.6.30"                      //每次tag，必须更新
+	Version     = "3.55.0.000029.GoApi_20250922" //每次tag，必须更新版本和时间
 )
 
 func GetModuleName() string {

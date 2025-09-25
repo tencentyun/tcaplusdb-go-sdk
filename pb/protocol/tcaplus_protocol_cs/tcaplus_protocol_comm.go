@@ -98,6 +98,12 @@ const NON_INCREASE_FLAG int64 = 0
 // 自增字段
 const INCREASE_FLAG int64 = 1
 
+// SQL使用的字段
+const SQL_USING_FLAG int64 = 2
+
+// SDK使用的系统字段
+const SYSTEM_USING_FLAG int64 = 3
+
 // 增加白名单中的IP操作
 const ADD_IPS int64 = 0
 

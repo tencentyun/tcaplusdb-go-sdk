@@ -39,14 +39,15 @@ func newListReplaceBatchRequest(appId uint64, zoneId uint32, tableName string, c
 	pkg.Body.ListReplaceBatchReq.CheckVersiontType = 1
 
 	req := &listReplaceBatchRequest{
-		appId:     appId,
-		zoneId:    zoneId,
-		tableName: tableName,
-		cmd:       cmd,
-		seq:       seq,
-		record:    nil,
-		pkg:       pkg,
-		isPB:      isPB,
+		appId:        appId,
+		zoneId:       zoneId,
+		tableName:    tableName,
+		cmd:          cmd,
+		seq:          seq,
+		record:       nil,
+		pkg:          pkg,
+		valueNameMap: make(map[string]bool),
+		isPB:         isPB,
 	}
 	return req, nil
 }

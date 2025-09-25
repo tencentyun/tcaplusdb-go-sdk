@@ -124,12 +124,12 @@ func NewConn(url string, timeout time.Duration,
 			PkgMemorySize = 1 * 1024 * 1024 //小内存块大小默认1MB
 		}
 	}
+	cn.Add(1)
 	go cn.connect()
 	return cn, nil
 }
 
 func (c *Conn) connect() {
-	c.Add(1)
 	defer c.Done()
 	addr := c.ip + ":" + c.port
 	Conn, err := net.DialTimeout(c.network, addr, c.timeout)
@@ -143,7 +143,9 @@ func (c *Conn) connect() {
 	c.rd = nil
 	c.wr = bufio.NewWriterSize(Conn, c.wrSize)
 	atomic.StoreInt32(&c.stat, Connected)
+	c.Add(1)
 	go c.recvRoutine()
+	c.Add(1)
 	go c.SendRoutine()
 }
 
@@ -173,7 +175,6 @@ func (c *Conn) Send(buf []byte) error {
 }
 
 func (c *Conn) SendRoutine() {
-	c.Add(1)
 	defer c.Done()
 
 	proc := func(buf *Buf) {
@@ -224,7 +225,6 @@ func (c *Conn) Close() {
 	接口调用点：从网络中读，切分出请求，对象池操作
 */
 func (c *Conn) recvRoutine() {
-	c.Add(1)
 	defer c.Done()
 	for {
 		select {
@@ -242,22 +242,21 @@ func (c *Conn) recvRoutine() {
 				// 满了需要重新申请一段buffer，并将这次未处理完的buffer拷贝
 				c.rd = GetPKGMemory(c.rd)
 			}
-			// 读取网络报文
+			// 读取网络报文,每秒都有心跳，如果长时间读不到数据，置为异常
+			c.netConn.SetReadDeadline(time.Now().Add(c.timeout))
 			n, err := c.rd.ReadFromNetConn(c.netConn)
 			if err != nil {
 				atomic.StoreInt32(&c.stat, ReadErr)
 				if err == io.EOF {
 					log.INFO("read close:%s, %s", err.Error(), c.url)
 				} else {
-					log.WARN("read err:%s, %s", err.Error(), c.url)
+					log.INFO("maybe svr closed, read info:%s, %s", err.Error(), c.url)
 				}
 				return
 			}
 
 			if n > 0 {
 				c.procRecvPkg()
-			} else {
-				//TODO长时间无包释放c.rd,释放内存
 			}
 		}
 	}

@@ -128,6 +128,7 @@ func TestListGetBatchFailed(t *testing.T) {
 	}
 
 }
+
 // 全部索引存在, batch get部分记录成功, 前几条记录
 func TestListGetBatchPartSuccess(t *testing.T) {
 	client := tools.InitPBSyncClient()
@@ -186,6 +187,7 @@ func TestListGetBatchPartSuccess(t *testing.T) {
 		}
 	}
 }
+
 // 全部索引存在, batch get部分记录成功, 后几条记录
 func TestListGetBatchPartSuccess_01(t *testing.T) {
 	client := tools.InitPBSyncClient()

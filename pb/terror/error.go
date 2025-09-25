@@ -41,6 +41,7 @@ var (
 	TimeOut                = -0x0000221e /*-8734*/
 	RequestHasHasNoPkg     = -0x0000231e /*-8990*/
 	NoRspWithTheKeyReq     = -0x0000241e /*-8990*/
+	SubscribeChannelClosed = -0x0000251e /*-8990*/
 
 	/*****************************************************************************************
 	 **********************************C版本错误码*********************************************
@@ -674,6 +675,7 @@ var ErrorCodes = map[int]string{
 	SendRequestFail:        "请求发送失败",
 	TimeOut:                "请求超时",
 	NoRspWithTheKeyReq:     "batch请求对应的key没有响应",
+	SubscribeChannelClosed: "订阅通道已关闭",
 
 	/*****************************************************************************************
 	*****************************************C版本错误码*********************************************
@@ -1270,6 +1272,66 @@ var ErrorCodes = map[int]string{
 	COMMON_INFO_DATA_NOT_MODIFIED: "TCAPLUS_FLAG_FETCH_ONLY_IF_MODIFIED flag set and version equals: return early without real data",
 }
 
+var WarnningCodes = map[int]bool{
+	SVR_ERR_FAIL_INVALID_INDEX:                 true,
+	SVR_ERR_FAIL_INVALID_FIELD_TYPE:            true,
+	SVR_ERR_FAIL_INVALID_SUBSCRIPT:             true,
+	SVR_ERR_FAIL_INVALID_OPERATION:             true,
+	SVR_ERR_FAIL_INVALID_RESULT_FLAG:           true,
+	SVR_ERR_FAIL_INVALID_VERSION:               true,
+	SVR_ERR_FAIL_INVALID_FIELD_VALUE:           true,
+	SVR_ERR_FAIL_RECORD_EXIST:                  true,
+	SVR_ERR_FAIL_INVALID_FIELD_NAME:            true,
+	SVR_ERR_FAIL_OVER_MAXE_FIELD_NUM:           true,
+	SVR_ERR_FAIL_MISS_KEY_FIELD:                true,
+	SVR_ERR_FAIL_LIST_FULL:                     true,
+	SVR_ERR_COMMAND_AND_TABLE_TYPE_IS_MISMATCH: true,
+	SVR_ERR_FAIL_OUT_OF_USER_DEF_RANGE:         true,
+	SVR_ERR_FAIL_RESULT_OVERFLOW:               true,
+	GEN_ERR_NOT_SATISFY_INSERT_FOR_SORTLIST:    true,
+
+	//tcaproxy
+	PROXY_ERR_FAILED_PROC_REQUEST_BECAUSE_NODE_IS_IN_SYNC_STASUS: true,
+	PROXY_ERR_KEY_FIELD_NUM_IS_ZERO:                              true,
+	PROXY_ERR_LACK_OF_SOME_KEY_FIELDS:                            true,
+	PROXY_ERR_REQUEST_ACCESS_CTRL_REJECT:                         true,
+
+	//api
+	API_ERR_OVER_MAX_KEY_FIELD_NUM:                           true,
+	API_ERR_OVER_MAX_VALUE_FIELD_NUM:                         true,
+	API_ERR_OVER_MAX_FIELD_NAME_LEN:                          true,
+	API_ERR_OVER_MAX_FIELD_VALUE_LEN:                         true,
+	API_ERR_FIELD_NOT_EXSIST:                                 true,
+	API_ERR_FIELD_TYPE_NOT_MATCH:                             true,
+	API_ERR_PARAMETER_INVALID:                                true,
+	API_ERR_INVALID_COMMAND:                                  true,
+	API_ERR_NO_MORE_RECORD:                                   true,
+	API_ERR_OVER_KEY_FIELD_NUM:                               true,
+	API_ERR_OVER_VALUE_FIELD_NUM:                             true,
+	API_ERR_MISS_PRIMARY_KEY:                                 true,
+	API_ERR_UNSUPPORT_FIELD_TYPE:                             true,
+	API_ERR_INVALID_INDEX_NAME:                               true,
+	API_ERR_OVER_MAX_LIST_INDEX_NUM:                          true,
+	API_ERR_TABLE_NAME_MISSING:                               true,
+	API_ERR_TABLE_IS_NOT_EXIST:                               true,
+	API_ERR_COMPRESS_SWITCH_NOT_SUPPORTED_REGARDING_THIS_CMD: true,
+	API_ERR_OVER_MAX_PKG_SIZE:                                true,
+	API_ERR_ZONE_IS_NOT_EXIST:                                true,
+
+	//common
+	COMMON_ERR_INVALID_EXPR_SYNTAX: true,
+	COMMON_ERR_INVALID_ARRAY_INDEX: true,
+	COMMON_ERR_INVALID_FIELD_NAME:  true,
+	COMMON_ERR_INVALID_EXPR_TYPE:   true,
+}
+
+func IsWarningCode(code int32) bool {
+	if _, exist := WarnningCodes[int(code)]; exist {
+		return true
+	}
+	return false
+}
+
 /**
 	@brief 错误码结构体
 	@param [IN] Code 错误码
@@ -1280,6 +1342,9 @@ type ErrorCode struct {
 	Message string
 }
 
+func MakeError(code int, msg string) error {
+	return &ErrorCode{Code: code, Message: msg}
+}
 func (e ErrorCode) Error() string {
 	if len(e.Message) != 0 {
 		return "errCode: " + strconv.Itoa(e.Code) + ", errMsg: " + e.Message

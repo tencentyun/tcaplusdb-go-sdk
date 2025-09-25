@@ -2,6 +2,8 @@ package common
 
 import (
 	"bytes"
+	"crypto/sha1"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/protocol/tcaplus_protocol_cs"
@@ -59,4 +61,31 @@ func CovertToJson(v interface{}) string {
 	buf := &bytes.Buffer{}
 	json.Indent(buf, data, "", "\t")
 	return buf.String()
+}
+
+func EncodePasswd(s string) string {
+	o := sha1.New()
+	o.Write([]byte(s))
+	p1 := o.Sum(nil)
+
+	o2 := sha1.New()
+	o2.Write(p1)
+	p2 := o2.Sum(nil)
+	return hex.EncodeToString(p2)
+}
+
+func HasFlag(src int32, flag int32) bool {
+	return (src & flag) > 0
+}
+
+func GetInt32Max() int32 {
+	return 2147483647
+}
+
+// int32 -1 反转到 0
+func GetSubscribeInt32Next(id int32) int32 {
+	if id < GetInt32Max()-1 {
+		return id + 1
+	}
+	return 0
 }

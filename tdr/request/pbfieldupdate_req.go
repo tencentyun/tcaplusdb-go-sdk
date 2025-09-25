@@ -37,6 +37,7 @@ func newPBFieldUpdateRequest(appId uint64, zoneId uint32, tableName string, cmd 
 	pkg.Body.TCaplusPbFieldUpdateReq.ValueInfo.Fields_ = nil
 	pkg.Body.TCaplusPbFieldUpdateReq.CheckVersionType = 1
 	pkg.Body.TCaplusPbFieldUpdateReq.Condition = ""
+	pkg.Body.TCaplusPbFieldUpdateReq.Operation = ""
 	req := &pbFieldUpdateRequest{
 		appId:     appId,
 		zoneId:    zoneId,

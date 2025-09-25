@@ -88,7 +88,7 @@ func (req *traverseRequest) Pack() ([]byte, error) {
 		return nil, &terror.ErrorCode{Code: terror.RequestHasHasNoPkg, Message: "Request can not second use"}
 	}
 
-	if req.isPB {
+	if req.isPB && req.pkg.Body.TableTraverseReq.ValueInfo.FieldNum <= 0 {
 		req.pkg.Body.TableTraverseReq.ValueInfo.FieldNum = 3
 		req.pkg.Body.TableTraverseReq.ValueInfo.FieldName = []string{"klen", "vlen", "value"}
 	} else {

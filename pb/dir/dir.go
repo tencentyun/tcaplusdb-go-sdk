@@ -22,6 +22,42 @@ const (
 	SignUpFail    = 3
 )
 
+type ReportStat struct {
+	zoneStat map[uint32]string
+}
+
+// SetZoneReportStat 设置单zone的统计信息，只有网络线程操作，不加锁
+func (r *ReportStat) SetZoneReportStat(zone uint32, stat string) {
+	r.zoneStat[zone] = stat
+}
+
+func (r *ReportStat) PackReportStat(buf *string, maxLen int64) {
+	for zone, stat := range r.zoneStat {
+		if len(stat) <= 0 {
+			continue
+		}
+
+		// 首次打包带上包头
+		if len(*buf) == 0 {
+			*buf += "StatInfo="
+			*buf += stat
+			delete(r.zoneStat, zone)
+			continue
+		}
+
+		// 过长了,保留一个分号一个逗号
+		if int64(len(*buf))+int64(len(stat))+2 > maxLen {
+			break
+		}
+		*buf += ","
+		*buf += stat
+		delete(r.zoneStat, zone)
+	}
+	if len(*buf) > 0 && int64(len(*buf)) < maxLen {
+		*buf += ";"
+	}
+}
+
 // dir服务管理
 type DirServer struct {
 	appId     uint64
@@ -44,6 +80,22 @@ type DirServer struct {
 	heartbeatInterval time.Duration
 	lastHeartbeatTime time.Time
 	error             error
+
+	// username + passwd
+	userName string
+	passwd   string
+
+	// 统计结构体
+	reportStat ReportStat
+}
+
+func (dir *DirServer) GetReportStat() *ReportStat {
+	return &dir.reportStat
+}
+
+func (dir *DirServer) SetUserNameAndPassword(userName string, password string) {
+	dir.userName = userName
+	dir.passwd = password
 }
 
 func (dir *DirServer) Init(appId uint64, zoneList []uint32, dirUrl string, signature string) error {
@@ -61,6 +113,7 @@ func (dir *DirServer) Init(appId uint64, zoneList []uint32, dirUrl string, signa
 	dir.signUpFlag = NotSignUp
 	dir.AllDirConnectFail = false
 	dir.MsgPipe = make(chan *tcapdir_protocol_cs.TCapdirCSPkg, 1)
+	dir.reportStat.zoneStat = make(map[uint32]string)
 	if err := dir.domainConvert(); err != nil {
 		return err
 	}
@@ -115,7 +168,7 @@ func (dir *DirServer) connect() error {
 		//连接dir, 3s超时
 		for i := 0; i < len(dir.urlList); i++ {
 			var err error
-			dir.conn, err = tnet.NewConn(dir.urlList[dir.curDirIndex], 3*time.Second, ParseDirPkgLen,
+			dir.conn, err = tnet.NewConn(dir.urlList[dir.curDirIndex], 3*dir.heartbeatInterval*time.Second, ParseDirPkgLen,
 				DirCallBackFunc, dir, 0)
 			if err == nil {
 				break
@@ -276,6 +329,11 @@ func (dir *DirServer) signUp() error {
 
 	//body
 	req.Body.ReqSignUpApp.Signature = dir.signature
+	if len(dir.userName) > 0 {
+		req.Body.ReqSignUpApp.Signature = ""
+		req.Body.ReqSignUpApp.UserName = dir.userName
+		req.Body.ReqSignUpApp.PasswordMd5 = dir.passwd
+	}
 	req.Body.ReqSignUpApp.Type = 0
 	req.Body.ReqSignUpApp.TableCount = int16(len(dir.zoneList))
 	req.Body.ReqSignUpApp.TableList = make([]*tcapdir_protocol_cs.TableInfo, len(dir.zoneList))
@@ -380,6 +438,11 @@ func (dir *DirServer) GetAccessProxy() error {
 		//body
 		req.Body.ReqGetTablesAndAccess.ZoneID = int32(dir.zoneList[i])
 		req.Body.ReqGetTablesAndAccess.Signature = dir.signature
+		if len(dir.userName) > 0 {
+			req.Body.ReqGetTablesAndAccess.Signature = ""
+			req.Body.ReqGetTablesAndAccess.UserName = dir.userName
+			req.Body.ReqGetTablesAndAccess.PasswordMd5 = dir.passwd
+		}
 		req.Body.ReqGetTablesAndAccess.Version = version.Version
 
 		//pack
@@ -461,6 +524,17 @@ func (dir *DirServer) SetHeartbeatInterval(heartbeatInterval time.Duration) {
 	}
 }
 
+func (dir *DirServer) SetHeartBeatStatInfo(req *tcapdir_protocol_cs.TCapdirCSPkg) {
+	maxBufLen := tcapdir_protocol_cs.TCAPDIR_USER_DEFINED_TEXT_LEN - 1
+	req.Body.ReqHeartBeat.QosReport.UserDefinedText = ""
+	req.Body.ReqHeartBeat.WithQos = 0
+	dir.reportStat.PackReportStat(&req.Body.ReqHeartBeat.QosReport.UserDefinedText, maxBufLen)
+	if len(req.Body.ReqHeartBeat.QosReport.UserDefinedText) > 0 {
+		req.Body.ReqHeartBeat.WithQos = 1
+		log.INFO("dir SetHeartBeatStatInfo %s", req.Body.ReqHeartBeat.QosReport.UserDefinedText)
+	}
+}
+
 func (dir *DirServer) SendHeartbeat() {
 	req := tcapdir_protocol_cs.NewTCapdirCSPkg()
 	//head
@@ -473,7 +547,7 @@ func (dir *DirServer) SendHeartbeat() {
 	req.Body.Init(int64(req.Head.Cmd))
 
 	req.Body.ReqHeartBeat.HostTime = uint64(time.Now().Unix())
-	req.Body.ReqHeartBeat.WithQos = 0
+	dir.SetHeartBeatStatInfo(req)
 
 	//pack
 	if buf, err := req.Pack(tcapdir_protocol_cs.TCapdirCSPkgCurrentVersion); err != nil {

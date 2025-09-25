@@ -42,6 +42,7 @@ func newUpdateRequest(appId uint64, zoneId uint32, tableName string, cmd int,
 	pkg.Body.UpdateReq.IncreaseValueInfo.Fields = nil
 	pkg.Body.UpdateReq.IncreaseValueInfo.Version = 0
 	pkg.Body.UpdateReq.Condition = ""
+	pkg.Body.UpdateReq.Operation = ""
 	req := &updateRequest{
 		appId:        appId,
 		zoneId:       zoneId,

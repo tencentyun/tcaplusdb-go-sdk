@@ -147,3 +147,7 @@ func (res *listGetAllResponse) GetPerfTest(recvTime uint64) *tcaplus_protocol_cs
 	perf.ApiRecvTime = recvTime
 	return perf
 }
+
+func (res *listGetAllResponse) GetTcaplusPackagePtr() *tcaplus_protocol_cs.TCaplusPkg {
+	return res.pkg
+}

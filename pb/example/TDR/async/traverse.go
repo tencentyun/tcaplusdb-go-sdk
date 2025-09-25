@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/response"
-	"github.com/tencentyun/tcaplusdb-go-sdk/pb/traverser"
 	"time"
 
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/example/TDR/async/service_info"
@@ -37,8 +36,7 @@ func traverseExample() {
 	defer tra.Stop()
 
 	tra.SetFieldNames([]string{"filterdata", "updatetime"})
-	// （非必须）限制本次遍历记录条数，默认不限制
-	tra.SetLimit(10)
+
 	//设置 异步 id
 	tra.SetAsyncId(12345)
 
@@ -48,23 +46,18 @@ func traverseExample() {
 		return
 	}
 
-	timeOutChan := time.NewTimer(1 * time.Second)
+	timeOutChan := time.NewTimer(30 * time.Second)
 	for {
-		timeOutChan.Reset(1 * time.Second)
+		timeOutChan.Reset(30 * time.Second)
 		select {
 		case <-timeOutChan.C:
-			if tra.State() == traverser.TraverseStateNormal {
-				fmt.Println("continue ......")
-			} else if tra.State() == traverser.TraverseStateIdle {
-				fmt.Println("traverse finish")
-				return
-			} else {
-				fmt.Println("traverse stat err ", tra.State())
-				return
-			}
+			// 防止一直卡主
+			fmt.Println("30 秒没有响应包了 stat ", tra.State())
+			return
 
 		// 等待收取响应
 		case resp := <-respChan:
+			fmt.Println("recv one rsp")
 			// 获取响应结果
 			errCode := resp.GetResult()
 			if errCode != terror.GEN_ERR_SUC {
@@ -86,6 +79,12 @@ func traverseExample() {
 					return
 				}
 				fmt.Println("record service_info : ", data)
+			}
+
+			if resp.HaveMoreResPkgs() == 0 {
+				//finished
+				fmt.Println("traverse finish")
+				return
 			}
 		}
 	}

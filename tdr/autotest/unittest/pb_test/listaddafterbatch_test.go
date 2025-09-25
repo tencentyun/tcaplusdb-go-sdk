@@ -185,6 +185,7 @@ func TestListAddAfterBatchVersionFail(t *testing.T) {
 	fmt.Println(opt.BatchResult)
 	fmt.Println(indexs)
 }
+
 // 全部索引存在
 func TestListAddAfterBatchSuccess_1023(t *testing.T) {
 	client := tools.InitPBSyncClient()
@@ -370,12 +371,12 @@ func TestListAddAfterBatchSuccess_01(t *testing.T) {
 	opt = &option.PBOpt{}
 	resMsgs, err := client.DoListGetBatch(msg, indexs, opt)
 	/*
-	if err != nil {
-		t.Errorf("DoListGetBatch fail, %s", err.Error())
-		return
-	}
+		if err != nil {
+			t.Errorf("DoListGetBatch fail, %s", err.Error())
+			return
+		}
 
-	 */
+	*/
 	fmt.Println(opt.Version)
 	fmt.Println(opt.BatchResult)
 	for index, msg := range resMsgs {

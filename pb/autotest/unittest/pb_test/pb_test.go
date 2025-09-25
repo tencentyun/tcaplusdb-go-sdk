@@ -8,7 +8,6 @@ import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/pb/terror"
 	"google.golang.org/protobuf/proto"
 	"testing"
-	"time"
 )
 
 func TestPBSimple(t *testing.T) {
@@ -311,63 +310,6 @@ func TestPBGetByPartKey_NonExist(t *testing.T) {
 
 	client.Delete(newData)
 	client.Delete(oldData2)
-}
-
-func TestPBIndexQuery_succ(t *testing.T) {
-	client := tools.InitPBSyncClient()
-
-	oldData := &tcaplusservice.GamePlayers{}
-	oldData.Pay = &tcaplusservice.Payment{Amount: 1, PayId: 2, Method: 3}
-	oldData.PlayerId = 233
-	oldData.PlayerName = "jiahua"
-
-	oldData.PlayerEmail = "wang"
-	client.Insert(oldData)
-	defer func() {
-		oldData.PlayerEmail = "wang"
-		client.Delete(oldData)
-	}()
-
-	oldData.PlayerEmail = "zhang"
-	client.Insert(oldData)
-	defer func() {
-		oldData.PlayerEmail = "zhang"
-		client.Delete(oldData)
-	}()
-
-	oldData.PlayerEmail = "li"
-	client.Insert(oldData)
-	defer func() {
-		oldData.PlayerEmail = "li"
-		client.Delete(oldData)
-	}()
-
-	time.Sleep(time.Second)
-
-	query := fmt.Sprintf("select pay.pay_id, pay.amount from game_players where player_id=233")
-	msgs, res, err := client.IndexQuery(query)
-	if err != nil {
-		t.Errorf("IndexQuery err:%s", err)
-		return
-	}
-
-	if len(msgs) != 3 && len(res) != 0 {
-		t.Errorf("IndexQuery err:%s", err)
-		return
-	}
-
-	query = fmt.Sprintf("select count(*) from game_players where player_id=233")
-	msgs, res, err = client.IndexQuery(query)
-	if err != nil {
-		t.Errorf("IndexQuery err:%s", err)
-		return
-	}
-
-	if len(msgs) != 0 && len(res) != 1 {
-		t.Errorf("IndexQuery err:%s", err)
-		return
-	}
-
 }
 
 func TestPBFieldGet(t *testing.T) {

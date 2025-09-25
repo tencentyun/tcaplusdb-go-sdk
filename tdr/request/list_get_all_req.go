@@ -4,6 +4,7 @@ import (
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/common"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/logger"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/cs_pool"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/option"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/protocol/tcaplus_protocol_cs"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/record"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/terror"
@@ -220,4 +221,21 @@ func (req *listGetAllRequest) ClearFlags(flag int32) int {
 
 func (req *listGetAllRequest) GetFlags() int32 {
 	return req.pkg.Head.Flags
+}
+
+// isCheck 用来控制请求的idx不存在时，是否返回261: true,不返回；false，返回
+func (req *listGetAllRequest) SetSubscribe(expireSec int32, index int32, OnlyCheck bool, rspFlag uint32) int32 {
+	req.pkg.Body.ListGetAllReq.AllowMultiResponses = 0
+	if OnlyCheck {
+		req.pkg.Body.ListGetAllReq.AllowMultiResponses = 1
+	}
+	req.pkg.Body.ListGetAllReq.ElementNum = expireSec
+	req.pkg.Body.ListGetAllReq.StartSubscript = index
+	req.pkg.Head.SubCmd = rspFlag
+	ret := int32(setFlags(req.pkg, option.TcaplusFlagSubscribe))
+	if ret != 0 {
+		return int32(ret)
+	}
+	ret = int32(setFlags(req.pkg, option.TcaplusFlagOffsetRegardsAsListIndex))
+	return int32(ret)
 }

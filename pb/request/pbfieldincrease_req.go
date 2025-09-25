@@ -37,6 +37,8 @@ func newPBFieldIncreaseRequest(appId uint64, zoneId uint32, tableName string, cm
 	pkg.Body.TCaplusPbFieldIncReq.ValueInfo.Fields_ = nil
 	pkg.Body.TCaplusPbFieldIncReq.CheckVersionType = 1
 	pkg.Body.TCaplusPbFieldIncReq.Condition = ""
+	pkg.Body.TCaplusPbFieldIncReq.Operation = ""
+	pkg.Body.TCaplusPbFieldIncReq.EnableIncreaseNotExist = 0
 	req := &pbFieldIncreaseRequest{
 		appId:     appId,
 		zoneId:    zoneId,

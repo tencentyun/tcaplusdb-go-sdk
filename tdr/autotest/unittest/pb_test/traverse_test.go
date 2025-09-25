@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/autotest/unittest/cfg"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/autotest/unittest/table/tcaplusservice"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/autotest/unittest/tools"
 	"github.com/tencentyun/tcaplusdb-go-sdk/tdr/terror"
@@ -11,7 +12,7 @@ import (
 
 func TestPBTraverse(t *testing.T) {
 	client := tools.InitPBSyncClient()
-	tra := client.GetTraverser(1, "game_players")
+	tra := client.GetTraverser(cfg.ApiConfig.ZoneId, "game_players")
 	defer tra.Stop()
 
 	msg := &tcaplusservice.GamePlayers{}
@@ -101,7 +102,7 @@ func TestPBSyncTraverse2(t *testing.T) {
 // 条件符合
 func TestPBTraverseCondition(t *testing.T) {
 	client := tools.InitPBSyncClient()
-	tra := client.GetTraverser(1, "user")
+	tra := client.GetTraverser(cfg.ApiConfig.ZoneId, "user")
 	defer tra.Stop()
 
 	msg := &tcaplusservice.User{}

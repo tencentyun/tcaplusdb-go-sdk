@@ -240,10 +240,10 @@ const (
 	TcaplusApiPBFieldIncreaseRes = 0x006c
 
 	///** \brief protobuf部分字段自增请求 */
-	//TCAPLUS_API_PB_BATCH_FIELD_GET_REQ           = 0x0075
+	TcaplusApiPBBatchFieldGetReq = 0x0075
 	//
 	///** \brief protobuf部分字段自增响应 */
-	//TCAPLUS_API_PB_BATCH_FIELD_GET_RES           = 0x0076
+	TcaplusApiPBBatchFieldGetRes = 0x0076
 
 	/** \brief 索引查询请求 */
 	TcaplusApiSqlReq = 0x0081
@@ -261,3 +261,103 @@ const (
 	//自减
 	TcaplusApiOpMinus = 2
 )
+
+var TypeMap = [TcaplusApiMaxNum]int8{
+	//1表示简单请求
+	TcaplusApiInsertReq:          1,
+	TcaplusApiReplaceReq:         1,
+	TcaplusApiIncreaseReq:        1,
+	TcaplusApiGetReq:             1,
+	TcaplusApiDeleteReq:          1,
+	TcaplusApiListGetReq:         1,
+	TcaplusApiListAddAfterReq:    1,
+	TcaplusApiListDeleteReq:      1,
+	TcaplusApiListReplaceReq:     1,
+	TcaplusApiUpdateReq:          1,
+	TcaplusApiPBFieldGetReq:      1,
+	TcaplusApiPBFieldUpdateReq:   1,
+	TcaplusApiPBFieldIncreaseReq: 1,
+
+	//2是简单响应
+	TcaplusApiInsertRes:          2,
+	TcaplusApiReplaceRes:         2,
+	TcaplusApiIncreaseRes:        2,
+	TcaplusApiGetRes:             2,
+	TcaplusApiDeleteRes:          2,
+	TcaplusApiListGetRes:         2,
+	TcaplusApiListAddAfterRes:    2,
+	TcaplusApiListDeleteRes:      2,
+	TcaplusApiListReplaceRes:     2,
+	TcaplusApiUpdateRes:          2,
+	TcaplusApiPBFieldGetRes:      2,
+	TcaplusApiPBFieldUpdateRes:   2,
+	TcaplusApiPBFieldIncreaseRes: 2,
+
+	// 3是复杂请求
+	TcaplusApiListGetAllReq:        3,
+	TcaplusApiListDeleteAllReq:     3,
+	TcaplusApiListDeleteBatchReq:   3,
+	TcaplusApiBatchGetReq:          3,
+	TcaplusApiBatchInsertReq:       3,
+	TcaplusApiBatchReplaceReq:      3,
+	TcaplusApiBatchUpdateReq:       3,
+	TcaplusApiBatchDeleteReq:       3,
+	TcaplusApiListGetBatchReq:      3,
+	TcaplusApiListAddAfterBatchReq: 3,
+	TcaplusApiListReplaceBatchReq:  3,
+	TcaplusApiGetByPartkeyReq:      3,
+	TcaplusApiUpdateByPartkeyReq:   3,
+	TcaplusApiDeleteByPartkeyReq:   3,
+	TcaplusApiSetTtlReq:            3,
+	TcaplusApiGetTtlReq:            3,
+	TcaplusApiPBBatchFieldGetReq:   3,
+	TcaplusApiSqlReq:               3,
+
+	//4是复杂响应
+	TcaplusApiListGetAllRes:        4,
+	TcaplusApiListDeleteAllRes:     4,
+	TcaplusApiListDeleteBatchRes:   4,
+	TcaplusApiBatchGetRes:          4,
+	TcaplusApiBatchInsertRes:       4,
+	TcaplusApiBatchReplaceRes:      4,
+	TcaplusApiBatchUpdateRes:       4,
+	TcaplusApiBatchDeleteRes:       4,
+	TcaplusApiListGetBatchRes:      4,
+	TcaplusApiListAddAfterBatchRes: 4,
+	TcaplusApiListReplaceBatchRes:  4,
+	TcaplusApiGetByPartkeyRes:      4,
+	TcaplusApiUpdateByPartkeyRes:   4,
+	TcaplusApiDeleteByPartkeyRes:   4,
+	TcaplusApiSetTtlRes:            4,
+	TcaplusApiGetTtlRes:            4,
+	TcaplusApiPBBatchFieldGetRes:   4,
+	TcaplusApiSqlRes:               4,
+} // 0表示默认不用关注
+
+func IsSimpleReq(cmd uint32) bool {
+	if cmd >= TcaplusApiMaxNum {
+		return false
+	}
+	return TypeMap[cmd] == 1
+}
+
+func IsSimpleRes(cmd uint32) bool {
+	if cmd >= TcaplusApiMaxNum {
+		return false
+	}
+	return TypeMap[cmd] == 2
+}
+
+func IsComplexReq(cmd uint32) bool {
+	if cmd >= TcaplusApiMaxNum {
+		return false
+	}
+	return TypeMap[cmd] == 3
+}
+
+func IsComplexRes(cmd uint32) bool {
+	if cmd >= TcaplusApiMaxNum {
+		return false
+	}
+	return TypeMap[cmd] == 4
+}

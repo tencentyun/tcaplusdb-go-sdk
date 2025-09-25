@@ -1,8 +1,8 @@
-export GO111MODULE=off
-export GOPATH:=$(shell pwd)../../../../../
+#export GO111MODULE=off
+#export GOPATH:=$(shell pwd)../../../../../
 
 all: build
 build:
-	go test -c -o test
+	go test -c -coverpkg=../../../../tcaplus-go-api/... -covermode=atomic -o pbTest
 clean:
-	rm -rf test
+	rm -rf pbTest

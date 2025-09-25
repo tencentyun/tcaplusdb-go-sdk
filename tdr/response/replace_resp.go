@@ -69,8 +69,7 @@ func (res *replaceResponse) GetRecordCount() int {
 		if (res.pkg.Body.ReplaceRes.Flag == 1 || res.pkg.Body.ReplaceRes.Flag == 2 ||
 			(res.pkg.Body.ReplaceRes.Flag == 3 &&
 				res.pkg.Body.ReplaceRes.ResultInfo.CompactValueSet.FieldIndexNum > 0)) &&
-			(res.pkg.Body.ReplaceRes.Result == 0 ||
-				res.pkg.Body.ReplaceRes.Result == int32(terror.SVR_ERR_FAIL_INVALID_VERSION)) {
+			(res.pkg.Body.ReplaceRes.Result == 0) {
 			return 1
 		}
 	}

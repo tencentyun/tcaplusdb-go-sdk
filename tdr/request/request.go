@@ -71,6 +71,22 @@ type TcaplusRequest interface {
 	  @retval <0    失败，返回对应的错误码。通常因为某些操作类型(cmd)不支持这种访问方式
 	*/
 	SetExpireTime(expireTime uint32) int32
+
+	GetCmd() uint32
+
+	/**
+	  @brief  订阅操作，只支持ListGetAll
+	  @param  [IN] expireSec  订阅时长，单位秒，>0 表示开始订阅，<= 0 表示取消订阅
+	               index:
+	                  >=0 表示: 订阅同时返回该index之后(包含该index)的所有元素
+	                            如果订阅的起始index不存在：返回记录不存在的错误码
+	                              用户可listgetall获取最后的元素后，再次订阅
+	                  <0 表示: 只订阅不返回记录
+	  @retval 0    设置成功
+	  @retval <0   失败，返回对应的错误码。通常因为未初始化。
+	  @note 订阅过程中建议短时间续订，因为主备切换或者扩缩容会导致订阅失效
+	*/
+	SetSubscribe(expireSec int32, index int32, OnlyCheck bool, rspFlag uint32) int32
 }
 
 /*
@@ -434,6 +450,7 @@ func NewRequest(appId uint64, zoneId uint32, tableName string, cmd int, isPB boo
 	//pkg.Body.Init(int64(cmd))
 
 	req := &tcapRequest{}
+	req.pkg = pkg
 	var err error
 
 	switch cmd {
@@ -457,9 +474,8 @@ func NewRequest(appId uint64, zoneId uint32, tableName string, cmd int, isPB boo
 		req.commonInterface, err = newListGetAllRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
 	case tcaplusCmd.TcaplusApiBatchGetReq:
 		req.commonInterface, err = newBatchGetRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
-	//  not support yet
-	//case tcaplusCmd.TcaplusApiUpdateByPartkeyReq:
-	//	req.commonInterface, err = newUpdateByPartKeyRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
+	case tcaplusCmd.TcaplusApiUpdateByPartkeyReq:
+		req.commonInterface, err = newUpdateByPartKeyRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
 	case tcaplusCmd.TcaplusApiListAddAfterReq:
 		req.commonInterface, err = newListAddAfterRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
 	case tcaplusCmd.TcaplusApiListGetReq:
@@ -508,6 +524,8 @@ func NewRequest(appId uint64, zoneId uint32, tableName string, cmd int, isPB boo
 		req.commonInterface, err = newListAddAfterBatchRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
 	case tcaplusCmd.TcaplusApiListReplaceBatchReq:
 		req.commonInterface, err = newListReplaceBatchRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
+	case tcaplusCmd.TcaplusApiPBBatchFieldGetReq:
+		req.commonInterface, err = newPBBatchFieldGetRequest(appId, zoneId, tableName, cmd, innerSeq, pkg, isPB)
 	default:
 		logger.ERR("invalid cmd %d", cmd)
 		return nil, &terror.ErrorCode{Code: terror.InvalidCmd}
@@ -588,21 +606,28 @@ var allowdFlagCmdMap = [][]uint32{
 	{tcaplusCmd.TcaplusApiBatchGetReq},
 	/* bit3 (0x00000004): TCAPLUS_FLAG_ONLY_READ_FROM_SLAVE */
 	{tcaplusCmd.TcaplusApiGetReq,
-		//TCAPLUS_API_GET_TABLE_RECORD_COUNT_REQ,
+		tcaplusCmd.TcaplusApiGetTableRecordCountReq,
 		tcaplusCmd.TcaplusApiListGetReq,
 		tcaplusCmd.TcaplusApiListGetAllReq,
 		tcaplusCmd.TcaplusApiGetByPartkeyReq,
-		//TCAPLUS_API_BATCH_GET_BY_PARTKEY_REQ,
-		//TCAPLUS_API_METADATA_GET_REQ,
+		tcaplusCmd.TcaplusApiMetadataGetReq,
 		tcaplusCmd.TcaplusApiTableTraverseReq,
-		//TCAPLUS_API_LIST_TABLE_TRAVERSE_REQ,
-		tcaplusCmd.TcaplusApiBatchGetReq},
+		tcaplusCmd.TcaplusApiListTableTraverseReq,
+		tcaplusCmd.TcaplusApiBatchGetReq,
+		tcaplusCmd.TcaplusApiPBFieldGetReq,
+		tcaplusCmd.TcaplusApiPBBatchFieldGetReq},
 	/* bit4 (0x00000008): TCAPLUS_FLAG_LIST_RESERVE_INDEX_HAVING_NO_ELEMENTS */
 	{tcaplusCmd.TcaplusApiListDeleteReq,
 		tcaplusCmd.TcaplusApiListDeleteAllReq,
 		tcaplusCmd.TcaplusApiListDeleteBatchReq},
 	/* bit5 (0x00000010): TcaplusFlagInsertRecordIfNotExist int32 = 16 PB的FieldUpdate使用，数据不存在则插入*/
 	{tcaplusCmd.TcaplusApiPBFieldUpdateReq},
+	/*bit6 (0x00000020): TCAPLUS_FLAG_SELECT_ONLY_KEY_RETURN_FROM_PROXY_FOR_SQL_QUERY */
+	{tcaplusCmd.TcaplusApiSqlReq},
+	/*bit7 (0x00000040): TCAPLUS_FLAG_OFFSET_REGARDS_AS_LIST_INDEX */
+	{tcaplusCmd.TcaplusApiListGetAllReq},
+	/*bit7 (0x00000080): TCAPLUS_FLAG_SUBSCRIBE */
+	{tcaplusCmd.TcaplusApiListGetAllReq},
 }
 
 func manipulateFlags(pkg *tcaplus_protocol_cs.TCaplusPkg, flags int32, clear bool) int {
@@ -655,6 +680,7 @@ func clearFlags(pkg *tcaplus_protocol_cs.TCaplusPkg, flags int32) int {
 
 type tcapRequest struct {
 	commonInterface
+	pkg *tcaplus_protocol_cs.TCaplusPkg
 }
 
 func (req *tcapRequest) SetListShiftFlag(shiftFlag byte) int32 {
@@ -708,8 +734,23 @@ func (req *tcapRequest) SetExpireTime(expireTime uint32) int32 {
 	}
 }
 
+func (req *tcapRequest) SetSubscribe(expireSec int32, index int32, OnlyCheck bool, rspFlag uint32) int32 {
+	switch req.commonInterface.(type) {
+	case *listGetAllRequest:
+		return req.commonInterface.(*listGetAllRequest).SetSubscribe(expireSec, index, OnlyCheck, rspFlag)
+	default:
+		return int32(terror.API_ERR_OPERATION_TYPE_NOT_MATCH)
+	}
+}
+
+func (req *tcapRequest) GetCmd() uint32 {
+	return req.pkg.Head.Cmd
+}
+
 func (req *tcapRequest) GetTcaplusPackagePtr() *tcaplus_protocol_cs.TCaplusPkg {
 	switch req.commonInterface.(type) {
+	case *getMetaRequest:
+		return req.commonInterface.(*getMetaRequest).GetTcaplusPackagePtr()
 	case *getShardListRequest:
 		return req.commonInterface.(*getShardListRequest).GetTcaplusPackagePtr()
 	case *traverseRequest:

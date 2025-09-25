@@ -1,6 +1,9 @@
 package option
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 const (
 	CheckDataVersionAutoIncrease   byte = 1
@@ -24,6 +27,8 @@ const (
 	TcaplusFlagOnlyReadFromSlave                int32 = 4
 	TcaplusFlagListReserveIndexHavingNoElements int32 = 8
 	TcaplusFlagInsertRecordIfNotExist           int32 = 16 //PB的FieldUpdate使用，数据不存在则插入
+	TcaplusFlagOffsetRegardsAsListIndex         int32 = 0x40
+	TcaplusFlagSubscribe                        int32 = 0x80 //订阅标记
 )
 
 /** brief  自增自减字段操作
@@ -73,8 +78,12 @@ type TDROpt struct {
 	@brief  批量操作，单条记录的操作结果
 	**/
 	BatchResult []error
-	//ttl 信息
+
+	// TTL 信息, 支持单命令 DoInsert DoUpdate DoReplace同时设置ttl
+	TTL *TTLInfo
+	// BatchTTL, 支持命令DoSetTTLBatch批量设置多条记录的TTL
 	BatchTTL []TTLInfo
+
 	/**
 	@brief  设置响应标志。主要用于Generic表的insert、increase、replace、update、delete操作, 请求标志:
 			TcaplusResultFlagNoValue表示: 只需返回操作执行成功与否
@@ -181,6 +190,12 @@ type TDROpt struct {
 	@brief  超时时间,不设置默认5s
 	**/
 	Timeout time.Duration
+
+	/**
+	@brief go协程context，不设置默认使用timeout,否则使用context判断协程退出
+	**/
+	Ctx context.Context
+
 	/**
 	@brief  设置空记录自增允许标志。用于Generic表的increase操作, 空记录自增允许标志。
 			TcaplusAddableIncreaseFalse表示不允许,TcaplusAddableIncreaseTrue表示允许，
@@ -203,6 +218,21 @@ type TDROpt struct {
 	UserBuff []byte
 	//同步请求意义不大，设置请求的异步事务ID
 	AsyncId uint64
+
+	/**
+		(1）TCAPLUS_API_GET_BY_PARTKEY_REQ（部分key查询）；
+		(2）TCAPLUS_API_LIST_GETALL_REQ（list表查询所有匹配的记录）；
+	    @note：
+	       (1）当使用了SetResultLimit()来限制返回的记录时，
+	               使用该函数可以获取所有匹配的记录的个数，
+	               包括本响应返回的记录数和本响应未返回的记录数，
+	               而GetRecordCount()函数只能获取本响应返回的记录的个数；
+	       (2）当所返回的记录很多时，需要分包的时候，
+	               使用该函数可以获取总共的记录数，
+	               即多个分包所有记录数的总和，
+	               而GetRecordCount()函数只能返回单个分包中的(本响应中的)记录数.
+	*/
+	RecordMatchCount int32
 }
 
 type PBOpt struct {
@@ -225,7 +255,11 @@ type PBOpt struct {
 	**/
 	BatchResult []error
 
+	// TTL 信息, 支持单命令 DoInsert DoUpdate DoReplace同时设置ttl
+	TTL *TTLInfo
+	// BatchTTL, 支持命令DoSetTTLBatch批量设置多条记录的TTL
 	BatchTTL []TTLInfo
+
 	/**
 	@brief  设置响应标志。主要用于Generic表的insert、increase、replace、update、delete操作, 请求标志:
 			TcaplusResultFlagNoValue表示: 只需返回操作执行成功与否
@@ -322,6 +356,11 @@ type PBOpt struct {
 	Timeout time.Duration
 
 	/**
+	@brief go协程context，不设置默认使用Timeout,否则使用context判断协程退出
+	**/
+	Ctx context.Context
+
+	/**
 	@brief  设置空记录自增允许标志。用于Generic表的increase操作, 空记录自增允许标志。
 			TcaplusAddableIncreaseFalse表示不允许,TcaplusAddableIncreaseTrue表示允许，
 			当记录不存在时，将按字段默认值创建新记录再自增；若无默认值则返回错误
@@ -342,4 +381,19 @@ type PBOpt struct {
 	UserBuff []byte
 	//同步请求意义不大，设置请求的异步事务ID
 	AsyncId uint64
+
+	/**
+		(1）TCAPLUS_API_GET_BY_PARTKEY_REQ（部分key查询）；
+		(2）TCAPLUS_API_LIST_GETALL_REQ（list表查询所有匹配的记录）；
+	    @note：
+	       (1）当使用了SetResultLimit()来限制返回的记录时，
+	               使用该函数可以获取所有匹配的记录的个数，
+	               包括本响应返回的记录数和本响应未返回的记录数，
+	               而GetRecordCount()函数只能获取本响应返回的记录的个数；
+	       (2）当所返回的记录很多时，需要分包的时候，
+	               使用该函数可以获取总共的记录数，
+	               即多个分包所有记录数的总和，
+	               而GetRecordCount()函数只能返回单个分包中的(本响应中的)记录数.
+	*/
+	RecordMatchCount int32
 }
